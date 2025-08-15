@@ -379,6 +379,9 @@ def adjust_color_if_similar(home_color, away_color, threshold=0.2):
 # After you get home_team_col and away_team_col:
 away_team_col = adjust_color_if_similar(home_team_col, away_team_col)
 
+
+
+
 if 'Carry' not in match_df['type'].unique():
     match_df = insert_ball_carries(match_df, min_carry_length=10, max_carry_length=60, min_carry_duration=6, max_carry_duration=10)
 
@@ -436,6 +439,25 @@ else:
     line_color = 'black'
     text_color = 'black'
 
+def adjust_color_if_similar_to_bg(team_color, background_color, threshold=0.2):
+    team_rgb = to_rgb(team_color)
+    bg_rgb = to_rgb(background_color)
+    dist = sum((t - b) ** 2 for t, b in zip(team_rgb, bg_rgb)) ** 0.5
+    if dist < threshold:
+        # Adjust color (e.g., lighten if background is dark, darken if background is light)
+        h, l, s = colorsys.rgb_to_hls(*team_rgb)
+        if sum(bg_rgb) < 1.5:  # background is dark
+            l = min(1, l + 0.5)
+        else:  # background is light
+            l = max(0, l - 0.5)
+        new_team_rgb = colorsys.hls_to_rgb(h, l, s)
+        return to_hex(new_team_rgb)
+    return team_color
+
+# Usage:
+home_team_col = adjust_color_if_similar_to_bg(home_team_col, background)
+away_team_col = adjust_color_if_similar_to_bg(away_team_col, background)
+away_team_col = adjust_color_if_similar(home_team_col, away_team_col)
 
 
 if viz == 'Match Dynamics':
