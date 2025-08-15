@@ -693,7 +693,7 @@ def calculate_angle(x, y,GOAL_X,GOAL_Y):
         angle = 0
     return angle
 
-def shotMap_ws(df, axs, pitch, hteam, ateam, team1_facecolor, team2_facecolor, text_color, background, situation, selected_player=None):
+def shotMap_ws(df, axs, pitch, hteam, ateam, team1_facecolor, team2_facecolor, text_color, background,font_prop, situation, selected_player=None):
     # Filter shots by situation and selected player
     if situation == 'All':
         mask1 = ((df['teamName'] == hteam)) & ((df['type'] == 'Goal') | (df['type'] == 'MissedShots') | (df['type'] == 'SavedShot') | (df['type'] == 'ShotOnPost'))

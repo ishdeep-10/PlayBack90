@@ -536,7 +536,7 @@ if viz == 'Shots':
                                 axis=False, title_space=0, endnote_height=0, title_height=0, ax_top=False)
     fig.set_facecolor(background)
     summary_df, player_df, home_shots_df, away_shots_df = shotMap_ws(
-        match_df, axs, pitch, home_team, away_team, home_team_col, away_team_col, text_color, background, situation=None, selected_player=None
+        match_df, axs, pitch, home_team, away_team, home_team_col, away_team_col, text_color, background,font_prop, situation=None, selected_player=None
     )
 
     #summary_df, player_df, shots_df = shotMap_ws(match_df, axs, pitch, home_team, home_team_col, text_color, background, situation=None, selected_player=None)
