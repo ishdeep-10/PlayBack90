@@ -13,7 +13,8 @@ import s3fs
 import pandas as pd
 import os
 
-# ... your other imports ...
+if "selected_third" not in st.session_state:
+    st.session_state.selected_third = None
 
 R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID")
 R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY")
