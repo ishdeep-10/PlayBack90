@@ -809,7 +809,7 @@ def shotMap_ws(df, axs, pitch, hteam, ateam, team1_facecolor, team2_facecolor, t
     player_df = summarize_player_shots(df)
     return summary_df, player_df, home_shots_df, away_shots_df
 
-def xgFlow(ax, df, hteam, ateam, team1_facecolor, team2_facecolor, text_color, background):
+def xgFlow(ax, df, hteam, ateam, team1_facecolor, team2_facecolor, text_color, background, font_prop):
     # Combine and sort shots
 
     mask1 = ((df['teamName'] == hteam)) & ((df['type'] == 'Goal') | (df['type'] == 'MissedShots') | (df['type'] == 'SavedShot') | (df['type'] == 'ShotOnPost'))
@@ -1076,7 +1076,7 @@ def calculate_centralization_index(teamName, passes_df):
 
     return centralization_index
 
-def pass_network_visualization(ax,df, passes_between_df, average_locs_and_count_df,text_color,background, col, teamName,MAX_LINE_WIDTH,flipped,ci):
+def pass_network_visualization(ax,df, passes_between_df, average_locs_and_count_df,text_color,background, col, teamName,MAX_LINE_WIDTH,flipped,ci,font_prop):
     MAX_MARKER_SIZE = 6000
     passes_between_df['width'] = (passes_between_df.pass_count / passes_between_df.pass_count.max()) * MAX_LINE_WIDTH
     average_locs_and_count_df['marker_size'] = (average_locs_and_count_df['count']/ average_locs_and_count_df['count'].max() * MAX_MARKER_SIZE) #You can plot variable size of each player's node according to their passing volume, in the plot using this
@@ -1448,7 +1448,7 @@ def plot_donut_charts(ax, action_types, team_a_stats, team_b_stats, team1, team2
     ax.axis('off')
 
 def plot_duels_by_type(ax, df, team1_name, team2_name, duel_type,
-                       team1_color, team2_color, background, text_color):
+                       team1_color, team2_color, background, text_color,font_prop):
 
     # Define duel type filters
     offensive_types = ['TakeOn', 'GoodSkill', 'ShieldBallOpp']
@@ -1684,7 +1684,7 @@ def get_defensive_action_distribution_by_type(defensive_actions_df, zone='All', 
 
     return action_distribution
 
-def defensive_block_with_player_actions(ax, df, team_name, col, background, text_color,
+def defensive_block_with_player_actions(ax, df, team_name, col, background, text_color,font_prop,
                                         flipped=True, selected_player_name=None):
     defensive_actions_df = get_defensive_action_df(df)
     defensive_actions_team_df = defensive_actions_df[defensive_actions_df["teamName"] == team_name]
@@ -1771,44 +1771,6 @@ def defensive_block_with_player_actions(ax, df, team_name, col, background, text
         ax.invert_xaxis()
         ax.invert_yaxis()
 
-def plot_donut_charts_def(ax, action_types, team_a_stats, team_b_stats, team1, team2,team1_facecolor,team2_facecolor):
-    # Ensure the main axis background is black
-    ax.set_facecolor(background)
-
-    # Number of action types
-    num_actions = len(action_types)
-    
-    # Loop through each action and create a new donut chart in a vertically stacked layout
-    for i, action in enumerate(action_types):
-        # Create a smaller inset axis for each donut, adjust its vertical position
-        inset_ax = ax.inset_axes([-0.05, 1 - (i+1) * 1.2 / num_actions, 1.1, 0.65])
-        
-        sizes = [team_a_stats[i], team_b_stats[i]]
-        labels = [team_a_stats[i], team_b_stats[i]]
-        colors = [team1_facecolor, team2_facecolor]  # Assign distinct colors to teams
-        
-        wedges, texts = inset_ax.pie(
-            sizes, 
-            labels=labels, 
-            startangle=90, 
-            colors=colors, 
-            wedgeprops=dict(width=0.2),  # Adjust width for thicker donut
-            textprops={'color': 'white', 'fontsize': 15}
-        )
-        
-        # Add a circle for the donut hole
-        circle = plt.Circle((0, 0), 0.7, color='black', fc='black')
-        inset_ax.add_artist(circle)
-        
-        inset_ax.text(0, 0, action, horizontalalignment='center', verticalalignment='center', 
-                      fontsize=15, color='white',fontproperties=font_prop)
-        
-        # Set equal aspect ratio and hide the axes
-        inset_ax.axis('equal')
-        inset_ax.set_xticks([])
-        inset_ax.set_yticks([])
-
-    ax.axis('off')
 
 def xT_momemtum(ax,df,team1_name,team2_name,team1_facecolor,team2_facecolor,background,text_color):
     xT_data = df[((df['type'] == 'Pass') | (df['type'] == 'Carry')) & (df['outcomeType'] == 'Successful')]
@@ -3125,45 +3087,6 @@ def build_transition_summary(transitions_df, third):
         })
     return pd.DataFrame(summary)
 
-def plot_mirrored_match_stats_bar(stats, home_team, away_team, home_color, away_color, background, text_color, font_prop, ax):
-    """
-    Plots mirrored horizontal bars for each stat, with home team left, away team right.
-    Each stat bar is fixed length, filled proportionally from center.
-    Stat labels are written above each bar.
-    """
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    n_stats = len(stats)
-    y_positions = np.arange(n_stats)
-    ax.set_xlim(-1, 1)
-    ax.set_ylim(-0.5, n_stats - 0.5)
-    ax.invert_yaxis()
-    ax.set_yticks([])  # Remove y-ticks
-
-    for i, s in enumerate(stats):
-        total = s['home'] + s['away'] if s['sum'] else 1
-        home_pct = s['home'] / total if s['sum'] and total > 0 else 0
-        away_pct = s['away'] / total if s['sum'] and total > 0 else 0
-
-        # Home bar (left)
-        ax.barh(i, -home_pct, color=home_color, height=0.35, edgecolor='none', align='center')
-        # Away bar (right)
-        ax.barh(i, away_pct, color=away_color, height=0.35, edgecolor='none', align='center')
-
-        # Stat values
-        ax.text(-1.05, i, f"{s['home_disp']}", va='center', ha='right', color=home_color, fontproperties=font_prop, fontsize=25, fontweight='bold')
-        ax.text(1.05, i, f"{s['away_disp']}", va='center', ha='left', color=away_color, fontproperties=font_prop, fontsize=25, fontweight='bold')
-
-        # Stat label above the bar
-        ax.text(0, i + 0.5, s['label'], va='bottom', ha='center', color=text_color, fontproperties=font_prop, fontsize=25, fontweight='bold')
-
-    # Center line
-    ax.axvline(0, color=text_color, linewidth=2, alpha=0.1)
-    ax.set_xticks([])
-
-    return
 
 def detect_offensive_transitions(events_df, team_name, time_window=10):
     events_df = events_df.sort_values(["minute", "second"]).reset_index(drop=True)

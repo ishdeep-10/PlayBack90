@@ -449,7 +449,7 @@ if viz == 'Match Dynamics':
 
 
 
-    xgFlow(axs4,match_df,home_team,away_team,home_team_col,away_team_col,text_color,background)
+    xgFlow(axs4,match_df,home_team,away_team,home_team_col,away_team_col,text_color,background,font_prop)
     st.pyplot(fig4)
 
     st.markdown("### Ball Possession % and Pass Accuracy %")
@@ -648,7 +648,7 @@ if viz == 'In Possession':
 
         home_passes_between_df, home_average_locs_and_count_df = get_passes_between_df(home_team, filtered_passes_df)
         ci = calculate_centralization_index(home_team,filtered_passes_df)
-        pass_network_visualization(axs, match_df, home_passes_between_df, home_average_locs_and_count_df, text_color, background, home_team_col, home_team, 20, False,ci)
+        pass_network_visualization(axs, match_df, home_passes_between_df, home_average_locs_and_count_df, text_color, background, home_team_col, home_team, 20, False,ci,font_prop)
         st.pyplot(fig)
 
         st.markdown("##### The centralization index signifies how much a team's passing network is focused around a few players — a higher value indicates greater reliance on central figures, while a lower value reflects a more balanced, distributed passing structure.")
@@ -715,7 +715,7 @@ if viz == 'In Possession':
 
         away_passes_between_df, away_average_locs_and_count_df = get_passes_between_df(away_team, filtered_passes_df)
         ci = calculate_centralization_index(away_team,filtered_passes_df)
-        pass_network_visualization(axs, match_df, away_passes_between_df, away_average_locs_and_count_df, text_color, background, away_team_col, away_team, 20, False,ci)
+        pass_network_visualization(axs, match_df, away_passes_between_df, away_average_locs_and_count_df, text_color, background, away_team_col, away_team, 20, False,ci,font_prop)
         st.pyplot(fig)
 
         st.markdown("##### The centralization index signifies how much a team's passing network is focused around a few players — a higher value indicates greater reliance on central figures, while a lower value reflects a more balanced, distributed passing structure.")
@@ -926,7 +926,7 @@ if viz == 'Duels and Transitions':
     axs.set_facecolor(background)
     h_players , a_players = plot_duels_by_type(
         axs, duels_df, home_team, away_team, duel_type,
-        home_team_col, away_team_col, background, text_color
+        home_team_col, away_team_col, background, text_color,font_prop
     )
     h_players.columns = [f'{home_team} Player', f'{home_team} Duels Won']
     a_players.columns = [f'{away_team} Player', f'{away_team} Duels Won']
@@ -1041,7 +1041,7 @@ if viz == 'Out of Possession':
         if "selected_player" not in st.session_state:
             st.session_state.selected_player = None
         #defensive_block(axs,defensive_actions_df,away_team,away_team_col,background,text_color,True)
-        defensive_block_with_player_actions(axs, defensive_actions_df, home_team, home_team_col, background, text_color,
+        defensive_block_with_player_actions(axs, defensive_actions_df, home_team, home_team_col, background, text_color,font_prop,
                                         flipped=False, selected_player_name=st.session_state.selected_player)
         st.pyplot(fig)
 
@@ -1073,7 +1073,7 @@ if viz == 'Out of Possession':
         if "selected_player" not in st.session_state:
             st.session_state.selected_player = None
         #defensive_block(axs,defensive_actions_df,away_team,away_team_col,background,text_color,True)
-        defensive_block_with_player_actions(axs, defensive_actions_df, away_team, away_team_col, background, text_color,
+        defensive_block_with_player_actions(axs, defensive_actions_df, away_team, away_team_col, background, text_color,font_prop,
                                         flipped=True, selected_player_name=st.session_state.selected_player)
         st.pyplot(fig)
 
