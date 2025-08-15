@@ -326,7 +326,6 @@ team_colors = {
     }
 
 
-logo_path = f'PB90.png'
 # Set the path to the locally downloaded font file
 font_path = f'Sora-Regular.ttf'
 
@@ -427,13 +426,13 @@ if theme == '🌙 Dark':
         background = "#010b14"
         line_color = 'white'
         text_color = 'white'
-        logo = mpimg.imread(logo_path)
+
 
 else:
     background = "#FFFFFF"
     line_color = 'black'
     text_color = 'black'
-    logo = mpimg.imread(logo_path)
+
 
 
 if viz == 'Match Dynamics':
@@ -596,10 +595,6 @@ if viz == 'In Possession':
     team = st.radio('',options=[home_team, away_team],index=0,horizontal=True, label_visibility='collapsed')
     fig, axs = plt.subplots(nrows=1, ncols=1, figsize=(20,15))
     fig.set_facecolor(background)
-    
-    ax_image = add_image(
-        logo, fig, left=0.82, bottom=0.83, width=0.07, height=0.07,aspect='equal'
-    )
 
 
     if team == home_team:
