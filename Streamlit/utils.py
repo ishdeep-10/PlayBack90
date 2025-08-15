@@ -1646,7 +1646,7 @@ def get_defensive_action_distribution_by_type(defensive_actions_df, zone='All', 
     return action_distribution
 
 
-def defensive_block_with_player_actions(ax, df, team_name, col, background, text_color,_font_prop,
+def defensive_block_with_player_actions(ax, df, team_name, col, background, text_color,font_prop,
                                         flipped=True, selected_player_name=None):
     defensive_actions_df = get_defensive_action_df(df)
     defensive_actions_team_df = defensive_actions_df[defensive_actions_df["teamName"] == team_name]
@@ -1718,15 +1718,15 @@ def defensive_block_with_player_actions(ax, df, team_name, col, background, text
             )
 
         pitch.scatter(1,-2, s=400, marker='x', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Aerial',xy=(7,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
+        pitch.annotate('Aerial',xy=(7,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
         pitch.scatter(15,-2, s=800, marker='o', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Ball Recovery',xy=(25,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
+        pitch.annotate('Ball Recovery',xy=(25,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
         pitch.scatter(36,-2, s=800, marker='^', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Challenge',xy=(44,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
+        pitch.annotate('Challenge',xy=(44,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
         pitch.scatter(54,-2, s=800, marker='+', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Interception',xy=(64,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
+        pitch.annotate('Interception',xy=(64,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
         pitch.scatter(74,-2, s=800, marker='*', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Tackle',xy=(80,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
+        pitch.annotate('Tackle',xy=(80,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
 
 
     if flipped:
@@ -1820,6 +1820,401 @@ def xT_momemtum(ax,df,team1_name,team2_name,team1_facecolor,team2_facecolor,back
             ax.vlines(goal_minute, -0.15, y_val, color=team2_facecolor, linestyle='-', linewidth=3, alpha=0.8, zorder=15)
             ax.scatter(goal_minute, -0.15, color=team2_facecolor, s=500, zorder=11, edgecolor='white', linewidth=2)
 
+
+def plot_ppda(pos_df, ax, team1_name, team2_name, team1_facecolor, team2_facecolor, background, text_color, font_prop):
+    """
+    Plot PPDA values over 15-minute intervals for both teams using possession-level data.
+
+    Parameters
+    ----------
+    pos_df : pd.DataFrame
+        DataFrame containing at least: 'teamName', 'oppositionTeamName', 'possession_id', 'sequence_id', 
+        'minute', 'second', 'type', 'outcomeType'.
+    """
+    
+    df = pos_df.copy()
+    df['timestamp'] = df['minute'] * 60 + df['second']
+
+    # Defensive actions
+    def_actions = ['Interception', 'Tackle', 'Clearance', 'BlockedPass', 'BallRecovery', 'Challenge']
+
+    # Assign time bins (0–15, 15–30, ..., 75–90)
+    df['time_bin'] = ((df['timestamp'] // 900).replace([np.inf, -np.inf], np.nan).fillna(-1).astype(int))
+
+    # Calculate possession-level stats
+    def is_successful_def_action(row):
+        return row['type'] in def_actions and (
+            'outcomeType' not in row or pd.isna(row['outcomeType']) or row['outcomeType'] == 'Successful'
+        )
+
+    df['is_pass'] = df['type'] == 'Pass'
+    df['is_def_action'] = df.apply(is_successful_def_action, axis=1)
+
+    def add_opposition_team_name(df):
+    # Get all teams per match
+        match_teams = df.groupby('matchId')['teamName'].unique().to_dict()
+        # Map opposition for each row
+        def get_opposition(row):
+            teams = match_teams.get(row['matchId'], [])
+            return next((t for t in teams if t != row['teamName']), None)
+        df['oppositionTeamName'] = df.apply(get_opposition, axis=1)
+        return df
+    df = add_opposition_team_name(df)
+
+    # Aggregate possession-level data
+    poss_summary = df.groupby('possession_id').agg(
+        team=('teamName', 'first'),
+        opposition=('oppositionTeamName', 'first'),
+        passes=('is_pass', 'sum'),
+        def_actions=('is_def_action', 'sum'),
+        time_bin=('time_bin', 'first')
+    ).reset_index()
+
+    # Calculate PPDA: passes made by opposition / defensive actions
+    ppda = poss_summary.groupby(['time_bin', 'opposition']).agg(
+        total_passes=('passes', 'sum'),
+        total_def_actions=('def_actions', 'sum')
+    ).reset_index()
+
+    ppda['PPDA'] = ppda['total_passes'] / ppda['total_def_actions']
+    ppda['PPDA'] = ppda['PPDA'].replace([np.inf, -np.inf], np.nan).fillna(0)
+
+    # Plotting
+    ax.set_facecolor(background)
+    # Fixed x-axis range for 0–90 minutes
+    ax.set_xticks(range(0, 7))
+    ax.set_xticklabels(['0', '15', '30', '45', '60', '75', '90'])
+    ax.set_xlim(0, 6)
+
+    for team, color in zip([team1_name, team2_name], [team1_facecolor, team2_facecolor]):
+        team_data = ppda[ppda['opposition'] == team]
+        ax.plot(team_data['time_bin'], team_data['PPDA'], marker='o', label=team, color=color, linewidth=6)
+
+    ax.invert_yaxis()
+    ax.tick_params(axis='x', colors=text_color, labelsize=16)
+    ax.tick_params(axis='y', colors=text_color, labelsize=16)
+    for spine in ax.spines.values():
+        spine.set_color(text_color)
+    
+    ax.grid(alpha=0.3, color=text_color)
+    ax.set_xlabel('Minute',fontproperties=font_prop, fontsize=18,  color=text_color)
+    ax.set_ylabel('PPDA', fontproperties=font_prop, fontsize=18, color=text_color)
+
+    return
+
+def plot_turnovers(df, ax, team1_name, team2_name, team1_facecolor, team2_facecolor, background, text_color, font_prop, window_size=15):
+    """
+    Plots total turnovers (turnover + dispossessed) per team per 15-minute window as a line chart.
+    X-axis: 0 to 90, no labels.
+    """
+    df = df.copy()
+    df['timestamp'] = df['minute'] * 60 + df['second']
+    df['time_bin'] = ((df['timestamp'] // (window_size * 60)).replace([np.inf, -np.inf], np.nan).fillna(-1).astype(int))
+
+    # Count turnovers + dispossessed together
+    df['total_turnover'] = df['turnover'].astype(int) + df['dispossessed'].astype(int)
+    grouped = (
+        df.groupby(['time_bin', 'teamName'])['total_turnover']
+        .sum()
+        .reset_index()
+    )
+
+    # Plotting
+    ax.set_facecolor(background)
+    x_bins = sorted(grouped['time_bin'].unique())
+    x_vals = [i * window_size for i in x_bins]
+    ax.set_xticks([0, 15, 30, 45, 60, 75, 90])
+    ax.set_xlim(0, 90)
+    ax.set_xticklabels(['0', '15', '30', '45', '60', '75', '90'])
+
+    for team, color in zip([team1_name, team2_name], [team1_facecolor, team2_facecolor]):
+        team_data = grouped[grouped['teamName'] == team]
+        ax.plot(team_data['time_bin'] * window_size, team_data['total_turnover'], marker='o', label=team, color=color, linewidth=6)
+
+    ax.set_xlabel('Minute', fontproperties=font_prop, fontsize=18, color=text_color)
+    ax.set_ylabel('Turnovers', fontproperties=font_prop, fontsize=18, color=text_color)
+    ax.grid(alpha=0.3, color=text_color)
+    ax.set_facecolor(background)
+    ax.tick_params(axis='x', colors=text_color, labelsize=16)
+    ax.tick_params(axis='y', colors=text_color, labelsize=16)
+    for spine in ax.spines.values():
+        spine.set_color(text_color)
+    #ax.legend(prop=font_prop, fontsize=14)
+    return ax
+
+def get_next_events_by_index(df, current_index, num_events, target_types=None):
+    """
+    Get the next consecutive rows based on DataFrame indices and filter by event type.
+    Only process if the current event is of type 'Pass'.
+    """
+    # Check if the current event is a 'Pass'
+    if df.loc[current_index, 'type'] != 'Pass':
+        return []  # Return an empty list if the type is not 'Pass'
+
+    # Get the valid range of indices for the next events
+    max_index = len(df) - 1
+    next_indices = [i for i in range(current_index + 1, current_index + 1 + num_events) if i <= max_index]
+    
+    # Fetch the rows using the valid indices
+    next_events = df.iloc[next_indices].reset_index(drop=True)
+    
+    # Filter for relevant types, if provided
+    if target_types:
+        next_events = next_events[next_events['type'].isin(target_types)]
+    
+    return next_events.to_dict('records')
+
+def extract_last_shot_coordinates(next_events):
+    if next_events:
+        # Filter out events that are shots (Shot types: 'SavedShot', 'MissedShot', 'ShotOnPost', 'Goal')
+        shot_events = [event for event in next_events if event['type'] in ['SavedShot', 'MissedShots', 'ShotOnPost', 'Goal']]
+        if shot_events:
+            # Get the coordinates of the last shot event
+            last_shot = shot_events[-1]
+            return last_shot['x'], last_shot['y']
+    return None, None  # Return None if no shots found
+
+def plot_corners(corners,team1,team2,team1_color,team2_color):
+    corners_1 = corners[(corners['side'] == 'Left') & (corners['teamName'] == team1)].copy()
+    corners_2 = corners[(corners['side'] == 'Right')  & (corners['teamName'] == team1)].copy()
+    corners_3 = corners[(corners['side'] == 'Left') & (corners['teamName'] == team2)].copy()
+    corners_4 = corners[(corners['side'] == 'Right')  & (corners['teamName'] == team2)].copy()
+
+    def process_corners(df):
+        if df.empty:
+            return pd.DataFrame({'x':[0],'endX':[0],'endY':[0], 'y':[0],'next_shot_x':[0],'next_shot_y':[0],'total_shots': [0], 'goals': [0], 'shots_ot': [0]}, index=pd.Index(['Empty'], name='type'))
+        
+        # Calculate the number of shots (next_events_type is not None)
+        df['total_shots'] = df['next_events_type'].apply(
+            lambda x: 1 if x is not None else 0
+        )
+        df['goals'] = df['next_events_type'].apply(
+            lambda x: 1 if 'Goal' in (x if isinstance(x, list) else [x]) else 0
+        )
+        #df['shots_ot'] = df['next_events_type'].apply(
+        #    lambda x: 1 if 'SavedShot' in (x if isinstance(x, list) else [x]) else 0
+        #)
+        df['shots_ot'] = df['next_events_type'].apply(
+            lambda x: 1 if any(event in (x if isinstance(x, list) else [x]) for event in ['SavedShot', 'Goal']) else 0
+        )
+
+        
+        return df
+
+    # Process both sides
+    corners_1 = process_corners(corners_1)
+    corners_2 = process_corners(corners_2)
+    corners_3 = process_corners(corners_3)
+    corners_4 = process_corners(corners_4)
+
+    # Now you can calculate the total number of shots and goals by corner type
+    shots_by_corner_type_1 = corners_1.groupby('type')['total_shots'].sum()
+    goals_by_corner_type_1 = corners_1.groupby('type')['goals'].sum()
+    shots_ot_by_corner_type_1 = corners_1.groupby('type')['shots_ot'].sum()
+    
+    shots_by_corner_type_2 = corners_2.groupby('type')['total_shots'].sum()
+    goals_by_corner_type_2 = corners_2.groupby('type')['goals'].sum()
+    shots_ot_by_corner_type_2 = corners_2.groupby('type')['shots_ot'].sum()
+
+    shots_by_corner_type_3 = corners_3.groupby('type')['total_shots'].sum()
+    goals_by_corner_type_3 = corners_3.groupby('type')['goals'].sum()
+    shots_ot_by_corner_type_3 = corners_3.groupby('type')['shots_ot'].sum()
+
+    shots_by_corner_type_4 = corners_4.groupby('type')['total_shots'].sum()
+    goals_by_corner_type_4 = corners_4.groupby('type')['goals'].sum()
+    shots_ot_by_corner_type_4 = corners_4.groupby('type')['shots_ot'].sum()
+    
+    # Combine them to get a complete picture
+    corner_summary_1 = pd.DataFrame({
+        'total_shots': shots_by_corner_type_1,
+        'goals': goals_by_corner_type_1,
+        'shots_ot': shots_ot_by_corner_type_1
+    })
+    
+    corner_summary_2 = pd.DataFrame({
+        'total_shots': shots_by_corner_type_2,
+        'goals': goals_by_corner_type_2,
+        'shots_ot': shots_ot_by_corner_type_2
+    })
+
+    corner_summary_3 = pd.DataFrame({
+        'total_shots': shots_by_corner_type_3,
+        'goals': goals_by_corner_type_3,
+        'shots_ot': shots_ot_by_corner_type_3
+    })
+
+    corner_summary_4 = pd.DataFrame({
+        'total_shots': shots_by_corner_type_4,
+        'goals': goals_by_corner_type_4,
+        'shots_ot': shots_ot_by_corner_type_4
+    })
+
+    FIGWIDTH = 12
+    FIGHEIGHT = 9
+    NROWS = 2
+    NCOLS = 2
+    SPACE = 0
+    MAX_GRID = 0.95
+    
+    pitch = VerticalPitch(pitch_type='uefa',pad_bottom=-15,line_color='white',goal_type='box', linewidth=0.5, half=True,
+                          pitch_color=background)
+    
+    GRID_WIDTH, GRID_HEIGHT = pitch.grid_dimensions(figwidth=FIGWIDTH, figheight=FIGHEIGHT,
+                                                    nrows=NROWS, ncols=NCOLS,
+                                                    max_grid=MAX_GRID, space=SPACE)
+    TITLE_HEIGHT = 0.01
+    ENDNOTE_HEIGHT = 0
+    
+    fig, ax = pitch.grid(figheight=FIGHEIGHT, grid_width=GRID_WIDTH, grid_height=GRID_HEIGHT,
+                         space=SPACE, ncols=NCOLS, nrows=NROWS, title_height=TITLE_HEIGHT,
+                         endnote_height=ENDNOTE_HEIGHT, axis=False)
+    fig.set_facecolor(background)
+    fig.suptitle(f'Corner Analysis', fontsize=30,fontproperties=font_prop, color='white', y=0.92)
+    img_team1 = mpimg.imread(f'C:/Users/acer/Documents/GitHub/IndianCitizen/ScorePredict/Images/TeamLogos/{team1}.png')
+    ax_image = add_image(
+        img_team1, fig, left=0.2, bottom=0.85, width=0.12, height=0.12,aspect='equal'
+    )
+
+    img_team2 = mpimg.imread(f'C:/Users/acer/Documents/GitHub/IndianCitizen/ScorePredict/Images/TeamLogos/{team2}.png')
+    ax_image = add_image(
+        img_team2, fig, left=0.68, bottom=0.85, width=0.12, height=0.12,aspect='equal'
+    )
+
+    if not corners_1.empty:
+        pitch.arrows(corners_1.x, corners_1.y,
+                     corners_1.endX, corners_1.endY, width=1.5,alpha=0.8,zorder=3,
+                     headwidth=8, headlength=5, color='white', ax=ax['pitch'][0,0], label='Corners From Left')
+        pitch.scatter(corners_1.next_shot_x, corners_1.next_shot_y,s=500,marker='p',color=team1_color,zorder=2,alpha=0.9, ax=ax['pitch'][0,0], edgecolors='white')
+
+    if not corners_2.empty:
+        pitch.arrows(corners_2.x, corners_2.y,
+                     corners_2.endX, corners_2.endY, width=1.5,alpha=0.8,zorder=3,
+                     headwidth=8, headlength=5, color='white', ax=ax['pitch'][1,0], label='Corners From Right')
+        pitch.scatter(corners_2.next_shot_x, corners_2.next_shot_y,s=500,marker='p',color=team1_color,zorder=2,alpha=0.9, ax=ax['pitch'][1,0], edgecolors='white')
+
+    pitch.scatter(80,45,color=team1_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][0,0])
+    pitch.annotate(corner_summary_1['total_shots'][0],xy = (80,45),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,0])
+    pitch.annotate('Shots',xy = (75,45),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,0])
+    
+    pitch.scatter(80,34,color=team1_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][0,0])
+    pitch.annotate(corner_summary_1['shots_ot'][0],xy = (80,34),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,0])
+    pitch.annotate('Shots(OT)',xy = (75,34),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,0])
+    
+    pitch.scatter(80,23,color=team1_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][0,0])
+    pitch.annotate(corner_summary_1['goals'][0],xy = (80,23),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,0])
+    pitch.annotate('Goals',xy = (75,23),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,0])
+    
+    
+    pitch.scatter(80,45,color=team1_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][1,0])
+    pitch.annotate(corner_summary_2['total_shots'][0],xy = (80,45),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,0])
+    pitch.annotate('Shots',xy = (75,45),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,0])
+    
+    pitch.scatter(80,34,color=team1_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][1,0])
+    pitch.annotate(corner_summary_2['shots_ot'][0],xy = (80,34),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,0])
+    pitch.annotate('Shots(OT)',xy = (75,34),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,0])
+    
+    
+    pitch.scatter(80,23,color=team1_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][1,0])
+    pitch.annotate(corner_summary_2['goals'][0],xy = (80,23),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,0])
+    pitch.annotate('Goals',xy = (75,23),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,0])
+
+    if not corners_3.empty:
+        pitch.arrows(corners_3.x, corners_3.y,
+                     corners_3.endX, corners_3.endY, width=1.5,alpha=0.8,zorder=3,
+                     headwidth=8, headlength=5, color='white', ax=ax['pitch'][0,1], label='Corners From Left')
+        pitch.scatter(corners_3.next_shot_x, corners_3.next_shot_y,s=500,marker='p',color=team2_color,zorder=2,alpha=0.5, ax=ax['pitch'][0,1], edgecolors='white')
+
+    if not corners_4.empty:
+        pitch.arrows(corners_4.x, corners_4.y,
+                     corners_4.endX, corners_4.endY, width=1.5,alpha=0.8,zorder=3,
+                     headwidth=8, headlength=5, color='white', ax=ax['pitch'][1,1], label='Corners From Right')
+        pitch.scatter(corners_4.next_shot_x, corners_4.next_shot_y,s=500,marker='p',color=team2_color,zorder=2,alpha=0.9, ax=ax['pitch'][1,1], edgecolors='white')
+
+    pitch.scatter(80,45,color=team2_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][0,1])
+    pitch.annotate(corner_summary_3['total_shots'][0],xy = (80,45),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,1])
+    pitch.annotate('Shots',xy = (75,45),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,1])
+    
+    pitch.scatter(80,34,color=team2_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][0,1])
+    pitch.annotate(corner_summary_3['shots_ot'][0],xy = (80,34),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,1])
+    pitch.annotate('Shots(OT)',xy = (75,34),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,1])
+    
+    pitch.scatter(80,23,color=team2_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][0,1])
+    pitch.annotate(corner_summary_3['goals'][0],xy = (80,23),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,1])
+    pitch.annotate('Goals',xy = (75,23),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][0,1])
+    
+    
+    pitch.scatter(80,45,color=team2_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][1,1])
+    pitch.annotate(corner_summary_4['total_shots'][0],xy = (80,45),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,1])
+    pitch.annotate('Shots',xy = (75,45),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,1])
+    
+    pitch.scatter(80,34,color=team2_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][1,1])
+    pitch.annotate(corner_summary_4['shots_ot'][0],xy = (80,34),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,1])
+    pitch.annotate('Shots(OT)',xy = (75,34),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,1])
+    
+    
+    pitch.scatter(80,23,color=team2_color, s=1000, edgecolor='white', linewidth=2, alpha=0.7,marker='o',zorder=2,ax=ax['pitch'][1,1])
+    pitch.annotate(corner_summary_4['goals'][0],xy = (80,23),color='white',ha='center', va='center',fontsize=15,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,1])
+    pitch.annotate('Goals',xy = (75,23),color='white',ha='center', va='center',fontsize=12,zorder=3,fontproperties=font_prop,ax=ax['pitch'][1,1])
+
+    #fig.savefig(f'C:/Users/acer/Documents/GitHub/IndianCitizen/ScorePredict/MatchReports/ACVInter/10.png',dpi=500,bbox_inches = 'tight',facecolor=background)
+
+def plot_lost_pos(df,ax,team1_name,team2_name,team1_facecolor,team2_facecolor):
+    df_lost_pos = df[
+    ((df['type'] == 'Dispossessed') & (df['outcomeType'] == 'Successful')) |
+    ((df['type'] == 'BallTouch') & (df['outcomeType'] == 'Unsuccessful'))
+    ]
+    
+    # Group by 'teamName' and 'name', then get the counts
+    grouped_df = df_lost_pos.groupby(['teamName', 'name']).size().reset_index(name='counts')
+    
+    # Filter for Team A
+    team_a_df = grouped_df[grouped_df['teamName'] == team1_name]
+    players_team_a = team_a_df['name'].tolist()
+    counts_team_a = team_a_df['counts'].tolist()
+    
+    # Filter for Team B
+    team_b_df = grouped_df[grouped_df['teamName'] == team2_name]
+    players_team_b = team_b_df['name'].tolist()
+    counts_team_b = team_b_df['counts'].tolist()
+    # Comparing open play touches of both teams in each zones of the pitch, if more than 55% touches for a team it will be coloured of that team, otherwise gray to represent contested
+    pcmap = LinearSegmentedColormap.from_list("Pearl Earring - 10 colors",  [team2_facecolor, 'gray', team1_facecolor], N=20)
+    df1 = df[(df['teamName']==team1_name)]
+    df2 = df[(df['teamName']==team2_name)]
+    df2['x'] = 105-df2['x']
+    df2['y'] =  68-df2['y']
+    pitch = Pitch(pitch_type='uefa', corner_arcs=True, pitch_color=background, line_color='white', linewidth=1, line_zorder=4)
+    pitch.draw(ax=ax)
+    #ax.set_ylim(-0.5,68.5)
+    #ax.set_xlim(-0.5,105.5)
+
+    pitch.scatter(df1.x, df1.y,s=500,marker='p',color=team1_facecolor,zorder=4,alpha=0.9, ax=ax, edgecolors='white')
+
+    pitch.scatter(df2.x, df2.y,s=500,marker='p',color=team2_facecolor,zorder=4,alpha=0.9, ax=ax, edgecolors='white')
+    ax.text(0,  -3, 'Attacking Direction--->', color=team1_facecolor, fontsize=15, ha='left', va='center',font_properties=font_prop)
+    ax.text(105,-3, '<---Attacking Direction', color=team2_facecolor, fontsize=15, ha='right', va='center',font_properties=font_prop)
+
+    ax.text(53,  73, 'Possession Lost', color='white', fontsize=30, ha='center', va='center',font_properties=font_prop)
+
+    grouped_df = df.groupby(['teamName', 'name']).size().reset_index(name='counts')
+
+    # Filter for Team A
+    team_a_df = grouped_df[grouped_df['teamName'] == team1_name]
+    players_team_a = team_a_df['name'].tolist()
+    counts_team_a = team_a_df['counts'].tolist()
+    
+    # Filter for Team B
+    team_b_df = grouped_df[grouped_df['teamName'] == team2_name]
+    players_team_b = team_b_df['name'].tolist()
+    counts_team_b = team_b_df['counts'].tolist()
+    # Display the player names and counts for Team 1 on the left side
+    for i, (player, count) in enumerate(zip(players_team_a, counts_team_a)):
+        ax.text(-25, 68 - (i * 6.5), f"{player}: {count}", color=team1_facecolor, fontsize=15, ha='left', va='top', font_properties=font_prop)
+    
+    # Display the player names and counts for Team 2 on the right side
+    for i, (player, count) in enumerate(zip(players_team_b, counts_team_b)):
+        ax.text(130, 68 - (i * 6.5), f"{player}: {count}", color=team2_facecolor, fontsize=15, ha='right', va='top', font_properties=font_prop)
+        
+    return
 
 def classify_defensive_zones(df, team_name, home_team):
     df = df.copy()
@@ -1992,7 +2387,7 @@ def plot_pass_accuracy_windows(
     return ax
 
 
-def plot_on_goal_shotmap_custom(df, team, team_color, background, text_color, _font_prop, selected_player, situation, ax=None):
+def plot_on_goal_shotmap_custom(df, team, team_color, background, text_color, font_prop, selected_player, situation, ax=None):
     """
     Plots on-goal shots using GoalMouthY and GoalMouthZ coordinates,
     normalized to fit custom goal rectangle.
@@ -2061,8 +2456,7 @@ def plot_on_goal_shotmap_custom(df, team, team_color, background, text_color, _f
     ax.axis('off')
     return fig
 
-
-def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, _font_prop, _ax_goal, ax_field, selected_player=None, situation=None):
+def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, font_prop, ax_goal, ax_field, selected_player=None, situation=None):
     """
     Plots on-goal shotmap (top) and on-field shotmap (bottom) for a single team using provided axes.
     If a player is selected, their shots are highlighted and others are faded.
@@ -2078,7 +2472,7 @@ def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, _fo
 
     # --- On Goal Shotmap ---
     plot_on_goal_shotmap_custom(
-        df, team, team_color, background, text_color, _font_prop, selected_player, situation, ax=_ax_goal
+        df, team, team_color, background, text_color, font_prop, selected_player, situation, ax=ax_goal
     )
 
     pitch = VerticalPitch(
@@ -2167,15 +2561,15 @@ def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, _fo
 
     # Add legend markers (optional)
     pitch.scatter(107.5, 66, marker='football', edgecolors=text_color, s=300, c=background, ax=ax_field)
-    pitch.annotate('Goal', xy=(107.5, 62), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('Goal', xy=(107.5, 62), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
     pitch.scatter(107.5, 56, marker='o', edgecolors=background, s=300, c=text_color, ax=ax_field)
-    pitch.annotate('On Target', xy=(107.5, 49), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('On Target', xy=(107.5, 49), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
     pitch.scatter(107.5, 42, marker='o', edgecolors='green', linewidths=1, s=300, c=background, ax=ax_field)
-    pitch.annotate('Woodwork', xy=(107.5, 34), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('Woodwork', xy=(107.5, 34), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
     pitch.scatter(107.5, 26, marker='o', edgecolors=text_color, s=300, c=background, ax=ax_field)
-    pitch.annotate('Off Target', xy=(107.5, 19), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('Off Target', xy=(107.5, 19), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
     pitch.scatter(107.5, 12, marker='s', edgecolors=text_color, linewidths=1, s=300, c=background, ax=ax_field)
-    pitch.annotate('Blocked', xy=(107.5, 6), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('Blocked', xy=(107.5, 6), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
 
 @st.cache_data(ttl=600)
 def tag_sequences_and_possessions_all_matches(
@@ -2316,8 +2710,7 @@ def classify_third(x):
     else:
         return "Attacking Third"
 
-
-def offensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team_color, text_color, _font_prop, flagged, selected_third=None):
+def offensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team_color, text_color, font_prop, flagged, selected_third=None):
     """
     Plots a heatmap of where team dispossessed opponent and % transitions leading to attacks.
     Returns a DataFrame with percentage values by thirds and a DataFrame of all transitions.
@@ -2403,7 +2796,7 @@ def offensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team
     return summary_df, transitions_df
 
 
-def defensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team_color, text_color, _font_prop, flagged, selected_third=None):
+def defensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team_color, text_color, font_prop, flagged, selected_third=None):
     """
     Plots a heatmap of where team lost the ball (dispossessed or turnover) and % transitions leading to conceding an attack.
     Returns a DataFrame with percentage values by thirds and a DataFrame of all transitions.
