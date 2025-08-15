@@ -36,9 +36,9 @@ from mplsoccer import Pitch
 import time
 
 
-base_path = '/Users/ishdeepchadha/Documents/Score/Football'
+
 # Set the path to the locally downloaded font file
-font_path = f'{base_path}/Sora_Font/Sora-Regular.ttf'
+font_path = 'Sora-Regular.ttf'
 font_prop = fm.FontProperties(fname=font_path)
 fm_sora = FontManager()
 
@@ -350,17 +350,6 @@ def load_and_process_match_data(df, team_colors):
 
     return df
 
-def load_data_from_db(league, season,matchId):
-    db_path = f'{base_path}/data extraction/score_football.db'
-    conn = sqlite3.connect(db_path)
-    # Adjust WHERE clause as per your table's columns for league and season
-    query = f"""
-        SELECT * FROM event_data
-        WHERE league = ? AND season = ? AND matchId = ?
-    """
-    df = pd.read_sql_query(query, conn, params=(league, season,matchId))
-    conn.close()
-    return df
 
 def highlight_higher(val, all_vals):
     return 'color: green; font-weight: bold' if val == max(all_vals) else ''
