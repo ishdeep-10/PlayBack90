@@ -327,8 +327,8 @@ team_colors = {
 
 
 # Set the path to the locally downloaded font file
-#font_path = 'pages/Sora-Regular.ttf'
-font_path = '/mount/src/playback90/pages/Sora-Regular.ttf'
+font_path = Path(__file__).parent / "Sora-Regular.ttf"
+
 
 
 # Add the font to matplotlib
