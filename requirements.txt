@@ -1,0 +1,16 @@
+streamlit
+pandas
+numpy
+matplotlib
+mplsoccer
+seaborn
+scipy
+highlight_text
+unidecode
+joblib
+psycopg2-binary
+plotly
+pyarrow
+s3fs
+boto3
+python-dotenv==1.0.1
