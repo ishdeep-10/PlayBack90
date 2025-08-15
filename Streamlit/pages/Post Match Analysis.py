@@ -360,7 +360,7 @@ match_df = load_and_process_match_data(match_df, team_colors)
 home_team_col = match_df[match_df['teamName'] == home_team]['teamColor'].unique()[0]
 away_team_col = match_df[match_df['teamName'] == away_team]['teamColor'].unique()[0]
 
-def adjust_color_if_similar(home_color, away_color, threshold=0.2):
+def adjust_color_if_similar(home_color, away_color, threshold=0.1):
     # Convert hex to RGB
     home_rgb = to_rgb(home_color)
     away_rgb = to_rgb(away_color)
@@ -373,12 +373,6 @@ def adjust_color_if_similar(home_color, away_color, threshold=0.2):
         new_away_rgb = colorsys.hls_to_rgb(h, l, s)
         return to_hex(new_away_rgb)
     return away_color
-
-
-
-# After you get home_team_col and away_team_col:
-away_team_col = adjust_color_if_similar(home_team_col, away_team_col)
-
 
 
 
