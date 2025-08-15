@@ -325,10 +325,10 @@ team_colors = {
     'Pachuca' : "#E39606"
     }
 
-base_path = '/Users/ishdeepchadha/Documents/Score/Football'
-logo_path = f'logos/Logo.png'
+
+logo_path = f'logos/PB.png'
 # Set the path to the locally downloaded font file
-font_path = f'{base_path}/Sora_Font/Sora-Regular.ttf'
+font_path = f'Sora-Regular.ttf'
 
 # Add the font to matplotlib
 font_prop = fm.FontProperties(fname=font_path)
