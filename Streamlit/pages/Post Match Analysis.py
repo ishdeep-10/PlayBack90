@@ -402,34 +402,39 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-theme = st.radio(
-    '',
-    options=['🌙 Dark', '☀️ Light'],
-    index=0,
-    horizontal=True
-)
-
-## Shots - ShotMap , xG Flow , OnGoal Shots
-## Passing - Passing Network , Average On Ball Positions - Passes Played , Passes Received
 
 
-viz = st.selectbox(
-    'Select Action',
-    ['Match Dynamics','Shots', 'In Possession', 'Out of Possession','Duels and Transitions'],
-    index=0
-)
+
+
+with st.sidebar:
+    theme = st.radio(
+        'Theme',
+        options=['🌙 Dark', '☀️ Light'],
+        index=0,
+        horizontal=True
+    )
+
+    viz_options = ['Match Dynamics', 'Shots', 'In Possession', 'Out of Possession', 'Duels and Transitions']
+    if "selected_viz" not in st.session_state:
+        st.session_state.selected_viz = viz_options[0]
+    for i, option in enumerate(viz_options):
+        is_selected = st.session_state.selected_viz == option
+        if st.button(option, key=f"viz_{option}"):
+            st.session_state.selected_viz = option
+    viz = st.session_state.selected_viz
 
 if theme == '🌙 Dark':
-    background = "#010b14"
-    line_color = 'white'
-    text_color = 'white'
-    logo = mpimg.imread(logo_path)
+        background = "#010b14"
+        line_color = 'white'
+        text_color = 'white'
+        logo = mpimg.imread(logo_path)
 
 else:
     background = "#FFFFFF"
     line_color = 'black'
     text_color = 'black'
     logo = mpimg.imread(logo_path)
+
 
 if viz == 'Match Dynamics':
     st.markdown("## Match Dynamics")

@@ -272,8 +272,8 @@ def load_match_data_from_r2(file_path):
 
 # --- App Logo ---
 st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-if os.path.exists("logos/Logo.png"):
-    st.image("logos/Logo.png", width=150)
+if os.path.exists("logos/PB90.png"):
+    st.image("logos/PB90.png", width=150)
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("""
@@ -375,34 +375,7 @@ if selected_season:
             st.session_state['selected_season'] = None
             st.rerun()
 
-    with colB:
-        if st.button("See Previous Fixtures"):
-            st.session_state['show_manual_fixture_input'] = True
-            st.rerun()
 
-        if st.session_state.get('show_manual_fixture_input', False):
-            all_teams = set()
-            for fixture in fixtures:
-                all_teams.add(fixture['home_team'])
-                all_teams.add(fixture['away_team'])
-            all_teams = sorted([t for t in all_teams if t != "Unknown"])
-
-            st.markdown("#### Select Home and Away Team")
-            home_team_input = st.selectbox("Home Team", all_teams, index=0)
-            away_team_input = st.selectbox("Away Team", all_teams, index=1 if len(all_teams) > 1 else 0)
-            submit = st.button("Submit")
-            if submit:
-                match_id = get_match_id_from_r2(db_league_name, selected_season, home_team_input, away_team_input)
-                st.session_state['home_team'] = home_team_input
-                st.session_state['away_team'] = away_team_input
-                st.session_state['league'] = db_league_name
-                st.session_state['season'] = selected_season
-                if match_id:
-                    st.session_state['matchId'] = match_id
-                else:
-                    st.session_state['matchId'] = None
-                st.session_state['show_manual_fixture_input'] = False
-                st.switch_page("pages/Post Match Analysis.py")
 
 # --- Footer ---
 st.markdown("<hr style='border: 1px solid #eee;'>", unsafe_allow_html=True)
