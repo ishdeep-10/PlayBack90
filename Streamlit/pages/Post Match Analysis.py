@@ -834,23 +834,14 @@ if viz == 'In Possession':
     else:
         filtered_passes_df = match_df_half
 
-    #top_passers_h, top_passers_a = passmaps(
-    #    ax, filtered_passes_df,passes_df, home_team, home_team_col, away_team, away_team_col,
-    #    background, text_color, passtype, selected_player, team_filter,pass_kde_mode
-    #)
-
-    hteam_passes_df, ateam_passes_df = get_filtered_passes(
-        match_df, home_team, away_team, passtype, selected_player, team_filter
+    top_passers_h, top_passers_a = passmaps(
+        ax, filtered_passes_df,passes_df, home_team, home_team_col, away_team, away_team_col,
+        background, text_color, passtype, selected_player, team_filter,pass_kde_mode
     )
 
-    top_passers_h, top_passers_a = passmaps_v2(
-        ax, hteam_passes_df, ateam_passes_df, home_team_col, away_team_col,
-        background, text_color, passtype, selected_player, team_filter, pass_kde_mode
-    )
-    top_passers_h = top_passers_h.reset_index(drop=True)
-    top_passers_a = top_passers_a.reset_index(drop=True)
 
     # --- Build pass type counts, assists, xA for each player ---
+    st.cache_data(600)
     def get_pass_type_counts(df, team):
         passes = df[(df['type'].isin(['Pass','TakeOn','Carry'])) & (df['teamName'] == team)].copy()
         #passes['Final Third Entries'] = ((passes['x'] < 75) & (passes['endX'] >= 75) & (passes['outcomeType'] == 'Successful')).astype(int)
