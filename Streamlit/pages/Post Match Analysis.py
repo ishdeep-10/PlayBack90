@@ -326,7 +326,7 @@ team_colors = {
     }
 
 
-logo_path = f'logos/PB.png'
+logo_path = f'logos/PB90.png'
 # Set the path to the locally downloaded font file
 font_path = f'Sora-Regular.ttf'
 

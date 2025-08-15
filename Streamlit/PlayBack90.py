@@ -179,8 +179,6 @@ def list_parquet_files_for_league_season(league, season):
     files = fs.glob(f"{R2_BUCKET}/event_data/{league}/{season}/*.parquet")
     return files
 
-
-
 def load_data_from_r2(league, season):
     files = list_parquet_files_for_league_season(league, season)
     dfs = []
@@ -305,6 +303,8 @@ def chunk_dict(d, n):
     return [dict(items[i:i+n]) for i in range(0, len(items), n)]
 
 league_chunks = chunk_dict(LEAGUES, 3)
+
+st.write("Logos folder contents:", os.listdir("logos"))
 
 if 'selected_league' not in st.session_state:
     st.session_state['selected_league'] = None
