@@ -264,8 +264,11 @@ def load_match_data_from_r2(file_path):
 
 # --- App Logo ---
 st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-if os.path.exists("logos/PB90.png"):
-    st.image("logos/PB90.png", width=150)
+BASE_DIR = Path(__file__).parent
+logo_path = BASE_DIR / "logos" / "PB90.png"
+
+if logo_path.exists():
+    st.image(str(logo_path), width=150)
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("""
@@ -292,7 +295,7 @@ st.markdown('<div class="normal-font">PlayBack90 is a post-match analytics platf
 st.markdown("<hr style='border: 1px solid #e0e0e0; margin: 20px 0;'>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color:gray;'>Select a league to view its latest fixtures</p>", unsafe_allow_html=True)
 
-BASE_DIR = Path(__file__).parent  # folder where the script is located
+#BASE_DIR = Path(__file__).parent  # folder where the script is located
 
 LEAGUES = {
     "Premier League": BASE_DIR / "logos" / "premier-league.png",
