@@ -306,7 +306,6 @@ def chunk_dict(d, n):
 
 league_chunks = chunk_dict(LEAGUES, 3)
 
-st.write("Logos folder contents:", os.listdir("logos"))
 
 if 'selected_league' not in st.session_state:
     st.session_state['selected_league'] = None
