@@ -841,7 +841,7 @@ if viz == 'In Possession':
 
 
     # --- Build pass type counts, assists, xA for each player ---
-    st.cache_data(600)
+
     def get_pass_type_counts(df, team):
         passes = df[(df['type'].isin(['Pass','TakeOn','Carry'])) & (df['teamName'] == team)].copy()
         #passes['Final Third Entries'] = ((passes['x'] < 75) & (passes['endX'] >= 75) & (passes['outcomeType'] == 'Successful')).astype(int)
