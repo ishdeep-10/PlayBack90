@@ -843,7 +843,7 @@ if viz == 'In Possession':
         match_df, home_team, away_team, passtype, selected_player, team_filter
     )
 
-    top_passers_h, top_passers_a = passmaps(
+    top_passers_h, top_passers_a = passmaps_v2(
         ax, hteam_passes_df, ateam_passes_df, home_team_col, away_team_col,
         background, text_color, passtype, selected_player, team_filter, pass_kde_mode
     )
