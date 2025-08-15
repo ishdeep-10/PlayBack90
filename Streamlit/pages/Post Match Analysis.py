@@ -263,7 +263,7 @@ team_colors = {
     'Lecce': '#FCE500',
     'Parma Calcio': '#FCE500',
     'Empoli': '#005BAC',
-    'Venezia': "#F2ECEC",
+    'Venezia': "#C2BE3C",
     'Monza': '#E30613',
     'PSG': '#004170',
     'Marseille': '#009DDC',
@@ -389,22 +389,6 @@ if 'Carry' not in match_df['type'].unique():
     match_df['prog_carry'] = np.where((match_df['type'] == 'Carry'),
                                 np.sqrt((105 - match_df['x'])**2 + (34 - match_df['y'])**2) - np.sqrt((105 - match_df['endX'])**2 + (34 - match_df['endY'])**2), 0)
 
-
-
-# Use HTML for colored team names in the title
-st.markdown(
-    f"<h1 style='text-align: center;'>"
-    f"<span style='color:{home_team_col};'>{home_team}</span> "
-    f"<span style='color:gray;'>vs</span> "
-    f"<span style='color:{away_team_col};'>{away_team}</span>"
-    f"</h1>",
-    unsafe_allow_html=True
-)
-
-
-
-
-
 with st.sidebar:
     theme = st.radio(
         'Theme',
@@ -453,6 +437,16 @@ home_team_col = adjust_color_if_similar_to_bg(home_team_col, background)
 away_team_col = adjust_color_if_similar_to_bg(away_team_col, background)
 away_team_col = adjust_color_if_similar(home_team_col, away_team_col)
 
+
+# Use HTML for colored team names in the title
+st.markdown(
+    f"<h1 style='text-align: center;'>"
+    f"<span style='color:{home_team_col};'>{home_team}</span> "
+    f"<span style='color:gray;'>vs</span> "
+    f"<span style='color:{away_team_col};'>{away_team}</span>"
+    f"</h1>",
+    unsafe_allow_html=True
+)
 
 if viz == 'Match Dynamics':
     st.markdown("## Match Dynamics")
