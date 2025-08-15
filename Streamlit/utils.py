@@ -1645,7 +1645,7 @@ def get_defensive_action_distribution_by_type(defensive_actions_df, zone='All', 
 
     return action_distribution
 
-@st.cache_data(ttl=600)
+
 def defensive_block_with_player_actions(ax, df, team_name, col, background, text_color,_font_prop,
                                         flipped=True, selected_player_name=None):
     defensive_actions_df = get_defensive_action_df(df)
@@ -1991,7 +1991,7 @@ def plot_pass_accuracy_windows(
 
     return ax
 
-@st.cache_data(ttl=600)
+
 def plot_on_goal_shotmap_custom(df, team, team_color, background, text_color, _font_prop, selected_player, situation, ax=None):
     """
     Plots on-goal shots using GoalMouthY and GoalMouthZ coordinates,
@@ -2316,7 +2316,7 @@ def classify_third(x):
     else:
         return "Attacking Third"
 
-@st.cache_data(ttl=600)
+
 def offensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team_color, text_color, _font_prop, flagged, selected_third=None):
     """
     Plots a heatmap of where team dispossessed opponent and % transitions leading to attacks.
@@ -2402,7 +2402,7 @@ def offensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team
 
     return summary_df, transitions_df
 
-@st.cache_data(ttl=600)
+
 def defensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team_color, text_color, _font_prop, flagged, selected_third=None):
     """
     Plots a heatmap of where team lost the ball (dispossessed or turnover) and % transitions leading to conceding an attack.
