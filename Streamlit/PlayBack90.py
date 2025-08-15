@@ -14,14 +14,7 @@ load_dotenv()
 
 
 
-LEAGUES = {
-    "Premier League": "logos/premier-league.png",
-    "La Liga": "logos/laliga.png",
-    "Bundesliga": "logos/bundesliga.png",
-    "Serie A": "logos/serie-a.png",
-    "Ligue 1": "logos/ligue-1.png",
-    "Champions League": "logos/champions-league.png",
-}
+
 
 team_dict = { 
         16 : 'Sunderland',
@@ -297,6 +290,15 @@ st.markdown('<div class="normal-font">PlayBack90 is a post-match analytics platf
 
 st.markdown("<hr style='border: 1px solid #e0e0e0; margin: 20px 0;'>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color:gray;'>Select a league to view its latest fixtures</p>", unsafe_allow_html=True)
+
+LEAGUES = {
+    "Premier League": "logos/premier-league.png",
+    "La Liga": "logos/laliga.png",
+    "Bundesliga": "logos/bundesliga.png",
+    "Serie A": "logos/serie-a.png",
+    "Ligue 1": "logos/ligue-1.png",
+    "Champions League": "logos/champions-league.png",
+}
 
 def chunk_dict(d, n):
     items = list(d.items())
