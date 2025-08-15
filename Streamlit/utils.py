@@ -1408,46 +1408,6 @@ def passmaps(ax, match_df,passes_df, hteam, hteam_color, ateam, ateam_color, bac
 
     return top_passers_h, top_passers_a
    
-def plot_donut_charts(ax, action_types, team_a_stats, team_b_stats, team1, team2,team1_facecolor, team2_facecolor):
-    # Ensure the main axis background is black
-    ax.set_facecolor('black')
-
-    # Number of action types
-    num_actions = len(action_types)
-    
-    # Loop through each action and create a new donut chart in a vertically stacked layout
-    for i, action in enumerate(action_types):
-        # Create a smaller inset axis for each donut, adjust its vertical position
-        inset_ax = ax.inset_axes([0.1, 1 - (i+1) * 1.1 / num_actions, 1, 0.55])
-        
-        sizes = [team_a_stats[i], team_b_stats[i]]
-        labels = [team_a_stats[i], team_b_stats[i]]
-        colors = [team1_facecolor, team2_facecolor]  # Assign distinct colors to teams
-        
-        wedges, texts = inset_ax.pie(
-            sizes, 
-            labels=labels, 
-            startangle=90, 
-            colors=colors, 
-            wedgeprops=dict(width=0.2),  # Adjust width for thicker donut
-            textprops={'color': 'white', 'fontsize': 12}
-        )
-        
-        # Add a circle for the donut hole
-        circle = plt.Circle((0, 0), 0.7, color='black', fc='black')
-        inset_ax.add_artist(circle)
-        
-        # Add action label at the center
-        inset_ax.text(0, 0, action, horizontalalignment='center', verticalalignment='center', 
-                      fontsize=12, fontweight='bold', color='white',fontproperties=font_prop)
-        
-        # Set equal aspect ratio and hide the axes
-        inset_ax.axis('equal')
-        inset_ax.set_xticks([])
-        inset_ax.set_yticks([])
-
-    ax.axis('off')
-
 def plot_duels_by_type(ax, df, team1_name, team2_name, duel_type,
                        team1_color, team2_color, background, text_color,font_prop):
 
@@ -2101,7 +2061,7 @@ def plot_on_goal_shotmap_custom(df, team, team_color, background, text_color, _f
     ax.axis('off')
     return fig
 
-@st.cache_data(ttl=600)
+
 def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, _font_prop, _ax_goal, ax_field, selected_player=None, situation=None):
     """
     Plots on-goal shotmap (top) and on-field shotmap (bottom) for a single team using provided axes.
