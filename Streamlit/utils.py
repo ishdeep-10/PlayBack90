@@ -1758,15 +1758,15 @@ def defensive_block_with_player_actions(ax, df, team_name, col, background, text
             )
 
         pitch.scatter(1,-2, s=400, marker='x', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Aerial',xy=(7,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
+        pitch.annotate('Aerial',xy=(7,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
         pitch.scatter(15,-2, s=800, marker='o', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Ball Recovery',xy=(25,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
+        pitch.annotate('Ball Recovery',xy=(25,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
         pitch.scatter(36,-2, s=800, marker='^', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Challenge',xy=(44,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
+        pitch.annotate('Challenge',xy=(44,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
         pitch.scatter(54,-2, s=800, marker='+', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Interception',xy=(64,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
+        pitch.annotate('Interception',xy=(64,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
         pitch.scatter(74,-2, s=800, marker='*', color=text_color, edgecolors=col, linewidth=2, alpha=0.9, ax=ax, zorder=3)
-        pitch.annotate('Tackle',xy=(80,-2), c=text_color, ha='center', va='center', size=22, fontproperties=font_prop, ax=ax)
+        pitch.annotate('Tackle',xy=(80,-2), c=text_color, ha='center', va='center', size=22, fontproperties=_font_prop, ax=ax)
 
 
     if flipped:
@@ -2102,7 +2102,7 @@ def plot_on_goal_shotmap_custom(df, team, team_color, background, text_color, _f
     return fig
 
 @st.cache_data(ttl=600)
-def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, _font_prop, ax_goal, ax_field, selected_player=None, situation=None):
+def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, _font_prop, _ax_goal, ax_field, selected_player=None, situation=None):
     """
     Plots on-goal shotmap (top) and on-field shotmap (bottom) for a single team using provided axes.
     If a player is selected, their shots are highlighted and others are faded.
@@ -2118,7 +2118,7 @@ def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, _fo
 
     # --- On Goal Shotmap ---
     plot_on_goal_shotmap_custom(
-        df, team, team_color, background, text_color, font_prop, selected_player, situation, ax=ax_goal
+        df, team, team_color, background, text_color, _font_prop, selected_player, situation, ax=_ax_goal
     )
 
     pitch = VerticalPitch(
@@ -2207,15 +2207,15 @@ def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, _fo
 
     # Add legend markers (optional)
     pitch.scatter(107.5, 66, marker='football', edgecolors=text_color, s=300, c=background, ax=ax_field)
-    pitch.annotate('Goal', xy=(107.5, 62), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('Goal', xy=(107.5, 62), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
     pitch.scatter(107.5, 56, marker='o', edgecolors=background, s=300, c=text_color, ax=ax_field)
-    pitch.annotate('On Target', xy=(107.5, 49), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('On Target', xy=(107.5, 49), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
     pitch.scatter(107.5, 42, marker='o', edgecolors='green', linewidths=1, s=300, c=background, ax=ax_field)
-    pitch.annotate('Woodwork', xy=(107.5, 34), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('Woodwork', xy=(107.5, 34), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
     pitch.scatter(107.5, 26, marker='o', edgecolors=text_color, s=300, c=background, ax=ax_field)
-    pitch.annotate('Off Target', xy=(107.5, 19), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('Off Target', xy=(107.5, 19), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
     pitch.scatter(107.5, 12, marker='s', edgecolors=text_color, linewidths=1, s=300, c=background, ax=ax_field)
-    pitch.annotate('Blocked', xy=(107.5, 6), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
+    pitch.annotate('Blocked', xy=(107.5, 6), fontsize=15, color=text_color, fontproperties=_font_prop, ax=ax_field, ha='center', va='center')
 
 @st.cache_data(ttl=600)
 def tag_sequences_and_possessions_all_matches(
