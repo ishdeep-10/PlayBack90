@@ -315,8 +315,7 @@ team_colors = {
     'Pachuca' : "#E39606"
     }
 
-@st.cache_data
-
+@st.cache_data(ttl=600)
 
 def load_and_process_match_data(df, team_colors):
     df = df.sort_values(by='index').reset_index(drop=True)
@@ -616,7 +615,7 @@ def get_team_names(df,team_dict,team_colors):
     team_names = list(team_dict.values())
     return df,df['teamName'].unique()
 
-
+@st.cache_data(ttl=600)
 def summarize_player_shots(df):
     # Filter relevant shot types
     mask_shots = df['type'].isin(['Goal', 'MissedShots', 'SavedShot', 'ShotOnPost'])
@@ -934,6 +933,7 @@ def xgFlow(ax, df, hteam, ateam, team1_facecolor, team2_facecolor, text_color, b
 
     #ax.legend(prop=font_prop, fontsize=20, facecolor=background)
 
+@st.cache_data(ttl=600)
 def get_passes_df(df):
     df1 = df[~df['type'].str.contains('SubstitutionOn|FormationChange|FormationSet|Card')]
     df = df1
@@ -1121,6 +1121,7 @@ def pass_network_visualization(ax,df, passes_between_df, average_locs_and_count_
     
     return
 
+@st.cache_data(ttl=600)
 def get_passing_stats(match_df, teamName):
     passes_df = match_df[(match_df['type'] == 'Pass') & (match_df['teamName'] == teamName)].copy()
     total_passes = passes_df[passes_df['teamName'] == teamName].shape[0]
@@ -1684,6 +1685,7 @@ def get_defensive_action_distribution_by_type(defensive_actions_df, zone='All', 
 
     return action_distribution
 
+@st.cache_data(ttl=600)
 def defensive_block_with_player_actions(ax, df, team_name, col, background, text_color,font_prop,
                                         flipped=True, selected_player_name=None):
     defensive_actions_df = get_defensive_action_df(df)
@@ -2562,6 +2564,7 @@ def plot_pass_accuracy_windows(
 
     return ax
 
+@st.cache_data(ttl=600)
 def plot_on_goal_shotmap_custom(df, team, team_color, background, text_color, font_prop, selected_player, situation, ax=None):
     """
     Plots on-goal shots using GoalMouthY and GoalMouthZ coordinates,
@@ -2746,6 +2749,7 @@ def plot_team_shotmaps_stacked(df, team, team_color, background, text_color, fon
     pitch.scatter(107.5, 12, marker='s', edgecolors=text_color, linewidths=1, s=300, c=background, ax=ax_field)
     pitch.annotate('Blocked', xy=(107.5, 6), fontsize=15, color=text_color, fontproperties=font_prop, ax=ax_field, ha='center', va='center')
 
+@st.cache_data(ttl=600)
 def tag_sequences_and_possessions_all_matches(
         df,
         match_col="matchId",
@@ -2884,6 +2888,7 @@ def classify_third(x):
     else:
         return "Attacking Third"
 
+@st.cache_data(ttl=600)
 def offensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team_color, text_color, font_prop, flagged, selected_third=None):
     """
     Plots a heatmap of where team dispossessed opponent and % transitions leading to attacks.
@@ -2969,6 +2974,7 @@ def offensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team
 
     return summary_df, transitions_df
 
+@st.cache_data(ttl=600)
 def defensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team_color, text_color, font_prop, flagged, selected_third=None):
     """
     Plots a heatmap of where team lost the ball (dispossessed or turnover) and % transitions leading to conceding an attack.
@@ -3055,6 +3061,7 @@ def defensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team
 
     return summary_df, transitions_df
 
+@st.cache_data(ttl=600)
 def build_transition_summary(transitions_df, third):
     """
     Returns a summary DataFrame for transitions starting in the specified third.

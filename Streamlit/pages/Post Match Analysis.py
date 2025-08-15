@@ -944,6 +944,7 @@ if viz == 'Duels and Transitions':
 
 
     st.markdown("## Transitions Heatmap")
+
     poss_df = tag_sequences_and_possessions_all_matches(match_df)
     transition_type = st.radio("Select Transition Type", ["Offensive", "Defensive"], horizontal=True)
     team_options = [home_team, away_team]
