@@ -1152,6 +1152,206 @@ def get_passing_stats(match_df, teamName):
 
     return result_df
 
+@st.cache_data(ttl=600)
+def get_filtered_passes(match_df, hteam, ateam, passtype, selected_player, team_filter):
+    # Home team passes
+    h_mask_passes = (match_df.type.isin(['Pass','TakeOn','Carry'])) & (match_df.teamName == hteam)
+    hteam_passes_df = match_df.loc[h_mask_passes]
+
+    # Away team passes
+    a_mask_passes = (match_df.type.isin(['Pass','TakeOn','Carry'])) & (match_df.teamName == ateam)
+    ateam_passes_df = match_df.loc[a_mask_passes]
+
+    # Filter by selected team
+    if team_filter == hteam:
+        show_home = True
+        show_away = False
+    elif team_filter == ateam:
+        show_home = False
+        show_away = True
+    else:
+        show_home = True
+        show_away = True
+
+    # If a player is selected, filter to only their passes for the selected team
+    if selected_player:
+        if team_filter == hteam:
+            hteam_passes_df = hteam_passes_df[hteam_passes_df['playerName'] == selected_player]
+            ateam_passes_df = ateam_passes_df.iloc[0:0]  # Empty
+        elif team_filter == ateam:
+            ateam_passes_df = ateam_passes_df[ateam_passes_df['playerName'] == selected_player]
+            hteam_passes_df = hteam_passes_df.iloc[0:0]  # Empty
+        else:
+            hteam_passes_df = hteam_passes_df[hteam_passes_df['playerName'] == selected_player]
+            ateam_passes_df = ateam_passes_df[ateam_passes_df['playerName'] == selected_player]
+
+    # Filter passes by type
+    def filter_passes(df, passtype):
+        if passtype == 'Carries':
+            return df[(df['type'] == 'Carry')]
+        elif passtype == 'Crosses':
+            return df[df['qualifiers'].str.contains('Cross', na=False) & (df['outcomeType'] == 'Successful')]
+        elif passtype == 'Long Balls':
+            return df[df['qualifiers'].str.contains('Longball', na=False) & (df['outcomeType'] == 'Successful')]
+        elif passtype == 'Through Balls':
+            return df[df['qualifiers'].str.contains('Throughball', na=False) & (df['outcomeType'] == 'Successful')]
+        elif passtype == 'Dribbles':
+            return df[(df['type'] == 'TakeOn')]
+        else:
+            return df[(df['outcomeType'] == 'Successful')]
+
+    hteam_passes_df = filter_passes(hteam_passes_df, passtype)
+    ateam_passes_df = filter_passes(ateam_passes_df, passtype)
+
+    return hteam_passes_df, ateam_passes_df
+
+def passmaps_v2(ax, hteam_passes_df, ateam_passes_df, hteam_color, ateam_color, background, text_color, passtype, selected_player=None, team_filter=None, pass_kde_mode="Passes Played"):
+    """
+    Plots passmaps for the selected teams/players using pre-filtered DataFrames.
+    Filtering should be done outside this function.
+    """
+    from matplotlib.colors import LinearSegmentedColormap
+    pitch = Pitch(pitch_type='uefa', half=False, corner_arcs=True, pitch_color=background,
+                  line_zorder=2, line_color=text_color, linewidth=1)
+    pitch.draw(ax=ax)
+    ax.set_facecolor(background)
+
+    show_home = not hteam_passes_df.empty
+    show_away = not ateam_passes_df.empty
+
+    # Invert away team passes for visualization
+    if show_away:
+        ateam_passes_df = ateam_passes_df.copy()
+        ateam_passes_df['x'] = pitch.dim.right - ateam_passes_df['x']
+        ateam_passes_df['y'] = pitch.dim.top - ateam_passes_df['y']
+        ateam_passes_df['endX'] = pitch.dim.right - ateam_passes_df['endX']
+        ateam_passes_df['endY'] = pitch.dim.top - ateam_passes_df['endY']
+
+    if not selected_player and passtype == 'All':
+        if show_home:
+            df = hteam_passes_df[hteam_passes_df['type'] == 'Pass']
+            bins = (6, 4)
+            cmap = LinearSegmentedColormap.from_list('custom_cmap', [background, hteam_color])
+            bs_heatmap = pitch.bin_statistic(df.x, df.y, statistic='count', bins=bins)
+            pitch.heatmap(bs_heatmap, ax=ax, cmap=cmap)
+            pitch.flow(df.x, df.y, df.endX, df.endY, color=text_color, arrow_type='same', arrow_length=5, bins=bins, ax=ax)
+            pitch.arrows(5, -2, 100, -2, width=3, headwidth=4, headlength=3, headaxislength=2, color=text_color, ax=ax)
+        if show_away:
+            df = ateam_passes_df[ateam_passes_df['type'] == 'Pass']
+            bins = (6, 4)
+            cmap = LinearSegmentedColormap.from_list('custom_cmap', [background, ateam_color])
+            bs_heatmap = pitch.bin_statistic(df.x, df.y, statistic='count', bins=bins)
+            pitch.heatmap(bs_heatmap, ax=ax, cmap=cmap)
+            pitch.flow(df.x, df.y, df.endX, df.endY, color=text_color, arrow_type='same', arrow_length=5, bins=bins, ax=ax)
+            pitch.arrows(100, -2, 5, -2, width=3, headwidth=4, headlength=3, headaxislength=2, color=text_color, ax=ax)
+
+    elif selected_player and passtype != 'All':
+        if show_home:
+            if passtype == 'Dribbles':
+                hteam_dribbles_df = hteam_passes_df[hteam_passes_df['type'] == 'TakeOn']
+                for _, row in hteam_dribbles_df.iterrows():
+                    mcolor = hteam_color if row.get('outcomeType') == 'Successful' else 'grey'
+                    pitch.scatter(row.x, row.y, marker='o', s=500, color=mcolor, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
+            elif passtype == 'Carries':
+                hteam_carries_df = hteam_passes_df[(hteam_passes_df['type'] == 'Carry') & (hteam_passes_df['prog_carry'] >= 5)]
+                for _, row in hteam_carries_df.iterrows():
+                    pitch.arrows(row.x, row.y, row.endX, row.endY, width=5, headwidth=4, headlength=3, headaxislength=2, color=hteam_color, alpha=0.8, zorder=2, ax=ax)
+            else:
+                for _, row in hteam_passes_df.iterrows():
+                    marker = '*' if row.get('passKey', False) else 'o'
+                    size = 1000 if row.get('passKey', False) else 200
+                    color = 'green' if row.get('assist', False) else hteam_color
+                    linewidth = 5 if row.get('assist', False) else 1
+                    pitch.lines(row.x, row.y, row.endX, row.endY, lw=linewidth, color=color, alpha=0.8, zorder=2, ax=ax)
+                    pitch.scatter(row.endX, row.endY, marker=marker, s=size, color=color, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
+        if show_away:
+            if passtype == 'Dribbles':
+                ateam_dribbles_df = ateam_passes_df[ateam_passes_df['type'] == 'TakeOn']
+                for _, row in ateam_dribbles_df.iterrows():
+                    mcolor = ateam_color if row.get('outcomeType') == 'Successful' else 'grey'
+                    pitch.scatter(row.x, row.y, marker='o', s=500, color=mcolor, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
+            elif passtype == 'Carries':
+                ateam_carries_df = ateam_passes_df[(ateam_passes_df['type'] == 'Carry') & (ateam_passes_df['prog_carry'] >= 5)]
+                for _, row in ateam_carries_df.iterrows():
+                    pitch.arrows(row.x, row.y, row.endX, row.endY, width=5, headwidth=4, headlength=3, headaxislength=2, color=ateam_color, alpha=0.8, zorder=2, ax=ax)
+            else:
+                for _, row in ateam_passes_df.iterrows():
+                    marker = '*' if row.get('passKey', False) else 'o'
+                    size = 1000 if row.get('passKey', False) else 200
+                    color = 'green' if row.get('assist', False) else ateam_color
+                    linewidth = 5 if row.get('assist', False) else 1
+                    pitch.lines(row.x, row.y, row.endX, row.endY, lw=linewidth, color=color, alpha=0.8, zorder=2, ax=ax)
+                    pitch.scatter(row.endX, row.endY, marker=marker, s=size, color=color, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
+
+    elif passtype == "All" and selected_player:
+        # KDE for passes played or received by selected player
+        # Assumes receiverName column is present
+        if team_filter == 'home':
+            kde_df = hteam_passes_df[hteam_passes_df['playerName'] == selected_player] if pass_kde_mode == "Passes Played" else hteam_passes_df[hteam_passes_df['receiverName'] == selected_player]
+            x_vals = kde_df['x'] if pass_kde_mode == "Passes Played" else kde_df['endX']
+            y_vals = kde_df['y'] if pass_kde_mode == "Passes Played" else kde_df['endY']
+            if not kde_df.empty:
+                cmap = LinearSegmentedColormap.from_list('custom_cmap', [background, hteam_color])
+                pitch.kdeplot(x=x_vals, y=y_vals, ax=ax, fill=True, cmap=cmap, n_levels=10, bw_adjust=1, weights=None, thresh=0.01, zorder=0)
+        elif team_filter == 'away':
+            kde_df = ateam_passes_df[ateam_passes_df['playerName'] == selected_player] if pass_kde_mode == "Passes Played" else ateam_passes_df[ateam_passes_df['receiverName'] == selected_player]
+            x_vals = kde_df['x'] if pass_kde_mode == "Passes Played" else kde_df['endX']
+            y_vals = kde_df['y'] if pass_kde_mode == "Passes Played" else kde_df['endY']
+            if not kde_df.empty:
+                cmap = LinearSegmentedColormap.from_list('custom_cmap', [background, ateam_color])
+                pitch.kdeplot(x=105-x_vals, y=68-y_vals, ax=ax, fill=True, cmap=cmap, n_levels=10, bw_adjust=1, weights=None, thresh=0.01, zorder=0)
+
+    else:
+        # Plot all passes for both teams
+        if show_home:
+            if passtype == 'Dribbles':
+                hteam_dribbles_df = hteam_passes_df[hteam_passes_df['type'] == 'TakeOn']
+                for _, row in hteam_dribbles_df.iterrows():
+                    mcolor = hteam_color if row.get('outcomeType') == 'Successful' else 'grey'
+                    pitch.scatter(row.x, row.y, marker='o', s=500, color=mcolor, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
+            elif passtype == 'Carries':
+                hteam_carries_df = hteam_passes_df[(hteam_passes_df['type'] == 'Carry') & (hteam_passes_df['prog_carry'] >= 5)]
+                for _, row in hteam_carries_df.iterrows():
+                    pitch.arrows(row.x, row.y, row.endX, row.endY, width=5, headwidth=4, headlength=3, headaxislength=2, color=hteam_color, alpha=0.8, zorder=2, ax=ax)
+            else:
+                for _, row in hteam_passes_df.iterrows():
+                    marker = '*' if row.get('passKey', False) else 'o'
+                    size = 1000 if row.get('passKey', False) else 200
+                    color = 'green' if row.get('assist', False) else hteam_color
+                    linewidth = 5 if row.get('assist', False) else 1
+                    pitch.lines(row.x, row.y, row.endX, row.endY, lw=linewidth, color=color, alpha=0.8, zorder=2, ax=ax)
+                    pitch.scatter(row.endX, row.endY, marker=marker, s=size, color=color, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
+        if show_away:
+            if passtype == 'Dribbles':
+                ateam_dribbles_df = ateam_passes_df[ateam_passes_df['type'] == 'TakeOn']
+                for _, row in ateam_dribbles_df.iterrows():
+                    mcolor = ateam_color if row.get('outcomeType') == 'Successful' else 'grey'
+                    pitch.scatter(row.x, row.y, marker='o', s=500, color=mcolor, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
+            elif passtype == 'Carries':
+                ateam_carries_df = ateam_passes_df[(ateam_passes_df['type'] == 'Carry') & (ateam_passes_df['prog_carry'] >= 5)]
+                for _, row in ateam_carries_df.iterrows():
+                    pitch.arrows(row.x, row.y, row.endX, row.endY, width=5, headwidth=4, headlength=3, headaxislength=2, color=ateam_color, alpha=0.8, zorder=2, ax=ax)
+            else:
+                for _, row in ateam_passes_df.iterrows():
+                    marker = '*' if row.get('passKey', False) else 'o'
+                    size = 1000 if row.get('passKey', False) else 200
+                    color = 'green' if row.get('assist', False) else ateam_color
+                    linewidth = 5 if row.get('assist', False) else 1
+                    pitch.lines(row.x, row.y, row.endX, row.endY, lw=linewidth, color=color, alpha=0.8, zorder=2, ax=ax)
+                    pitch.scatter(row.endX, row.endY, marker=marker, s=size, color=color, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
+
+    # Top passers for each team (if not filtering by player)
+    if not selected_player:
+        player_pass_counts_h = hteam_passes_df.groupby(['playerName']).size().reset_index(name='Count')
+        top_passers_h = player_pass_counts_h.sort_values(['Count'], ascending=[False]).head(5).reset_index(drop=True)
+        player_pass_counts_a = ateam_passes_df.groupby(['playerName']).size().reset_index(name='Count')
+        top_passers_a = player_pass_counts_a.sort_values(['Count'], ascending=[False]).head(5).reset_index(drop=True)
+    else:
+        top_passers_h = hteam_passes_df.groupby(['playerName']).size().reset_index(name='Count')
+        top_passers_a = ateam_passes_df.groupby(['playerName']).size().reset_index(name='Count')
+
+    return top_passers_h, top_passers_a
+
 def passmaps(ax, match_df,passes_df, hteam, hteam_color, ateam, ateam_color, background, text_color, passtype, selected_player=None, team_filter=None, pass_kde_mode="Passes Played"):
     """
     Draws passmaps for the selected team (home or away) on the same pitch.
