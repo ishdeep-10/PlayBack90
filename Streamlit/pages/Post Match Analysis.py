@@ -518,7 +518,7 @@ if viz == 'Match Dynamics':
     fig.set_facecolor(background)
     axs.set_facecolor(background)
     st.markdown("### xT Momentum Flow")
-    xT_momemtum(axs,match_df,home_team,away_team,home_team_col,away_team_col,background,text_color)
+    xT_momemtum(axs,match_df,home_team,away_team,home_team_col,away_team_col,background,text_color,font_prop)
     st.pyplot(fig)
 
 if viz == 'Shots':

@@ -1772,7 +1772,7 @@ def defensive_block_with_player_actions(ax, df, team_name, col, background, text
         ax.invert_yaxis()
 
 
-def xT_momemtum(ax,df,team1_name,team2_name,team1_facecolor,team2_facecolor,background,text_color):
+def xT_momemtum(ax,df,team1_name,team2_name,team1_facecolor,team2_facecolor,background,text_color,font_prop):
     xT_data = df[((df['type'] == 'Pass') | (df['type'] == 'Carry')) & (df['outcomeType'] == 'Successful')]
     xT_data = xT_data[['xT', 'minute', 'second', 'teamName', 'type']]
     xT_data['xT_clipped'] = np.clip(xT_data['xT'], 0, 0.1)
