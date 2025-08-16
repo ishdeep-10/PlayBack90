@@ -161,7 +161,7 @@ storage_options = {
     "client_kwargs": {"endpoint_url": ENDPOINT_URL},
 }
 
-@st.cache_data(ttl=60)
+#@st.cache_data(ttl=60)
 
 def list_parquet_files_for_league_season(league, season):
     fs = s3fs.S3FileSystem(
@@ -380,10 +380,6 @@ if selected_season:
         if st.button("Change League"):
             st.session_state['selected_league'] = None
             st.session_state['selected_season'] = None
-            st.rerun()
-    with colB:
-        if st.button("Refresh Fixtures"):
-            st.cache_data.clear()
             st.rerun()
 
 
