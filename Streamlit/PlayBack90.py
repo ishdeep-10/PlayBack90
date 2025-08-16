@@ -161,7 +161,7 @@ storage_options = {
     "client_kwargs": {"endpoint_url": ENDPOINT_URL},
 }
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=60)
 
 def list_parquet_files_for_league_season(league, season):
     fs = s3fs.S3FileSystem(
