@@ -217,6 +217,7 @@ def get_fixtures_from_r2(league, season, limit=10):
     )
     prefix = f"{R2_BUCKET}/event_data/{league}/{season}/"
     files = fs.glob(f"{prefix}*.parquet")
+    print("DEBUG: Found parquet files:", files)
     fixtures = []
     for file in files:
         # Example: 2025-05-03_1821387_31_vs_165_2___2.parquet (where 31 and 165 are team IDs)
