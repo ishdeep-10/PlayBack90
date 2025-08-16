@@ -381,6 +381,10 @@ if selected_season:
             st.session_state['selected_league'] = None
             st.session_state['selected_season'] = None
             st.rerun()
+    with colB:
+        if st.button("Refresh Fixtures"):
+            st.cache_data.clear()
+            st.rerun()
 
 
 
