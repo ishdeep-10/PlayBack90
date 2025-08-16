@@ -14,3 +14,10 @@ pyarrow
 s3fs
 boto3
 python-dotenv==1.0.1
+bs4
+beautifulsoup4
+lxml
+xgboost
+scikit-learn
+selenium==4.16.0
+tqdm

@@ -1,1 +1,5 @@
 .env
+/Data
+/Data/playback90.db
+/Data/data_utils.py
+/Data/extract_opta_data.py
