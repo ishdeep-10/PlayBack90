@@ -356,6 +356,8 @@ if not file_path:
 match_df = load_match_data_from_r2(file_path)
 match_df = load_and_process_match_data(match_df, team_colors)
 
+match_df = match_df.drop_duplicates()
+
 
 home_team_col = match_df[match_df['teamName'] == home_team]['teamColor'].unique()[0]
 away_team_col = match_df[match_df['teamName'] == away_team]['teamColor'].unique()[0]
