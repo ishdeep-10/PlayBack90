@@ -1037,7 +1037,7 @@ if viz == 'Duels and Transitions':
             cols_to_drop = ['x', 'y', 'third', 'possession_id']
             filtered_transitions_display = filtered_transitions.drop(columns=cols_to_drop, errors='ignore')
             st.dataframe(filtered_transitions_display, use_container_width=True)
-            st.markdown("##### BallTouch refers to miscontrol or bad first touch that leads to a transition.")
+            st.markdown("##### BallTouch refers to miscontrol or bad first touch or unsuccessful pass that leads to a transition.")
 
 if viz == 'Out of Possession':
     st.markdown("## OOP Actions")
