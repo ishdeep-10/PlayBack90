@@ -1352,7 +1352,7 @@ def passmaps_v2(ax, hteam_passes_df, ateam_passes_df, hteam_color, ateam_color, 
 
     return top_passers_h, top_passers_a
 
-def passmaps(ax, match_df,passes_df, hteam, hteam_color, ateam, ateam_color, background, text_color, passtype, selected_player=None, team_filter=None, pass_kde_mode="Passes Played"):
+def passmaps(ax, match_df,passes_df, hteam, hteam_color, ateam, ateam_color, background, text_color,font_prop, passtype, selected_player=None, team_filter=None, pass_kde_mode="Passes Played"):
     """
     Draws passmaps for the selected team (home or away) on the same pitch.
     If team_filter is set, only that team's passes are shown.
@@ -1393,6 +1393,7 @@ def passmaps(ax, match_df,passes_df, hteam, hteam_color, ateam, ateam_color, bac
     pitch = Pitch(pitch_type='uefa', half=False, corner_arcs=True, pitch_color=background,
                   line_zorder=2, line_color=text_color, linewidth=1)
     pitch.draw(ax=ax)
+        
     
     ax.set_facecolor(background)
 
@@ -1453,7 +1454,9 @@ def passmaps(ax, match_df,passes_df, hteam, hteam_color, ateam, ateam_color, bac
              color=text_color, ax=ax)
 
     # Plot home team passes
-    elif selected_player and passtype != 'All':  
+    elif selected_player and passtype != 'All':
+        ax.text(2,75,f"{selected_player}'s {passtype}",fontproperties=font_prop, fontsize=35, color=background,
+                bbox=dict(facecolor=text_color, edgecolor=None, pad=10, alpha=0.8), ha='left', va='center', zorder=3)
         if show_home:
             if passtype == 'Dribbles':
                 hteam_dribbles_df = hteam_passes_df[hteam_passes_df['type'] == 'TakeOn']
@@ -1507,6 +1510,8 @@ def passmaps(ax, match_df,passes_df, hteam, hteam_color, ateam, ateam_color, bac
                     pitch.scatter(row.endX, row.endY, marker=marker, s=size, color=color, edgecolor=text_color, linewidth=2, zorder=3, ax=ax)
     
     elif passtype == "All" and selected_player:
+        ax.text(2,75,f"{selected_player}",fontproperties=font_prop, fontsize=35, color=background,
+                bbox=dict(facecolor=text_color, edgecolor=None, pad=10, alpha=0.8), ha='left', va='center', zorder=3)
         # Ensure receiverName exists in passes_df
         hteam_passes_df = passes_df[passes_df['teamName'] == hteam].copy()
         ateam_passes_df = passes_df[passes_df['teamName'] == ateam].copy()
@@ -1893,6 +1898,12 @@ def defensive_block_with_player_actions(ax, df, team_name, col, background, text
 
     # If player is selected, highlight their defensive actions
     elif selected_player_name:
+        if flipped == True:
+            ax.text(105,-8,f"{selected_player_name}",fontproperties=font_prop, fontsize=35, color=background,
+                bbox=dict(facecolor=text_color, edgecolor=None, pad=10, alpha=0.8), ha='left', va='center', zorder=3)
+        else:
+            ax.text(2,74,f"{selected_player_name}",fontproperties=font_prop, fontsize=35, color=background,
+                bbox=dict(facecolor=text_color, edgecolor=None, pad=10, alpha=0.8), ha='left', va='center', zorder=3)
         player_events = defensive_actions_team_df[defensive_actions_team_df["playerName"] == selected_player_name]
 
         for _, row in player_events.iterrows():
@@ -2633,6 +2644,7 @@ def plot_on_goal_shotmap_custom(df, team, team_color, background, text_color, fo
     if selected_player:
         selected_shots = shots[shots['playerName'] == selected_player]
         other_shots = shots[shots['playerName'] != selected_player]
+        ax.set_title(f"{selected_player}'s Shots",  fontproperties=font_prop,fontsize=20, color=text_color)
     else:
         selected_shots = shots
         other_shots = pd.DataFrame(columns=shots.columns)
@@ -2962,7 +2974,16 @@ def offensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team
     ax.set_facecolor(background)
     cmap = LinearSegmentedColormap.from_list('custom_cmap', [background, team_color])
     pitch.heatmap(pitch.bin_statistic(transitions_df['x'], transitions_df['y'], statistic='count', bins=(10, 7)), ax=ax, cmap=cmap, edgecolors=background, alpha=0.7)
-    pitch.scatter(transitions_df['x'], transitions_df['y'], s=200, color=team_color, alpha=0.7, ax=ax, edgecolors=text_color)
+    for _,row in transitions_df.iterrows():
+        if row['led_to_attack']:
+            transitioncolor = team_color
+            transitionsize = 300
+        else:
+            transitioncolor = text_color
+            transitionsize = 200
+        # Plot each transition point
+        pitch.scatter(row['x'], row['y'], s=transitionsize, color=transitioncolor, alpha=0.7, ax=ax, edgecolors=text_color)
+    
     if flagged:
         pitch.arrows(5,-2,100,-2, width=3,
                 headwidth=4, headlength=3, headaxislength=2,
@@ -3049,7 +3070,17 @@ def defensive_transition_heatmap(poss_df, team_name, ax, pitch, background, team
     ax.set_facecolor(background)
     cmap = LinearSegmentedColormap.from_list('custom_cmap', [background, team_color])
     pitch.heatmap(pitch.bin_statistic(transitions_df['x'], transitions_df['y'], statistic='count', bins=(10, 7)), ax=ax, cmap=cmap, edgecolors=background, alpha=0.7)
-    pitch.scatter(transitions_df['x'], transitions_df['y'], s=200, color=team_color, alpha=0.7, ax=ax, edgecolors=text_color)
+    
+    for _,row in transitions_df.iterrows():
+        if row['led_to_attack']:
+            transitioncolor = team_color
+            transitionsize = 300
+        else:
+            transitioncolor = text_color
+            transitionsize = 200
+        # Plot each transition point
+        pitch.scatter(row['x'], row['y'], s=transitionsize, color=transitioncolor, alpha=0.7, ax=ax, edgecolors=text_color)
+    #pitch.scatter(transitions_df['x'], transitions_df['y'], s=200, color=team_color, alpha=0.7, ax=ax, edgecolors=text_color)
     if flagged:
         pitch.arrows(5,-2,100,-2, width=3,
                 headwidth=4, headlength=3, headaxislength=2,

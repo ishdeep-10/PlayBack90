@@ -28,6 +28,7 @@ storage_options = {
     "client_kwargs": {"endpoint_url": ENDPOINT_URL},
 }
 
+
 @st.cache_data(ttl=600)
 
 def load_match_data_from_r2(file_path):
@@ -362,7 +363,7 @@ match_df = match_df.drop_duplicates()
 home_team_col = match_df[match_df['teamName'] == home_team]['teamColor'].unique()[0]
 away_team_col = match_df[match_df['teamName'] == away_team]['teamColor'].unique()[0]
 
-def adjust_color_if_similar(home_color, away_color, threshold=0.1):
+def adjust_color_if_similar(home_color, away_color, threshold=0.5):
     # Convert hex to RGB
     home_rgb = to_rgb(home_color)
     away_rgb = to_rgb(away_color)
@@ -371,7 +372,7 @@ def adjust_color_if_similar(home_color, away_color, threshold=0.1):
     if dist < threshold:
         # Convert to HLS, adjust lightness
         h, l, s = colorsys.rgb_to_hls(*away_rgb)
-        l = min(1, l + 0.5)  # Lighten away color
+        l = min(1, l + 0.3)  # Lighten away color
         new_away_rgb = colorsys.hls_to_rgb(h, l, s)
         return to_hex(new_away_rgb)
     return away_color
@@ -780,8 +781,6 @@ if viz == 'In Possession':
 
 
     # --- Passmaps Section ---
-    # Team filter above pitch and player stats
-    team_filter = st.radio("Select Team", [home_team, away_team], horizontal=True, index=0)
 
     # Add half selection radio
     half_option = st.radio(
@@ -848,7 +847,7 @@ if viz == 'In Possession':
 
     top_passers_h, top_passers_a = passmaps(
         ax, filtered_passes_df,passes_df, home_team, home_team_col, away_team, away_team_col,
-        background, text_color, passtype, selected_player, team_filter,pass_kde_mode
+        background, text_color,font_prop, passtype, selected_player, team,pass_kde_mode
     )
 
 
@@ -889,7 +888,7 @@ if viz == 'In Possession':
     st.markdown("Star marker indicates key pass / chance created and green line indicates an assist.")
 
     # --- Interactive player pass stats DataFrame ---
-    if team_filter == home_team:
+    if team == home_team:
         pass_summary = home_pass_summary
     else:
         pass_summary = away_pass_summary
@@ -906,7 +905,7 @@ if viz == 'In Possession':
     for i, row in pass_summary.reset_index().iterrows():
         col1, col2 = st.columns([1, 7])
         with col1:
-            if st.button(row['playerName'], key=f"{team_filter}_pass_{row['playerName']}_{i}"):
+            if st.button(row['playerName'], key=f"{team}_pass_{row['playerName']}_{i}"):
                 st.session_state.selected_pass_player = row['playerName']
                 st.rerun()
         with col2:
