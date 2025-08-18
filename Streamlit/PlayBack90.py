@@ -159,6 +159,7 @@ storage_options = {
     "key": R2_ACCESS_KEY,
     "secret": R2_SECRET_KEY,
     "client_kwargs": {"endpoint_url": ENDPOINT_URL},
+    "use_listings_cache": False
 }
 
 #@st.cache_data(ttl=60)
