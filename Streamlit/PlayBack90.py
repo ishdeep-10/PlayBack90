@@ -164,12 +164,17 @@ storage_options = {
 
 #@st.cache_data(ttl=60)
 
-def list_parquet_files_for_league_season(league, season):
-    fs = s3fs.S3FileSystem(
+def make_fs():
+    return s3fs.S3FileSystem(
         key=R2_ACCESS_KEY,
         secret=R2_SECRET_KEY,
         client_kwargs={"endpoint_url": ENDPOINT_URL},
+        listings_expiry_time=0,   # no caching of directory listings
+        skip_instance_cache=True  # don't reuse cached FS instances
     )
+
+def list_parquet_files_for_league_season(league, season):
+    fs = make_fs()
     # Adjusted for new path structure (no "league=" or "season=")
     files = fs.glob(f"{R2_BUCKET}/event_data/{league}/{season}/*.parquet")
     return files
@@ -189,11 +194,7 @@ def load_data_from_r2(league, season):
         return pd.DataFrame()
 
 def get_seasons_from_r2(league):
-    fs = s3fs.S3FileSystem(
-        key=R2_ACCESS_KEY,
-        secret=R2_SECRET_KEY,
-        client_kwargs={"endpoint_url": ENDPOINT_URL},
-    )
+    fs = make_fs()
     prefix = f"{R2_BUCKET}/event_data/{league}/"
     # List all directories under the league folder (each is a season)
     try:
@@ -211,11 +212,7 @@ def get_seasons_from_r2(league):
     return sorted(seasons, reverse=True)
 
 def get_fixtures_from_r2(league, season, limit=10):
-    fs = s3fs.S3FileSystem(
-        key=R2_ACCESS_KEY,
-        secret=R2_SECRET_KEY,
-        client_kwargs={"endpoint_url": ENDPOINT_URL},
-    )
+    fs = make_fs()
     prefix = f"{R2_BUCKET}/event_data/{league}/{season}/"
     files = fs.glob(f"{prefix}*.parquet")
     print("DEBUG: Found parquet files:", files)
@@ -254,11 +251,7 @@ def get_match_id_from_r2(league, season, home_team, away_team):
     return list(common_ids)[0] if common_ids else None
 
 def load_match_data_from_r2(file_path):
-    fs = s3fs.S3FileSystem(
-        key=R2_ACCESS_KEY,
-        secret=R2_SECRET_KEY,
-        client_kwargs={"endpoint_url": ENDPOINT_URL},
-    )
+    fs = make_fs()
     if fs.exists(file_path):
         return pd.read_parquet(f"s3://{file_path}", storage_options=storage_options)
     else:
