@@ -528,6 +528,8 @@ if viz == 'Match Dynamics':
     plot_turnovers(poss_df, axs3[1], home_team, away_team, home_team_col, away_team_col, background, text_color, font_prop)
     st.pyplot(fig3)
 
+    st.text('### PPDA (Passes Per Defensive Action) is a measure of how many passes a team allows before making a defensive action (tackle, interception, etc.). Lower values indicate more aggressive pressing. Turnovers Conceded is the number of times a team loses possession of the ball to the opponent.')
+
     fig, axs = plt.subplots(nrows=1, ncols=1, figsize=(20,12))
     fig.set_facecolor(background)
     axs.set_facecolor(background)
