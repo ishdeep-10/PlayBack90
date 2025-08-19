@@ -29,7 +29,7 @@ storage_options = {
 }
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=300)
 
 def load_match_data_from_r2(file_path):
     fs = s3fs.S3FileSystem(
