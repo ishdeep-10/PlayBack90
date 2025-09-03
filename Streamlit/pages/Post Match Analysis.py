@@ -12,6 +12,9 @@ from pathlib import Path
 import s3fs
 import pandas as pd
 import os
+import io
+from datetime import datetime
+from PIL import Image
 
 if "selected_third" not in st.session_state:
     st.session_state.selected_third = None
@@ -377,8 +380,6 @@ def adjust_color_if_similar(home_color, away_color, threshold=0.5):
         return to_hex(new_away_rgb)
     return away_color
 
-
-
 if 'Carry' not in match_df['type'].unique():
     match_df = insert_ball_carries(match_df, min_carry_length=10, max_carry_length=60, min_carry_duration=6, max_carry_duration=10)
 
@@ -451,22 +452,145 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+
+def _add_header_footer_and_get_png(
+    fig,
+    header_title=None,
+    header_home=None,
+    header_away=None,
+    header_home_color=None,
+    header_away_color=None,
+    footer_text=None,
+    dpi=150,
+    text_color=None,
+):
+    """
+    Add left-aligned header (title + home vs away with team colors) and left-aligned footer,
+    save fig to PNG bytes, then remove added text objects and return BytesIO.
+    """
+    objs = []
+    try:
+        # Title (left, top)
+        if header_title:
+            title_obj = fig.text(
+                0.15,
+                0.97,
+                header_title,
+                ha="left",
+                va="top",
+                fontproperties=font_prop,
+                fontsize=30,
+                color=text_color or "black",
+            )
+            objs.append(title_obj)
+
+        # Subtitle: Home vs Away (left, below title) with colored names
+        if header_home or header_away:
+            # place slightly below title
+            y_sub = 0.92
+            if header_home:
+                home_obj = fig.text(
+                    0.15,
+                    y_sub,
+                    header_home,
+                    ha="left",
+                    va="top",
+                    fontproperties=font_prop,
+                    fontsize=25,
+                    color=header_home_color or (text_color or "black"),
+                )
+                objs.append(home_obj)
+                # compute x offset for " vs " and away; use transform to measure, approximate by figure fraction
+                # simple approach: place vs and away with small left offset
+                # measure text extents not necessary for simple layout — offset by 0.25 (tweak if needed)
+                vs_x = 0.3
+            else:
+                vs_x = 0.02
+
+            vs_obj = fig.text(
+                vs_x,
+                y_sub,
+                " vs ",
+                ha="left",
+                va="top",
+                fontproperties=font_prop,
+                fontsize=25,
+                color=(text_color or "gray"),
+            )
+            objs.append(vs_obj)
+
+            if header_away:
+                away_obj = fig.text(
+                    vs_x + 0.06,
+                    y_sub,
+                    header_away,
+                    ha="left",
+                    va="top",
+                    fontproperties=font_prop,
+                    fontsize=25,
+                    color=header_away_color or (text_color or "black"),
+                )
+                objs.append(away_obj)
+
+        # Footer (left, bottom)
+        if footer_text:
+            footer_obj = fig.text(
+                0.15,
+                0.02,
+                footer_text,
+                ha="left",
+                va="bottom",
+                fontproperties=font_prop,
+                fontsize=15,
+                color=text_color or "gray",
+            )
+            objs.append(footer_obj)
+
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight", dpi=dpi)
+        buf.seek(0)
+        return buf
+    finally:
+        for o in objs:
+            try:
+                o.remove()
+            except Exception:
+                pass
+
 if viz == 'Match Dynamics':
     st.markdown("## Match Dynamics")
 
     poss_df = tag_sequences_and_possessions_all_matches(match_df)
 
-
+    # collect images for Match Dynamics PDF
+    md_png_buffers = []
 
     st.markdown("### xG Flow")
     fig4, axs4 = plt.subplots(nrows=1, ncols=1, figsize=(20,12))
     fig4.set_facecolor(background)
     axs4.set_facecolor(background)
 
-
-
     xgFlow(axs4,match_df,home_team,away_team,home_team_col,away_team_col,text_color,background,font_prop)
     st.pyplot(fig4)
+
+    # one-line explanation
+    st.caption("xG Flow — cumulative expected goals progression through the match showing which team created higher quality chances over time.")
+
+    # Add download buffer + append to report list
+    header_title = f"xG Flow"
+    footer = "Created by @chadha_ishdeep"
+    png_buf = _add_header_footer_and_get_png(
+        fig4,
+        header_title=header_title,
+        header_home=home_team,
+        header_away=away_team,
+        header_home_color=home_team_col,
+        header_away_color=away_team_col,
+        footer_text=footer,
+        text_color=text_color,
+        dpi=150,
+    )
+    md_png_buffers.append(png_buf)
 
     st.markdown("### Ball Possession % and Pass Accuracy %")
     fig2, axs2 = plt.subplots(nrows=1, ncols=2, figsize=(20,9))
@@ -474,7 +598,6 @@ if viz == 'Match Dynamics':
     axs2[0].set_facecolor(background)
     axs2[1].set_facecolor(background)
 
-    
     plot_possession_windows_time_weighted(
         ax=axs2[0],
         df=poss_df,
@@ -498,8 +621,23 @@ if viz == 'Match Dynamics':
     )
     st.pyplot(fig2)
 
-    st.markdown('### Attack By Flanks')
+    # one-line explanation
+    st.caption("Possession & Pass Accuracy — how possession was shared over time and how accurate passing was for each team.")
 
+    png_buf2 = _add_header_footer_and_get_png(
+        fig2,
+        header_title="Possession & Pass Accuracy",
+        header_home=home_team,
+        header_away=away_team,
+        header_home_color=home_team_col,
+        header_away_color=away_team_col,
+        footer_text=footer,
+        text_color=text_color,
+        dpi=150,
+    )
+    md_png_buffers.append(png_buf2)
+
+    st.markdown('### Attack By Flanks')
     fig5, axs5 = plt.subplots(nrows=1, ncols=2, figsize=(20,12))
     fig5.set_facecolor(background)
     axs5[0].set_facecolor(background)
@@ -508,15 +646,25 @@ if viz == 'Match Dynamics':
     h_attacks = get_number_of_attacks(poss_df,home_team)
     a_attacks = get_number_of_attacks(poss_df,away_team)
 
-    #st.dataframe(h_attacks, use_container_width=True)
-    #st.dataframe(a_attacks, use_container_width=True)
-
     plot_attacks(h_attacks,home_team_col,background,text_color,font_prop,axs5[0])
     plot_attacks(a_attacks,away_team_col,background,text_color,font_prop,axs5[1])
     st.pyplot(fig5)
 
+    # one-line explanation
+    st.caption("Attack By Flanks — distribution of attacks down left/right/center for each team.")
 
-
+    png_buf5 = _add_header_footer_and_get_png(
+        fig5,
+        header_title="Attack By Flanks",
+        header_home=home_team,
+        header_away=away_team,
+        header_home_color=home_team_col,
+        header_away_color=away_team_col,
+        footer_text=footer,
+        text_color=text_color,
+        dpi=150,
+    )
+    md_png_buffers.append(png_buf5)
 
     st.markdown('### PPDA and Turnovers Conceded')
     fig3, axs3 = plt.subplots(nrows=1, ncols=2, figsize=(20,9))
@@ -528,14 +676,71 @@ if viz == 'Match Dynamics':
     plot_turnovers(poss_df, axs3[1], home_team, away_team, home_team_col, away_team_col, background, text_color, font_prop)
     st.pyplot(fig3)
 
-    st.text('PPDA (Passes Per Defensive Action) is a measure of how many passes a team allows before making a defensive action (tackle, interception, etc.). Lower values indicate more aggressive pressing.')
+    # one-line explanation
+    st.caption("PPDA & Turnovers — pressing intensity (passes allowed before a defensive action) and turnovers conceded.")
 
-    fig, axs = plt.subplots(nrows=1, ncols=1, figsize=(20,12))
-    fig.set_facecolor(background)
-    axs.set_facecolor(background)
+    png_buf3 = _add_header_footer_and_get_png(
+        fig3,
+        header_title="PPDA and Turnovers",
+        header_home=home_team,
+        header_away=away_team,
+        header_home_color=home_team_col,
+        header_away_color=away_team_col,
+        footer_text=footer,
+        text_color=text_color,
+        dpi=150,
+    )
+    md_png_buffers.append(png_buf3)
+
     st.markdown("### xT Momentum Flow")
-    xT_momemtum(axs,match_df,home_team,away_team,home_team_col,away_team_col,background,text_color,font_prop)
-    st.pyplot(fig)
+    fig_xt, axs_xt = plt.subplots(nrows=1, ncols=1, figsize=(20,12))
+    fig_xt.set_facecolor(background)
+    axs_xt.set_facecolor(background)
+    xT_momemtum(axs_xt,match_df,home_team,away_team,home_team_col,away_team_col,background,text_color,font_prop)
+    st.pyplot(fig_xt)
+
+    # one-line explanation
+    st.caption("xT Momentum — expected threat momentum showing build-up to dangerous situations for each team.")
+
+    png_buf_xt = _add_header_footer_and_get_png(
+        fig_xt,
+        header_title="xT Momentum Flow",
+        header_home=home_team,
+        header_away=away_team,
+        header_home_color=home_team_col,
+        header_away_color=away_team_col,
+        footer_text=footer,
+        text_color=text_color,
+        dpi=150,
+    )
+    md_png_buffers.append(png_buf_xt)
+
+    # Build PDF from collected PNGs and provide download button (bottom of Match Dynamics)
+    if md_png_buffers:
+        try:
+            images = []
+            for b in md_png_buffers:
+                b.seek(0)
+                img = Image.open(b).convert("RGB")
+                images.append(img)
+            pdf_buf = io.BytesIO()
+            images[0].save(pdf_buf, format="PDF", save_all=True, append_images=images[1:])
+            pdf_buf.seek(0)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            pdf_name = f"{home_team}_vs_{away_team}_Match_Dynamics.pdf"
+
+            # centered download button
+            col_left, col_center, col_right = st.columns([1, 2, 1])
+            with col_center:
+                st.download_button(
+                    label="⬇️ Download Match Dynamics Report (PDF)",
+                    data=pdf_buf,
+                    file_name=pdf_name,
+                    mime="application/pdf",
+                    key=f"download_md_{matchId}"
+                )
+        except Exception as e:
+            st.error(f"Failed to build PDF: {e}")
 
 if viz == 'Shots':
     if "selected_shot_player" not in st.session_state:

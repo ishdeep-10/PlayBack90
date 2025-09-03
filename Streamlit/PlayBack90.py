@@ -211,7 +211,7 @@ def get_seasons_from_r2(league):
                 seasons.append(season)
     return sorted(seasons, reverse=True)
 
-def get_fixtures_from_r2(league, season, limit=10):
+def get_fixtures_from_r2(league, season, limit=10, offset=0):
     fs = make_fs()
     prefix = f"{R2_BUCKET}/event_data/{league}/{season}/"
     files = fs.glob(f"{prefix}*.parquet")
@@ -238,8 +238,9 @@ def get_fixtures_from_r2(league, season, limit=10):
                 "away_team_id": int(away_team_id),
                 "ft_score": ft_score_clean
             })
-    fixtures = sorted(fixtures, key=lambda x: x["startDate"], reverse=True)[:limit]
-    return fixtures
+    # sort newest first then apply offset+limit (pagination)
+    fixtures = sorted(fixtures, key=lambda x: x["startDate"], reverse=True)
+    return fixtures[offset: offset + limit]
 
 def get_match_id_from_r2(league, season, home_team, away_team):
     df = load_data_from_r2(league, season)
@@ -329,6 +330,10 @@ if not selected_league:
                         st.rerun()
     st.stop()
 
+# ensure pagination state
+if 'fixtures_offset' not in st.session_state:
+    st.session_state['fixtures_offset'] = 0
+
 LEAGUE_NAME_MAP = {
     "Premier League": "premier-league",
     "La Liga": "laliga",
@@ -348,11 +353,18 @@ if not seasons:
 
 default_season = seasons[0]
 selected_season = st.selectbox("Select Season", seasons, index=0)
+# reset offset when season changed
+if st.session_state.get('selected_season') != selected_season:
+    st.session_state['fixtures_offset'] = 0
 st.session_state['selected_season'] = selected_season
 
 if selected_season:
-    st.markdown(f"### Last 10 Fixtures: {selected_league} ({selected_season})")
-    fixtures = get_fixtures_from_r2(db_league_name, selected_season, limit=10)
+    st.markdown(f"### Last fixtures: {selected_league} ({selected_season})")
+    # use 9 fixtures for Bundesliga and Ligue 1, else 10
+    limit = 9 if db_league_name in ("bundesliga", "ligue-1") else 10
+    fixtures = get_fixtures_from_r2(db_league_name, selected_season, limit=limit, offset=st.session_state['fixtures_offset'])
+    if not fixtures:
+        st.info("No fixtures found for this page.")
     for fixture in fixtures:
         # Map team ids to names using team_dict
         home_team_name = team_dict.get(fixture['home_team_id'], str(fixture['home_team_id']))
@@ -370,14 +382,24 @@ if selected_season:
             st.switch_page("pages/Post Match Analysis.py")
 
     st.markdown("---")
-    colA, colB = st.columns(2)
+    # navigation buttons: Change League (left) and pagination controls (right)
+    colA, colB = st.columns([1, 1])
     with colA:
         if st.button("Change League"):
             st.session_state['selected_league'] = None
             st.session_state['selected_season'] = None
+            st.session_state['fixtures_offset'] = 0
             st.rerun()
-
-
+    with colB:
+        # show Previous (older) fixtures
+        if st.button(f"Previous {limit} fixtures"):
+            st.session_state['fixtures_offset'] += limit
+            st.rerun()
+        # show Recent (reset to newest)
+        if st.session_state['fixtures_offset'] > 0:
+            if st.button("Show recent"):
+                st.session_state['fixtures_offset'] = 0
+                st.rerun()
 
 # --- Footer ---
 st.markdown("<hr style='border: 1px solid #eee;'>", unsafe_allow_html=True)
