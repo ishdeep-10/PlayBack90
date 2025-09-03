@@ -488,9 +488,10 @@ def _add_header_footer_and_get_png(
         if header_home or header_away:
             # place slightly below title
             y_sub = 0.92
+            cur_x = 0.15
             if header_home:
                 home_obj = fig.text(
-                    0.15,
+                    cur_x,
                     y_sub,
                     header_home,
                     ha="left",
@@ -500,28 +501,27 @@ def _add_header_footer_and_get_png(
                     color=header_home_color or (text_color or "black"),
                 )
                 objs.append(home_obj)
-                # compute x offset for " vs " and away; use transform to measure, approximate by figure fraction
-                # simple approach: place vs and away with small left offset
-                # measure text extents not necessary for simple layout — offset by 0.25 (tweak if needed)
-                vs_x = 0.3
-            else:
-                vs_x = 0.02
+                # advance x for separator and away
+                cur_x += 0.18
 
-            vs_obj = fig.text(
-                vs_x,
-                y_sub,
-                " vs ",
-                ha="left",
-                va="top",
-                fontproperties=font_prop,
-                fontsize=25,
-                color=(text_color or "gray"),
-            )
-            objs.append(vs_obj)
+            # Only render a " vs " separator if both home AND away are provided
+            if header_home and header_away:
+                vs_obj = fig.text(
+                    cur_x,
+                    y_sub,
+                    " vs ",
+                    ha="left",
+                    va="top",
+                    fontproperties=font_prop,
+                    fontsize=25,
+                    color=(text_color or "gray"),
+                )
+                objs.append(vs_obj)
+                cur_x += 0.06
 
             if header_away:
                 away_obj = fig.text(
-                    vs_x + 0.06,
+                    cur_x,
                     y_sub,
                     header_away,
                     ha="left",
@@ -809,6 +809,135 @@ if viz == 'Shots':
                     st.rerun()
             with col2:
                 st.dataframe(pd.DataFrame([row.drop(['index', 'playerName'])]), use_container_width=True)
+
+    # --------------------- Combined Shots PDF report for BOTH teams ---------------------
+    def df_to_table_image(df: pd.DataFrame, title: str = None, dpi: int = 150, font_size: int = 9, col_width: float = 1.2, row_height: float = 0.35):
+        """Render a DataFrame to a PNG in-memory file (matplotlib table).
+        Wider figure + smaller font to avoid cramped cells. Tweak font_size/col_width/row_height if needed.
+        """
+        ncols = max(1, len(df.columns))
+        nrows = max(1, len(df))
+        # Compute figure size from columns/rows
+        fig_w = max(8, ncols * col_width)
+        fig_h = max(2.5, (nrows + 2) * row_height)
+
+        fig_tab, ax_tab = plt.subplots(figsize=(fig_w, fig_h))
+        fig_tab.patch.set_facecolor(background)
+        ax_tab.set_facecolor(background)
+        ax_tab.axis("off")
+
+        if title:
+            ax_tab.text(
+                0,
+                1.02,
+                title,
+                fontsize=max(12, font_size + 2),
+                fontproperties=font_prop,
+                color=text_color,
+                transform=ax_tab.transAxes,
+                va="bottom",
+            )
+
+        cols = list(df.columns.astype(str))
+        cell_text = df.fillna("").astype(str).values.tolist()
+
+        table = ax_tab.table(cellText=cell_text, colLabels=cols, loc="center", cellLoc="left")
+        table.auto_set_font_size(False)
+        table.set_fontsize(font_size)
+
+        # Scale table so columns have more room and rows are a bit taller
+        table.scale(col_width, 1.2)
+
+        fig_tab.tight_layout()
+        buf = io.BytesIO()
+        fig_tab.savefig(buf, format="png", bbox_inches="tight", dpi=dpi)
+        plt.close(fig_tab)
+        buf.seek(0)
+        return buf
+
+
+    def build_combined_shots_pdf(include_player_tables_for_each_team=True):
+        """Build combined PDF bytes containing both teams' shotmaps and full player tables."""
+        shots_report_buffers = []
+
+        for team_name, team_col in [(home_team, home_team_col), (away_team, away_team_col)]:
+            # create a fresh shotmap figure for the team
+            fig_team, (ax_goal_t, ax_field_t) = plt.subplots(2, 1, figsize=(12, 12), gridspec_kw={'height_ratios': [2, 3.5]})
+            fig_team.set_facecolor(background)
+            ax_goal_t.set_facecolor(background)
+            ax_field_t.set_facecolor(background)
+
+            # reuse plotting function used elsewhere
+            plot_team_shotmaps_stacked(
+                match_df, team_name, team_col, background, text_color, font_prop,
+                ax_goal_t, ax_field_t, selected_player=None, situation=None
+            )
+
+            header_title = f"Shot Map — {team_name}"
+            png_shot = _add_header_footer_and_get_png(
+                fig_team,
+                header_title=header_title,
+                header_home=team_name,
+                header_home_color=team_col,
+                footer_text=f"Created by @chadha_ishdeep",
+                text_color=text_color,
+                dpi=150,
+            )
+            shots_report_buffers.append(png_shot)
+            plt.close(fig_team)
+
+            if include_player_tables_for_each_team:
+                # player summary table for this team: include ALL metrics present in player_df for that team
+                team_player_df = player_df[player_df['Team'] == team_name].copy()
+                if team_player_df.empty:
+                    table_df = pd.DataFrame([{"Note": "No players found for team"}])
+                else:
+                    # keep all columns available for player summary (user requested all metrics)
+                    table_df = team_player_df.reset_index(drop=True)
+
+                buf_tbl = df_to_table_image(table_df, title=f"Player Shot Summary — {team_name}")
+                # convert table png to a matplotlib image so helper can add consistent header/footer and background
+                img_tab = Image.open(buf_tbl).convert("RGB")
+                fig_tmp, ax_tmp = plt.subplots(figsize=(8, img_tab.height / 100))
+                fig_tmp.patch.set_facecolor(background)
+                ax_tmp.set_facecolor(background)
+                ax_tmp.imshow(img_tab)
+                ax_tmp.axis("off")
+                png_tbl_wrapped = _add_header_footer_and_get_png(
+                    fig_tmp,
+                    header_title=None,
+                    header_home=team_name,
+                    header_home_color=team_col,
+                    footer_text=f"Created by @chadha_ishdeep",
+                    text_color=text_color,
+                    dpi=150,
+                )
+                plt.close(fig_tmp)
+                shots_report_buffers.append(png_tbl_wrapped)
+
+        # combine into single PDF buffer
+        images = []
+        for b in shots_report_buffers:
+            b.seek(0)
+            img = Image.open(b).convert("RGB")
+            images.append(img)
+        pdf_buf = io.BytesIO()
+        if images:
+            images[0].save(pdf_buf, format="PDF", save_all=True, append_images=images[1:])
+        pdf_buf.seek(0)
+        return pdf_buf
+
+    # single download button (builds PDF and downloads in one click)
+    pdf_buf = build_combined_shots_pdf()
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    pdf_name = f"{home_team}_vs_{away_team}_Shots.pdf"
+    st.download_button(
+        label="⬇️ Download Shots Report",
+        data=pdf_buf,
+        file_name=pdf_name,
+        mime="application/pdf",
+        key=f"download_shots_combined_{matchId}"
+    )
 
 if viz == 'In Possession':
 
