@@ -145,7 +145,19 @@ team_dict = {
         327 : 'Hungary',
         425 : 'Denmark',
         423 : 'Switzerland',
-        771 : 'Serbia'
+        771 : 'Serbia',
+        10 : 'FC Copenhagen',
+        294 : 'Galatasaray',
+        124 : 'Club Brugge',
+        296 : 'Sporting CP',
+        1770 : 'Kairat Almaty',
+        130 :'Ajax',
+        349 : 'Slavia Prague',
+        439 : 'Bodo/Glimt',
+        843 : 'Olympiacos',
+        2748 : 'Pafos',
+        2569 : 'Qarabag',
+        2647 : 'Union Saint-Gilloise'
 }
   
 
