@@ -366,7 +366,7 @@ match_df = match_df.drop_duplicates()
 home_team_col = match_df[match_df['teamName'] == home_team]['teamColor'].unique()[0]
 away_team_col = match_df[match_df['teamName'] == away_team]['teamColor'].unique()[0]
 
-def adjust_color_if_similar(home_color, away_color, threshold=0.5):
+def adjust_color_if_similar(home_color, away_color, threshold=0.2):
     # Convert hex to RGB
     home_rgb = to_rgb(home_color)
     away_rgb = to_rgb(away_color)
