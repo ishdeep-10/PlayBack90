@@ -336,12 +336,12 @@ team_colors = {
     'Fluminense' : "#68202B",
     'Ulsan HD FC' : '#005BAC',
     'Wydad' : '#E30613',
-    'Al Ain' : "#721A70",
+    'Al Ain' : '#721A70',
     'Salzburg' : '#E30613',
     'Al Hilal' : '#005BAC',
     'Pachuca' : "#E39606",
     'FC Copenhagen' : '#005BAC',
-    'Galatasaray' : '#BB7009',
+    'Galatasaray' : "#CF8215",
     'Club Brugge' : '#005BAC',
     'Sporting CP' : '#006A4E',
     'Kairat Almaty' : '#FFD700',
@@ -382,13 +382,31 @@ if not file_path:
 
 
 match_df = load_match_data_from_r2(file_path)
+
 match_df = load_and_process_match_data(match_df, team_colors)
 
 match_df = match_df.drop_duplicates()
 
 
-home_team_col = match_df[match_df['teamName'] == home_team]['teamColor'].unique()[0]
-away_team_col = match_df[match_df['teamName'] == away_team]['teamColor'].unique()[0]
+match_df['teamId'] = pd.to_numeric(match_df['teamId'], errors='coerce').astype('Int64')
+mapped_names = match_df['teamId'].map(team_dict)
+invalid_name = match_df['teamName'].isna() | (match_df['teamName'].astype(str).str.lower().isin(['none', 'nan', '']))
+match_df.loc[invalid_name, 'teamName'] = mapped_names
+# fill any still-missing names with teamId as string
+match_df['teamName'] = match_df['teamName'].fillna(match_df['teamId'].astype('Int64').astype(str))
+# set colors from names; fallback gray if unmapped
+match_df['teamColor'] = match_df['teamName'].map(team_colors).fillna('#888888')
+
+# Safe color lookup for home/away
+home_candidates = match_df.loc[match_df['teamName'] == home_team, 'teamColor'].dropna().unique()
+away_candidates = match_df.loc[match_df['teamName'] == away_team, 'teamColor'].dropna().unique()
+home_team_col = home_candidates[0] if home_candidates.size > 0 else team_colors.get(home_team, '#1f77b4')
+away_team_col = away_candidates[0] if away_candidates.size > 0 else team_colors.get(away_team, '#ff7f0e')
+
+
+
+#home_team_col = match_df[match_df['teamName'] == home_team]['teamColor'].unique()[0]
+#away_team_col = match_df[match_df['teamName'] == away_team]['teamColor'].unique()[0]
 
 def adjust_color_if_similar(home_color, away_color, threshold=0.2):
     # Convert hex to RGB
