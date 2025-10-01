@@ -341,7 +341,7 @@ team_colors = {
     'Al Hilal' : '#005BAC',
     'Pachuca' : "#E39606",
     'FC Copenhagen' : '#005BAC',
-    'Galatasaray' : "#BB7009",
+    'Galatasaray' : '#BB7009',
     'Club Brugge' : '#005BAC',
     'Sporting CP' : '#006A4E',
     'Kairat Almaty' : '#FFD700',
