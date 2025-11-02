@@ -177,7 +177,44 @@ team_dict = {
         843 : 'Olympiacos',
         2748 : 'Pafos',
         2569 : 'Qarabag',
-        2647 : 'Union Saint-Gilloise'
+        2647 : 'Union Saint-Gilloise',
+        990 : 'Stevenage',
+        22 : 'Bradford',
+        188 : 'Cardiff',
+        172 : 'Stockport County',
+        5955 : 'AFC Wimbledon',
+        203 : 'Lincoln City',
+        166 : 'Huddersfield',
+        142 : 'Barnsley',
+        92 : 'Bolton',
+        910 : 'Doncaster',
+        95 : 'Luton',
+        99 : 'Mansfield',
+        97 : 'Leyton Orient',
+        316 : 'Northampton',
+        91 : 'Port Vale',
+        98 : 'Exeter',
+        194 : 'Wigan',
+        212 : 'Plymouth',
+        196 : 'Wycombe',
+        1786 : 'Burton',
+        94 : 'Reading',
+        210 : 'Rotherham',
+        93 : 'Blackpool',
+        215 : 'Peterborough',
+        20 : 'Derby',
+        169 : 'Portsmouth',
+        197 : 'Oxford',
+        160 : 'Charlton',
+        185 : 'Bristol Rovers',
+        258 : 'Cheltenham',
+        3936 : 'Fleetwood',
+        207 : 'Shrewsbury',
+        193 : 'Cambridge U',
+        322 : 'Carlisle',
+        157 : 'Birmingham',
+        199 : 'Wrexham',
+        1994 : 'Crawley'
 }
     
 team_colors = {
@@ -2154,7 +2191,15 @@ def plot_turnovers(df, ax, team1_name, team2_name, team1_facecolor, team2_faceco
     df['time_bin'] = ((df['timestamp'] // (window_size * 60)).replace([np.inf, -np.inf], np.nan).fillna(-1).astype(int))
 
     # Count turnovers + dispossessed together
-    df['total_turnover'] = df['turnover'].astype(int) + df['dispossessed'].astype(int)
+    #df['total_turnover'] = df['turnover'].astype(int) + df['dispossessed'].astype(int)
+    for col in ['turnover', 'dispossessed']:
+        if col not in df.columns:
+            df[col] = 0
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+        df[col] = df[col].replace([np.inf, -np.inf], np.nan).fillna(0).astype(int)
+
+    df['total_turnover'] = df['turnover'] + df['dispossessed']
+
     grouped = (
         df.groupby(['time_bin', 'teamName'])['total_turnover']
         .sum()
