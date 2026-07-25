@@ -1,0 +1,42 @@
+{
+  "version": "v1",
+  "base_feature_version": "xgot-v1-candidate",
+  "numeric_features": [
+    "xG",
+    "x",
+    "y",
+    "shot_distance",
+    "shot_angle",
+    "goal_mouth_y",
+    "goal_mouth_z",
+    "goal_mouth_y_centered",
+    "goal_mouth_z_normalized",
+    "goal_mouth_distance_to_center",
+    "goal_mouth_distance_to_nearest_post",
+    "goal_mouth_distance_to_crossbar",
+    "is_header",
+    "is_left_foot",
+    "is_right_foot",
+    "is_big_chance",
+    "is_penalty",
+    "is_open_play",
+    "is_counter",
+    "is_set_piece",
+    "game_state_goal_diff"
+  ],
+  "categorical_features": [
+    "league",
+    "season",
+    "h_a",
+    "situation_clean",
+    "body_part",
+    "shot_family",
+    "shot_zone",
+    "goal_mouth_zone",
+    "score_state"
+  ],
+  "best_model": "xgboost",
+  "training_input": "/Users/ishdeepchadha/Documents/PlayBack90/Streamlit/models/data/xgot_training_shots.parquet",
+  "include_penalties": true,
+  "zero_value_policy": "off-target and blocked shots are assigned xGOT = 0 outside the model"
+}

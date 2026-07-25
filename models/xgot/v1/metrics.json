@@ -1,0 +1,797 @@
+{
+  "extreme_examples": {
+    "high_xgot_non_goals": [
+      {
+        "_pred_xgot": 0.944599986076355,
+        "eventId": 219.0,
+        "goal_mouth_zone": "low_right",
+        "matchId": 1901249.0,
+        "minute": 30.0,
+        "playerName": "Mattia Zaccagni",
+        "second": 23.0,
+        "teamName": "Lazio",
+        "type": "SavedShot",
+        "xG": 0.7886,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.9413999915122986,
+        "eventId": 791.0,
+        "goal_mouth_zone": "low_right",
+        "matchId": 1914186.0,
+        "minute": 91.0,
+        "playerName": "Ivan Romero",
+        "second": 34.0,
+        "teamName": "Levante",
+        "type": "SavedShot",
+        "xG": 0.7886,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.9277999997138977,
+        "eventId": 295.0,
+        "goal_mouth_zone": "low_left",
+        "matchId": 1953857.0,
+        "minute": 37.0,
+        "playerName": "Tajon Buchanan",
+        "second": 10.0,
+        "teamName": NaN,
+        "type": "SavedShot",
+        "xG": 0.4887,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.9046000242233276,
+        "eventId": 800.0,
+        "goal_mouth_zone": "low_center",
+        "matchId": 1911567.0,
+        "minute": 19.0,
+        "playerName": "Matthis Abline",
+        "second": 32.0,
+        "teamName": "Nantes",
+        "type": "SavedShot",
+        "xG": 0.9111,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8999000191688538,
+        "eventId": 389.0,
+        "goal_mouth_zone": "mid_right",
+        "matchId": 1953857.0,
+        "minute": 47.0,
+        "playerName": "Cyle Larin",
+        "second": 20.0,
+        "teamName": NaN,
+        "type": "SavedShot",
+        "xG": 0.4235,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.890999972820282,
+        "eventId": 532.0,
+        "goal_mouth_zone": "low_right",
+        "matchId": 1914186.0,
+        "minute": 60.0,
+        "playerName": "Adrian de la Fuente",
+        "second": 55.0,
+        "teamName": "Levante",
+        "type": "SavedShot",
+        "xG": 0.7886,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8884000182151794,
+        "eventId": 705.0,
+        "goal_mouth_zone": "low_center",
+        "matchId": 1903432.0,
+        "minute": 74.0,
+        "playerName": "Erling Haaland",
+        "second": 42.0,
+        "teamName": "Man City",
+        "type": "SavedShot",
+        "xG": 0.8096,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8877000212669373,
+        "eventId": 700.0,
+        "goal_mouth_zone": "low_right",
+        "matchId": 1911535.0,
+        "minute": 60.0,
+        "playerName": "Gessime Yassine",
+        "second": 6.0,
+        "teamName": "Strasbourg",
+        "type": "SavedShot",
+        "xG": 0.584,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8845000267028809,
+        "eventId": 843.0,
+        "goal_mouth_zone": "low_left",
+        "matchId": 1901275.0,
+        "minute": 82.0,
+        "playerName": "Scott McTominay",
+        "second": 26.0,
+        "teamName": "Napoli",
+        "type": "SavedShot",
+        "xG": 0.7886,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8809000253677368,
+        "eventId": 199.0,
+        "goal_mouth_zone": "high_left",
+        "matchId": 1910854.0,
+        "minute": 18.0,
+        "playerName": "Romulo",
+        "second": 31.0,
+        "teamName": "RB Leipzig",
+        "type": "SavedShot",
+        "xG": 0.3803,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8794000148773193,
+        "eventId": 239.0,
+        "goal_mouth_zone": "low_left",
+        "matchId": 1953859.0,
+        "minute": 27.0,
+        "playerName": "Che Adams",
+        "second": 52.0,
+        "teamName": "Scotland",
+        "type": "SavedShot",
+        "xG": 0.6525,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.869700014591217,
+        "eventId": 89.0,
+        "goal_mouth_zone": "low_left",
+        "matchId": 1953880.0,
+        "minute": 10.0,
+        "playerName": "Mehdi Taremi",
+        "second": 23.0,
+        "teamName": NaN,
+        "type": "SavedShot",
+        "xG": 0.7886,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8672000169754028,
+        "eventId": 645.0,
+        "goal_mouth_zone": "low_right",
+        "matchId": 1911565.0,
+        "minute": 78.0,
+        "playerName": "Pavel Sulc",
+        "second": 15.0,
+        "teamName": "Lyon",
+        "type": "SavedShot",
+        "xG": 0.2902,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.866100013256073,
+        "eventId": 64.0,
+        "goal_mouth_zone": "mid_left",
+        "matchId": 1903389.0,
+        "minute": 3.0,
+        "playerName": "Rayan Cherki",
+        "second": 49.0,
+        "teamName": "Man City",
+        "type": "SavedShot",
+        "xG": 0.3255,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8654000163078308,
+        "eventId": 801.0,
+        "goal_mouth_zone": "high_right",
+        "matchId": 1910859.0,
+        "minute": 72.0,
+        "playerName": "Michael Olise",
+        "second": 34.0,
+        "teamName": "Bayern Munich",
+        "type": "SavedShot",
+        "xG": 0.0823,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8608999848365784,
+        "eventId": 584.0,
+        "goal_mouth_zone": "low_left",
+        "matchId": 1910899.0,
+        "minute": 62.0,
+        "playerName": "Paul Nebel",
+        "second": 44.0,
+        "teamName": "Mainz 05",
+        "type": "SavedShot",
+        "xG": 0.4059,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8567000031471252,
+        "eventId": 346.0,
+        "goal_mouth_zone": "high_right",
+        "matchId": 1910873.0,
+        "minute": 33.0,
+        "playerName": "Christoph Baumgartner",
+        "second": 48.0,
+        "teamName": "RB Leipzig",
+        "type": "SavedShot",
+        "xG": 0.3713,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8544999957084656,
+        "eventId": 43.0,
+        "goal_mouth_zone": "high_right",
+        "matchId": 1903388.0,
+        "minute": 2.0,
+        "playerName": "Kaoru Mitoma",
+        "second": 8.0,
+        "teamName": "Brighton",
+        "type": "SavedShot",
+        "xG": 0.1988,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8539999723434448,
+        "eventId": 200.0,
+        "goal_mouth_zone": "low_left",
+        "matchId": 1914174.0,
+        "minute": 17.0,
+        "playerName": "Victor Munoz",
+        "second": 31.0,
+        "teamName": "Osasuna",
+        "type": "SavedShot",
+        "xG": 0.2058,
+        "xgot_model_target": 0
+      },
+      {
+        "_pred_xgot": 0.8521000146865845,
+        "eventId": 241.0,
+        "goal_mouth_zone": "high_center",
+        "matchId": 1910900.0,
+        "minute": 22.0,
+        "playerName": "Adam Daghim",
+        "second": 59.0,
+        "teamName": "Wolfsburg",
+        "type": "SavedShot",
+        "xG": 0.4298,
+        "xgot_model_target": 0
+      }
+    ],
+    "low_xgot_goals": [
+      {
+        "_pred_xgot": 0.010700000450015068,
+        "eventId": 213.0,
+        "goal_mouth_zone": "mid_center",
+        "matchId": 1901404.0,
+        "minute": 28.0,
+        "playerName": "Federico Bonazzoli",
+        "second": 34.0,
+        "teamName": "Cremonese",
+        "type": "Goal",
+        "xG": 0.048,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.011500000022351742,
+        "eventId": 579.0,
+        "goal_mouth_zone": "mid_center",
+        "matchId": 1903392.0,
+        "minute": 70.0,
+        "playerName": "Daniel Munoz",
+        "second": 54.0,
+        "teamName": "Crystal Palace",
+        "type": "Goal",
+        "xG": 0.0358,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.01209999993443489,
+        "eventId": 469.0,
+        "goal_mouth_zone": "low_center",
+        "matchId": 1911540.0,
+        "minute": 48.0,
+        "playerName": "Giorgi Tsitaishvili",
+        "second": 50.0,
+        "teamName": "Metz",
+        "type": "Goal",
+        "xG": 0.127,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.01679999940097332,
+        "eventId": 619.0,
+        "goal_mouth_zone": "low_center",
+        "matchId": 1911570.0,
+        "minute": 61.0,
+        "playerName": "Warren Zaire-Emery",
+        "second": 39.0,
+        "teamName": "PSG",
+        "type": "Goal",
+        "xG": 0.0697,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.01720000058412552,
+        "eventId": 606.0,
+        "goal_mouth_zone": "mid_right",
+        "matchId": 1903455.0,
+        "minute": 68.0,
+        "playerName": "Valentin Castellanos",
+        "second": 28.0,
+        "teamName": "West Ham",
+        "type": "Goal",
+        "xG": 0.0354,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.018300000578165054,
+        "eventId": 775.0,
+        "goal_mouth_zone": "mid_center",
+        "matchId": 1911576.0,
+        "minute": 97.0,
+        "playerName": "Noah Cadiou",
+        "second": 58.0,
+        "teamName": "Lorient",
+        "type": "Goal",
+        "xG": 0.0871,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.019200000911951065,
+        "eventId": 376.0,
+        "goal_mouth_zone": "mid_center",
+        "matchId": 1901197.0,
+        "minute": 36.0,
+        "playerName": "Strahinja Pavlovic",
+        "second": 0.0,
+        "teamName": "AC Milan",
+        "type": "Goal",
+        "xG": 0.0391,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.019700000062584877,
+        "eventId": 1166.0,
+        "goal_mouth_zone": "low_left",
+        "matchId": 1911552.0,
+        "minute": 93.0,
+        "playerName": "Khvicha Kvaratskhelia",
+        "second": 11.0,
+        "teamName": "PSG",
+        "type": "Goal",
+        "xG": 0.0365,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.019999999552965164,
+        "eventId": 741.0,
+        "goal_mouth_zone": "mid_left",
+        "matchId": 1910884.0,
+        "minute": 63.0,
+        "playerName": "Romano Schmid",
+        "second": 1.0,
+        "teamName": "Werder Bremen",
+        "type": "Goal",
+        "xG": 0.1235,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.0210999995470047,
+        "eventId": 468.0,
+        "goal_mouth_zone": "low_left",
+        "matchId": 1903367.0,
+        "minute": 55.0,
+        "playerName": "Cole Palmer",
+        "second": 40.0,
+        "teamName": "Chelsea",
+        "type": "Goal",
+        "xG": 0.0305,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.024000000208616257,
+        "eventId": 1084.0,
+        "goal_mouth_zone": "low_right",
+        "matchId": 1910877.0,
+        "minute": 99.0,
+        "playerName": "Michael Olise",
+        "second": 46.0,
+        "teamName": "Bayern Munich",
+        "type": "Goal",
+        "xG": 0.031,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.024700000882148743,
+        "eventId": 381.0,
+        "goal_mouth_zone": "mid_right",
+        "matchId": 1903424.0,
+        "minute": 41.0,
+        "playerName": "Ross Barkley",
+        "second": 27.0,
+        "teamName": "Aston Villa",
+        "type": "Goal",
+        "xG": 0.031,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.02500000037252903,
+        "eventId": 732.0,
+        "goal_mouth_zone": "mid_center",
+        "matchId": 1903471.0,
+        "minute": 75.0,
+        "playerName": "Igor Thiago",
+        "second": 59.0,
+        "teamName": "Brentford",
+        "type": "Goal",
+        "xG": 0.2688,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.025499999523162842,
+        "eventId": 265.0,
+        "goal_mouth_zone": "mid_center",
+        "matchId": 1911561.0,
+        "minute": 39.0,
+        "playerName": "Ignatius Ganago",
+        "second": 46.0,
+        "teamName": "Nantes",
+        "type": "Goal",
+        "xG": 0.0906,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.028999999165534973,
+        "eventId": 479.0,
+        "goal_mouth_zone": "low_center",
+        "matchId": 1903448.0,
+        "minute": 51.0,
+        "playerName": "Adam Wharton",
+        "second": 49.0,
+        "teamName": "Crystal Palace",
+        "type": "Goal",
+        "xG": 0.0842,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.03009999915957451,
+        "eventId": 27.0,
+        "goal_mouth_zone": "mid_center",
+        "matchId": 1914248.0,
+        "minute": 2.0,
+        "playerName": "Aihen Munoz",
+        "second": 4.0,
+        "teamName": "Real Sociedad",
+        "type": "Goal",
+        "xG": 0.0568,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.03310000151395798,
+        "eventId": 56.0,
+        "goal_mouth_zone": "high_center",
+        "matchId": 1911546.0,
+        "minute": 5.0,
+        "playerName": "Cristian Casseres",
+        "second": 12.0,
+        "teamName": "Toulouse",
+        "type": "Goal",
+        "xG": 0.036,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.03319999948143959,
+        "eventId": 561.0,
+        "goal_mouth_zone": "low_center",
+        "matchId": 1914162.0,
+        "minute": 46.0,
+        "playerName": "Luka Sucic",
+        "second": 12.0,
+        "teamName": "Real Sociedad",
+        "type": "Goal",
+        "xG": 0.0964,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.03500000014901161,
+        "eventId": 186.0,
+        "goal_mouth_zone": "high_center",
+        "matchId": 1910858.0,
+        "minute": 11.0,
+        "playerName": "Patrik Schick",
+        "second": 37.0,
+        "teamName": "Bayer Leverkusen",
+        "type": "Goal",
+        "xG": 0.1045,
+        "xgot_model_target": 1
+      },
+      {
+        "_pred_xgot": 0.03830000013113022,
+        "eventId": 170.0,
+        "goal_mouth_zone": "low_right",
+        "matchId": 1910881.0,
+        "minute": 19.0,
+        "playerName": "Chris Fuhrich",
+        "second": 54.0,
+        "teamName": "VfB Stuttgart",
+        "type": "Goal",
+        "xG": 0.1018,
+        "xgot_model_target": 1
+      }
+    ]
+  },
+  "git_sha": "2b61ab99d1fc7de032e76f5148d605ce09d936a3",
+  "include_penalties": true,
+  "input": "/Users/ishdeepchadha/Documents/PlayBack90/Streamlit/models/data/xgot_training_shots.parquet",
+  "metrics": [
+    {
+      "actual_goals": 1324,
+      "average_precision": 0.729321,
+      "brier": 0.134199,
+      "calibration_error": 0.015703,
+      "goal_rate": 0.29874,
+      "goals": 1324,
+      "log_loss": 0.413841,
+      "model": "logistic",
+      "predicted_xgot_total": 1305.94,
+      "roc_auc": 0.862734,
+      "shots": 4432
+    },
+    {
+      "actual_goals": 1324,
+      "average_precision": 0.767998,
+      "brier": 0.124458,
+      "calibration_error": 0.009926,
+      "goal_rate": 0.29874,
+      "goals": 1324,
+      "log_loss": 0.388343,
+      "model": "xgboost",
+      "predicted_xgot_total": 1291.03,
+      "roc_auc": 0.880563,
+      "shots": 4432
+    },
+    {
+      "actual_goals": 1324,
+      "average_precision": 0.769699,
+      "brier": 0.1259,
+      "calibration_error": 0.031239,
+      "goal_rate": 0.29874,
+      "goals": 1324,
+      "log_loss": 0.397146,
+      "model": "xgboost_calibrated",
+      "predicted_xgot_total": 1309.212,
+      "roc_auc": 0.880834,
+      "shots": 4432
+    }
+  ],
+  "selected_model": "xgboost",
+  "shots_total": 77278,
+  "split": {
+    "calibration": 4176,
+    "calibration_matches": 467,
+    "test": 4432,
+    "test_matches": 468,
+    "train": 19282,
+    "train_matches": 2180
+  },
+  "test_group_report": {
+    "body_part": [
+      {
+        "goals": 715,
+        "shots": 2224,
+        "value": "RightFoot",
+        "xgot": 685.37
+      },
+      {
+        "goals": 398,
+        "shots": 1444,
+        "value": "LeftFoot",
+        "xgot": 400.051
+      },
+      {
+        "goals": 204,
+        "shots": 749,
+        "value": "Head",
+        "xgot": 198.282
+      },
+      {
+        "goals": 7,
+        "shots": 15,
+        "value": "OtherBodyPart",
+        "xgot": 7.328
+      }
+    ],
+    "goal_mouth_zone": [
+      {
+        "goals": 161,
+        "shots": 841,
+        "value": "low_center",
+        "xgot": 174.659
+      },
+      {
+        "goals": 322,
+        "shots": 764,
+        "value": "low_right",
+        "xgot": 305.313
+      },
+      {
+        "goals": 258,
+        "shots": 613,
+        "value": "low_left",
+        "xgot": 243.623
+      },
+      {
+        "goals": 84,
+        "shots": 613,
+        "value": "mid_center",
+        "xgot": 83.474
+      },
+      {
+        "goals": 157,
+        "shots": 432,
+        "value": "mid_right",
+        "xgot": 153.751
+      },
+      {
+        "goals": 167,
+        "shots": 430,
+        "value": "mid_left",
+        "xgot": 154.201
+      },
+      {
+        "goals": 0,
+        "shots": 254,
+        "value": "post",
+        "xgot": 1.093
+      },
+      {
+        "goals": 53,
+        "shots": 230,
+        "value": "high_center",
+        "xgot": 50.04
+      },
+      {
+        "goals": 62,
+        "shots": 130,
+        "value": "high_left",
+        "xgot": 59.74
+      },
+      {
+        "goals": 60,
+        "shots": 125,
+        "value": "high_right",
+        "xgot": 65.136
+      }
+    ],
+    "league": [
+      {
+        "goals": 271,
+        "shots": 916,
+        "value": "laliga",
+        "xgot": 255.006
+      },
+      {
+        "goals": 254,
+        "shots": 815,
+        "value": "bundesliga",
+        "xgot": 252.964
+      },
+      {
+        "goals": 219,
+        "shots": 773,
+        "value": "premier-league",
+        "xgot": 226.799
+      },
+      {
+        "goals": 213,
+        "shots": 721,
+        "value": "ligue-1",
+        "xgot": 211.382
+      },
+      {
+        "goals": 203,
+        "shots": 626,
+        "value": "fifa-world-cup",
+        "xgot": 195.05
+      },
+      {
+        "goals": 164,
+        "shots": 581,
+        "value": "serie-a",
+        "xgot": 149.829
+      }
+    ],
+    "season": [
+      {
+        "goals": 1121,
+        "shots": 3806,
+        "value": "2025/2026",
+        "xgot": 1095.98
+      },
+      {
+        "goals": 203,
+        "shots": 626,
+        "value": "2026",
+        "xgot": 195.05
+      }
+    ],
+    "shot_family": [
+      {
+        "goals": 708,
+        "shots": 2516,
+        "value": "open_play_foot",
+        "xgot": 683.317
+      },
+      {
+        "goals": 204,
+        "shots": 749,
+        "value": "header",
+        "xgot": 198.282
+      },
+      {
+        "goals": 166,
+        "shots": 503,
+        "value": "other_set_piece",
+        "xgot": 157.841
+      },
+      {
+        "goals": 144,
+        "shots": 458,
+        "value": "other",
+        "xgot": 147.353
+      },
+      {
+        "goals": 87,
+        "shots": 112,
+        "value": "penalty",
+        "xgot": 86.852
+      },
+      {
+        "goals": 15,
+        "shots": 94,
+        "value": "direct_free_kick",
+        "xgot": 17.385
+      }
+    ],
+    "situation_clean": [
+      {
+        "goals": 797,
+        "shots": 2814,
+        "value": "OpenPlay",
+        "xgot": 772.039
+      },
+      {
+        "goals": 283,
+        "shots": 721,
+        "value": "unknown",
+        "xgot": 274.629
+      },
+      {
+        "goals": 178,
+        "shots": 577,
+        "value": "FromCorner",
+        "xgot": 174.604
+      },
+      {
+        "goals": 51,
+        "shots": 226,
+        "value": "SetPiece",
+        "xgot": 52.373
+      },
+      {
+        "goals": 15,
+        "shots": 94,
+        "value": "DirectFreekick",
+        "xgot": 17.385
+      }
+    ]
+  },
+  "training_shots": 27890,
+  "version": "v1",
+  "zero_value_shots": 49388
+}

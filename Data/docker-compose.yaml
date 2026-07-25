@@ -1,0 +1,14 @@
+services:
+  playback90:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: playback90_runner
+    working_dir: /playback90/Data
+    env_file:
+      - ./.env
+    volumes:
+      - ./:/playback90/Data
+    shm_size: 1g
+    restart: "no"
+    command: ["python", "run_all.py"]

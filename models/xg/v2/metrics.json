@@ -1,0 +1,201 @@
+{
+  "git_sha": "c4e58226a4fba1dd07094812e6b15b2d67b35625",
+  "input": "/Users/ishdeepchadha/Documents/PlayBack90/Streamlit/models/data/xg_training_shots.parquet",
+  "metrics": [
+    {
+      "actual_goals": 1237,
+      "average_precision": 0.43928,
+      "brier": 0.158636,
+      "calibration_error": 0.25824,
+      "goal_rate": 0.10464,
+      "goals": 1237,
+      "log_loss": 0.498546,
+      "model": "logistic",
+      "predicted_xg_total": 4289.916,
+      "roc_auc": 0.82767,
+      "shots": 11822
+    },
+    {
+      "actual_goals": 1237,
+      "average_precision": 0.485252,
+      "brier": 0.070471,
+      "calibration_error": 0.005146,
+      "goal_rate": 0.10464,
+      "goals": 1237,
+      "log_loss": 0.246263,
+      "model": "xgboost",
+      "predicted_xg_total": 1198.733,
+      "roc_auc": 0.84398,
+      "shots": 11822
+    },
+    {
+      "actual_goals": 1237,
+      "average_precision": 0.486505,
+      "brier": 0.07121,
+      "calibration_error": 0.013259,
+      "goal_rate": 0.10464,
+      "goals": 1237,
+      "log_loss": 0.252472,
+      "model": "xgboost_calibrated",
+      "predicted_xg_total": 1219.089,
+      "roc_auc": 0.843555,
+      "shots": 11822
+    }
+  ],
+  "selected_model": "xgboost",
+  "shots_total": 77278,
+  "split": {
+    "calibration": 11630,
+    "calibration_matches": 467,
+    "test": 11822,
+    "test_matches": 468,
+    "train": 52810,
+    "train_matches": 2180
+  },
+  "test_group_report": {
+    "body_part": [
+      {
+        "goals": 655,
+        "shots": 5905,
+        "value": "RightFoot",
+        "xg": 602.322
+      },
+      {
+        "goals": 371,
+        "shots": 3785,
+        "value": "LeftFoot",
+        "xg": 374.64
+      },
+      {
+        "goals": 204,
+        "shots": 2098,
+        "value": "Head",
+        "xg": 214.834
+      },
+      {
+        "goals": 7,
+        "shots": 34,
+        "value": "OtherBodyPart",
+        "xg": 6.937
+      }
+    ],
+    "league": [
+      {
+        "goals": 251,
+        "shots": 2454,
+        "value": "laliga",
+        "xg": 232.085
+      },
+      {
+        "goals": 205,
+        "shots": 2072,
+        "value": "premier-league",
+        "xg": 214.154
+      },
+      {
+        "goals": 236,
+        "shots": 1979,
+        "value": "bundesliga",
+        "xg": 228.936
+      },
+      {
+        "goals": 195,
+        "shots": 1880,
+        "value": "ligue-1",
+        "xg": 190.008
+      },
+      {
+        "goals": 195,
+        "shots": 1760,
+        "value": "fifa-world-cup",
+        "xg": 192.098
+      },
+      {
+        "goals": 155,
+        "shots": 1677,
+        "value": "serie-a",
+        "xg": 141.452
+      }
+    ],
+    "season": [
+      {
+        "goals": 1042,
+        "shots": 10062,
+        "value": "2025/2026",
+        "xg": 1006.635
+      },
+      {
+        "goals": 195,
+        "shots": 1760,
+        "value": "2026",
+        "xg": 192.098
+      }
+    ],
+    "shot_family": [
+      {
+        "goals": 708,
+        "shots": 6728,
+        "value": "open_play_foot",
+        "xg": 677.712
+      },
+      {
+        "goals": 204,
+        "shots": 2098,
+        "value": "header",
+        "xg": 214.834
+      },
+      {
+        "goals": 166,
+        "shots": 1775,
+        "value": "other_set_piece",
+        "xg": 151.46
+      },
+      {
+        "goals": 144,
+        "shots": 901,
+        "value": "other",
+        "xg": 136.547
+      },
+      {
+        "goals": 15,
+        "shots": 320,
+        "value": "direct_free_kick",
+        "xg": 18.18
+      }
+    ],
+    "situation_clean": [
+      {
+        "goals": 797,
+        "shots": 7481,
+        "value": "OpenPlay",
+        "xg": 771.285
+      },
+      {
+        "goals": 178,
+        "shots": 1936,
+        "value": "FromCorner",
+        "xg": 176.702
+      },
+      {
+        "goals": 196,
+        "shots": 1379,
+        "value": "unknown",
+        "xg": 176.916
+      },
+      {
+        "goals": 51,
+        "shots": 706,
+        "value": "SetPiece",
+        "xg": 55.649
+      },
+      {
+        "goals": 15,
+        "shots": 320,
+        "value": "DirectFreekick",
+        "xg": 18.18
+      }
+    ]
+  },
+  "training_shots_non_penalty": 76262,
+  "version": "v2"
+}
