@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     standings_cache_ttl_seconds: int = 600
     standings_stale_ttl_seconds: int = 86_400
 
+    auth_required: bool = False
+    clerk_jwks_url: str | None = None
+    clerk_issuer: str | None = None
+    clerk_audience: str | None = None
+    auth_allowed_emails: str | None = None
+    auth_allowed_user_ids: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=(ROOT_DIR / ".env", ROOT_DIR / "Data" / ".env"),
         env_file_encoding="utf-8",

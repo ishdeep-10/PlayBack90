@@ -10,6 +10,7 @@ import {
   type StandingRow,
   type StandingsResponse,
 } from "../../lib/api";
+import { getServerAuthToken } from "../../lib/serverAuth";
 
 
 type PageProps = {
@@ -53,8 +54,9 @@ export default async function SeasonStatsPage({ searchParams }: PageProps) {
     sortBy = "xG",
     minMins = "0",
   } = await searchParams;
+  const authToken = await getServerAuthToken();
 
-  const leagues = await getLeagues();
+  const leagues = await getLeagues(authToken);
 
   // Build base href preserving league+season
   function base(overrides: Record<string, string> = {}) {
@@ -92,7 +94,7 @@ export default async function SeasonStatsPage({ searchParams }: PageProps) {
   }
 
   // Fetch seasons for selected league
-  const seasonData = await getSeasons(league);
+  const seasonData = await getSeasons(league, authToken);
   const seasons = seasonData.seasons;
   const activeSeason = season ?? seasons[0];
 
@@ -114,7 +116,7 @@ export default async function SeasonStatsPage({ searchParams }: PageProps) {
 
   try {
     if (tab === "league-table") {
-      const tableResult = await getLeagueTable(league, activeSeason);
+      const tableResult = await getLeagueTable(league, activeSeason, authToken);
       standingsMeta = tableResult;
       tableRows = tableResult.rows ?? [];
       teamList = tableRows.map((r) => String(r.team));
@@ -123,10 +125,10 @@ export default async function SeasonStatsPage({ searchParams }: PageProps) {
       teamList = (tableResult.rows ?? []).map((r) => String(r.team));
       const selectedTeam = team ?? teamList[0];
       if (selectedTeam) {
-        formData = await getTeamForm(league, activeSeason, selectedTeam, Number(windowParam));
+        formData = await getTeamForm(league, activeSeason, selectedTeam, Number(windowParam), authToken);
       }
     } else if (tab === "player-leaderboard") {
-      const result = await getPlayerLeaderboard(league, activeSeason, sortBy, Number(minMins));
+      const result = await getPlayerLeaderboard(league, activeSeason, sortBy, Number(minMins), authToken);
       leaderboardRows = result.rows ?? [];
     } else if (tab === "overview-chart") {
       // Just need team list for the team selector

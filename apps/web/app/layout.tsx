@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import { AuthControls } from "../components/AuthControls";
+import { AuthProvider } from "../components/AuthProvider";
 import { ThemeToggle } from "../components/ThemeToggle";
 
 
@@ -25,6 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body suppressHydrationWarning>
+        <AuthProvider>
         <header className="site-nav">
           <div className="nav-inner">
             <Link href="/" className="nav-brand">
@@ -55,12 +58,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </span>
               <Link href="/live-scrape" className="ghost-button nav-link">Import Match</Link>
               <ThemeToggle />
+              <AuthControls />
             </nav>
           </div>
         </header>
         <div className="container" style={{ paddingTop: 24, paddingBottom: 40 }}>
           {children}
         </div>
+        </AuthProvider>
       </body>
     </html>
   );

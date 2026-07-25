@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { getLeagues, getSeasons, getLeagueTable, getOppositionReport, getOppositionAssetUrl } from "../../lib/api";
+import { getServerAuthToken } from "../../lib/serverAuth";
 
 
 type PageProps = {
@@ -13,8 +14,9 @@ type PageProps = {
 
 export default async function OppositionAnalysisPage({ searchParams }: PageProps) {
   const { league, season, team } = await searchParams;
+  const authToken = await getServerAuthToken();
 
-  const leagues = await getLeagues();
+  const leagues = await getLeagues(authToken);
 
   // If no league selected, show league picker
   if (!league) {
@@ -36,7 +38,7 @@ export default async function OppositionAnalysisPage({ searchParams }: PageProps
     );
   }
 
-  const seasonData = await getSeasons(league);
+  const seasonData = await getSeasons(league, authToken);
   const seasons = seasonData.seasons;
   const activeSeason = season ?? seasons[0];
 
@@ -52,7 +54,7 @@ export default async function OppositionAnalysisPage({ searchParams }: PageProps
   let teamList: string[] = [];
   let teamListError: string | null = null;
   try {
-    const tableResult = await getLeagueTable(league, activeSeason);
+    const tableResult = await getLeagueTable(league, activeSeason, authToken);
     teamList = (tableResult.rows ?? []).map((r) => String(r.team));
   } catch (error) {
     teamListError = error instanceof Error ? error.message : "Unable to load teams for this season.";
@@ -82,7 +84,7 @@ export default async function OppositionAnalysisPage({ searchParams }: PageProps
 
   if (selectedTeam) {
     try {
-      report = await getOppositionReport(league, activeSeason, selectedTeam);
+      report = await getOppositionReport(league, activeSeason, selectedTeam, authToken);
     } catch (error) {
       reportError = error instanceof Error ? error.message : "Unable to load the scouting report right now.";
     }

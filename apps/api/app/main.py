@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from starlette.middleware.gzip import GZipMiddleware
 
+from app.auth import require_auth_middleware
 from app.config import settings
 from app.domain import LEAGUE_DISPLAY_MAP
 from app.schemas import (
@@ -70,6 +71,7 @@ from app.services import opposition as opp_svc
 
 
 app = FastAPI(title=settings.app_name)
+app.middleware("http")(require_auth_middleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_url, "http://localhost:3000"],

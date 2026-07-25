@@ -11709,3 +11709,17 @@ html:not(.dark) .coverage-logo-chip.is-hot {
     padding: 5px;
   }
 }
+
+/* Auth */
+.nav-auth-controls {
+  display: inline-flex;
+  align-items: center;
+  min-width: 40px;
+}
+
+.auth-page {
+  min-height: calc(100vh - 160px);
+  display: grid;
+  place-items: center;
+  padding: 48px 16px;
+}

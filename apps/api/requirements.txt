@@ -16,6 +16,7 @@ unidecode
 joblib
 pytest==8.4.1
 httpx==0.28.1
+PyJWT[crypto]==2.10.1
 anthropic>=0.40
 beautifulsoup4
 lxml

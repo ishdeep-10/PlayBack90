@@ -8,6 +8,7 @@ import {
   getAnalysisView,
   getTransientAnalysis
 } from "../../../lib/api";
+import { getServerAuthToken } from "../../../lib/serverAuth";
 import { AiInsightCard } from "../../../components/AiInsightCard";
 import { AnalysisRouteProgress } from "../../../components/AnalysisRouteProgress";
 import { GlossaryPopover } from "../../../components/GlossaryPopover";
@@ -177,13 +178,14 @@ function teamLogoUrl(league: string | null | undefined, teamName: string) {
 export async function generateMetadata({ params, searchParams }: PageProps) {
   const { matchId } = await params;
   const { filePath, source = "r2", jobId } = await searchParams;
+  const authToken = await getServerAuthToken();
   const fallback = { title: "Match Analysis | PlayBack90" };
   if (source === "r2" && !filePath) return fallback;
   try {
     const analysis =
       source !== "r2" && jobId
-        ? await getTransientAnalysis(matchId, source === "import" ? "import" : "live", jobId)
-        : await getAnalysis(matchId, filePath!);
+        ? await getTransientAnalysis(matchId, source === "import" ? "import" : "live", jobId, authToken)
+        : await getAnalysis(matchId, filePath!, authToken);
     const home = analysis.context.home_team ?? "";
     const away = analysis.context.away_team ?? "";
     const score = analysis.context.score?.replace(/--/g, "-") ?? "vs";
@@ -220,6 +222,7 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
     timeRange = "all",
     third = "all",
   } = await searchParams;
+  const authToken = await getServerAuthToken();
 
   if (source === "r2" && !filePath) {
     return (
@@ -247,8 +250,8 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
   try {
     analysis =
       source !== "r2" && jobId
-        ? await getTransientAnalysis(matchId, source === "import" ? "import" : "live", jobId)
-        : await getAnalysis(matchId, filePath!);
+        ? await getTransientAnalysis(matchId, source === "import" ? "import" : "live", jobId, authToken)
+        : await getAnalysis(matchId, filePath!, authToken);
   } catch {
     return (
       <div className="placeholder card" style={{ marginTop: 24 }}>
@@ -375,6 +378,7 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
             awayTeam={awayTeam}
             analysis={analysis}
             matchTeamColors={matchTeamColors}
+            authToken={authToken}
           />
         </Suspense>
       </div>
@@ -415,6 +419,7 @@ type AnalysisContentProps = {
   awayTeam: string;
   analysis: AnalysisData;
   matchTeamColors: Record<string, string>;
+  authToken?: string | null;
 };
 
 async function AnalysisContent({
@@ -436,6 +441,7 @@ async function AnalysisContent({
   awayTeam,
   analysis,
   matchTeamColors,
+  authToken,
 }: AnalysisContentProps) {
   const commonBody =
     source !== "r2"
@@ -456,14 +462,14 @@ async function AnalysisContent({
   const seasonBaselineBody = { match_id: matchId, source: "r2", file_path: filePath, filters: {} };
   const wantsSeasonBaseline = source === "r2" && ["match-dynamics", "in-possession", "out-of-possession", "duels-transitions", "player-analysis"].includes(view);
   const [shotsScaView, dynamicsView, passNetworkView, inPossessionMetricsView, defensiveActionsView, duelsTransitionsView, playerAnalysisView, seasonBaselineView] = await Promise.all([
-    view === "shots" ? safeView(getAnalysisView("shots-sca", commonBody)) : Promise.resolve(null),
-    view === "match-dynamics" ? safeView(getAnalysisView("match-dynamics", commonBody)) : Promise.resolve(null),
-    view === "in-possession" ? safeView(getAnalysisView("pass-network", commonBody)) : Promise.resolve(null),
-    view === "in-possession" ? safeView(getAnalysisView("in-possession-player-metrics", inPossessionMetricsBody)) : Promise.resolve(null),
-    view === "out-of-possession" ? safeView(getAnalysisView("defensive-actions", commonBody)) : Promise.resolve(null),
-    view === "duels-transitions" ? safeView(getAnalysisView("duels-transitions", duelsTransitionsBody)) : Promise.resolve(null),
-    view === "player-analysis" ? safeView(getAnalysisView("player-analysis", commonBody)) : Promise.resolve(null),
-    wantsSeasonBaseline ? safeView(getAnalysisView("season-baseline", seasonBaselineBody)) : Promise.resolve(null),
+    view === "shots" ? safeView(getAnalysisView("shots-sca", commonBody, authToken)) : Promise.resolve(null),
+    view === "match-dynamics" ? safeView(getAnalysisView("match-dynamics", commonBody, authToken)) : Promise.resolve(null),
+    view === "in-possession" ? safeView(getAnalysisView("pass-network", commonBody, authToken)) : Promise.resolve(null),
+    view === "in-possession" ? safeView(getAnalysisView("in-possession-player-metrics", inPossessionMetricsBody, authToken)) : Promise.resolve(null),
+    view === "out-of-possession" ? safeView(getAnalysisView("defensive-actions", commonBody, authToken)) : Promise.resolve(null),
+    view === "duels-transitions" ? safeView(getAnalysisView("duels-transitions", duelsTransitionsBody, authToken)) : Promise.resolve(null),
+    view === "player-analysis" ? safeView(getAnalysisView("player-analysis", commonBody, authToken)) : Promise.resolve(null),
+    wantsSeasonBaseline ? safeView(getAnalysisView("season-baseline", seasonBaselineBody, authToken)) : Promise.resolve(null),
   ]);
 
 

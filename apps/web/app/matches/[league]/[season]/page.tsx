@@ -5,6 +5,7 @@ import { MatchdayExplorer } from "../../../../components/MatchdayExplorer";
 import { FixturesLeagueTable } from "../../../../components/FixturesLeagueTable";
 import { RoundNavigator } from "../../../../components/RoundNavigator";
 import { getFixtureRound, getFixtureRounds, getLeagueTable, getSeasons } from "../../../../lib/api";
+import { getServerAuthToken } from "../../../../lib/serverAuth";
 
 type PageProps = {
   params: Promise<{ league: string; season: string }>;
@@ -83,10 +84,11 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
   const { league, season } = await params;
   const { round: requestedRoundId } = await searchParams;
   const leagueName = formatLeagueName(league);
+  const authToken = await getServerAuthToken();
 
   let seasonData: Awaited<ReturnType<typeof getSeasons>>;
   try {
-    seasonData = await getSeasons(league);
+    seasonData = await getSeasons(league, authToken);
   } catch {
     return (
       <ErrorHero
@@ -113,7 +115,7 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
 
   let roundData: Awaited<ReturnType<typeof getFixtureRounds>>;
   try {
-    roundData = await getFixtureRounds(league, season);
+    roundData = await getFixtureRounds(league, season, authToken);
   } catch {
     return (
       <ErrorHero
@@ -139,8 +141,8 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
     : roundData.latest_round_id;
 
   const [selectedRoundResult, standingsResult] = await Promise.allSettled([
-    getFixtureRound(league, season, selectedRoundId),
-    getLeagueTable(league, season),
+    getFixtureRound(league, season, selectedRoundId, authToken),
+    getLeagueTable(league, season, authToken),
   ]);
 
   if (selectedRoundResult.status === "rejected") {
