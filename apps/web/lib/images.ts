@@ -72,6 +72,13 @@ export const CARD_ICON_RED = svgDataUrl(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="7" y="3" width="11" height="17" rx="2" fill="#ef4444" stroke="#0f172a" stroke-width="1" transform="rotate(8 12.5 11.5)"/></svg>'
 );
 
+export const CARD_ICON_SECOND_YELLOW = svgDataUrl(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 24">'
+  + '<rect x="4.5" y="4" width="10" height="16" rx="1.8" fill="#facc15" stroke="#0f172a" stroke-width="1" transform="rotate(-8 9.5 12)"/>'
+  + '<rect x="13.5" y="3" width="10" height="16" rx="1.8" fill="#ef4444" stroke="#0f172a" stroke-width="1" transform="rotate(8 18.5 11)"/>'
+  + "</svg>"
+);
+
 export const SUB_ICON = svgDataUrl(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
   + '<path d="M8 20V7M8 7L4 11M8 7l4 4" fill="none" stroke="#4ade80" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'

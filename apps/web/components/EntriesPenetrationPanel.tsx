@@ -46,7 +46,8 @@ type EntriesPayload = {
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   team: string;
   teams: string[];
@@ -176,7 +177,7 @@ function EntriesPitch({ entries, team, teamColor, label }: { entries: EntryRow[]
   );
 }
 
-export function EntriesPenetrationPanel({ matchId, source, filePath, jobId, team, teams, teamColor }: Props) {
+export function EntriesPenetrationPanel({ matchId, source, league, season, jobId, team, teams, teamColor }: Props) {
   const [payload, setPayload] = useState<EntriesPayload | null>(null);
   const [opponentPayload, setOpponentPayload] = useState<EntriesPayload | null>(null);
   const [scope, setScope] = useState<Scope>("final_third");
@@ -191,7 +192,7 @@ export function EntriesPenetrationPanel({ matchId, source, filePath, jobId, team
     if (source !== "r2") filters.job_id = jobId;
     return source !== "r2"
       ? { match_id: matchId, source, filters }
-      : { match_id: matchId, source: "r2", file_path: filePath, filters };
+      : { match_id: matchId, source: "r2", league, season, filters };
   };
 
   const loadView = (range: string) => {
@@ -220,7 +221,7 @@ export function EntriesPenetrationPanel({ matchId, source, filePath, jobId, team
     const cancel = loadView("all");
     return cancel;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchId, source, filePath, jobId, team, opponent]);
+  }, [matchId, source, league, season, jobId, team, opponent]);
 
   const scopeRows = useMemo(() => payload?.[scope] ?? [], [payload, scope]);
   const filteredRows = useMemo(

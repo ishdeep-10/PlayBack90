@@ -1,0 +1,268 @@
+{
+  "premier-league": {
+    "2026_2027": {
+      "AFC Bournemouth": {
+        "name": "Marco Rose",
+        "previous_name": "Andoni Iraola",
+        "contract_start": "2026-07-01",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Bournemouth": {
+        "name": "Marco Rose",
+        "previous_name": "Andoni Iraola",
+        "contract_start": "2026-07-01",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Chelsea": {
+        "name": "Xabi Alonso",
+        "previous_name": "Enzo Maresca",
+        "contract_start": "2026-07-01",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Chelsea FC": {
+        "name": "Xabi Alonso",
+        "previous_name": "Enzo Maresca",
+        "contract_start": "2026-07-01",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Crystal Palace": {
+        "name": "Pierre Sage",
+        "previous_name": "Oliver Glasner",
+        "contract_start": "2026-06-15",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Crystal Palace FC": {
+        "name": "Pierre Sage",
+        "previous_name": "Oliver Glasner",
+        "contract_start": "2026-06-15",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Fulham": {
+        "name": "Alvaro Arbeloa",
+        "previous_name": "Marco Silva",
+        "contract_start": "2026-07-07",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Fulham FC": {
+        "name": "Alvaro Arbeloa",
+        "previous_name": "Marco Silva",
+        "contract_start": "2026-07-07",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Ipswich Town": {
+        "name": "Gary O'Neil",
+        "previous_name": "Kieran McKenna",
+        "contract_start": "2026-06-23",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Ipswich Town FC": {
+        "name": "Gary O'Neil",
+        "previous_name": "Kieran McKenna",
+        "contract_start": "2026-06-23",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Liverpool": {
+        "name": "Andoni Iraola",
+        "previous_name": "Arne Slot",
+        "contract_start": "2026-06-04",
+        "source_url": "https://www.liverpoolfc.com/news/liverpool-fc-appoint-andoni-iraola-new-head-coach"
+      },
+      "Liverpool FC": {
+        "name": "Andoni Iraola",
+        "previous_name": "Arne Slot",
+        "contract_start": "2026-06-04",
+        "source_url": "https://www.liverpoolfc.com/news/liverpool-fc-appoint-andoni-iraola-new-head-coach"
+      },
+      "Man City": {
+        "name": "Enzo Maresca",
+        "previous_name": "Pep Guardiola",
+        "contract_start": "2026-06-29",
+        "source_url": "https://www.premierleague.com/en/news/4032682/enzo-maresca"
+      },
+      "Manchester City FC": {
+        "name": "Enzo Maresca",
+        "previous_name": "Pep Guardiola",
+        "contract_start": "2026-06-29",
+        "source_url": "https://www.premierleague.com/en/news/4032682/enzo-maresca"
+      },
+      "Man Utd": {
+        "name": "Michael Carrick",
+        "previous_name": "Ruben Amorim",
+        "contract_start": "2026-01-13",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Manchester United FC": {
+        "name": "Michael Carrick",
+        "previous_name": "Ruben Amorim",
+        "contract_start": "2026-01-13",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Nottingham Forest": {
+        "name": "Oliver Glasner",
+        "contract_start": "2026-07-06",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Nottingham Forest FC": {
+        "name": "Oliver Glasner",
+        "contract_start": "2026-07-06",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Nott'm Forest": {
+        "name": "Oliver Glasner",
+        "contract_start": "2026-07-06",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Tottenham": {
+        "name": "Roberto De Zerbi",
+        "contract_start": "2026-03-31",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      },
+      "Tottenham Hotspur FC": {
+        "name": "Roberto De Zerbi",
+        "contract_start": "2026-03-31",
+        "source_url": "https://www.premierleague.com/en/news/4679012/meet-the-202627-premier-league-clubs-managers"
+      }
+    },
+    "2025_2026": {
+      "Liverpool": {
+        "name": "Arne Slot",
+        "contract_start": "2024-06-01",
+        "source_url": "https://www.liverpoolfc.com/news/liverpool-fc-statement-13"
+      },
+      "Liverpool FC": {
+        "name": "Arne Slot",
+        "contract_start": "2024-06-01",
+        "source_url": "https://www.liverpoolfc.com/news/liverpool-fc-statement-13"
+      },
+      "Man City": {
+        "name": "Pep Guardiola",
+        "contract_start": "2016-07-01",
+        "source_url": "https://www.mancity.com/news/mens/pep-guardiola-official-announcement-63915039"
+      },
+      "Manchester City FC": {
+        "name": "Pep Guardiola",
+        "contract_start": "2016-07-01",
+        "source_url": "https://www.mancity.com/news/mens/pep-guardiola-official-announcement-63915039"
+      }
+    }
+  },
+  "laliga": {
+    "2026_2027": {
+      "Deportivo Alavés": { "name": "Quique Sánchez Flores", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Athletic Club": { "name": "Edin Terzic", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Club Atlético de Madrid": { "name": "Diego Pablo Simeone", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "FC Barcelona": { "name": "Hansi Flick", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Real Betis Balompié": { "name": "Manuel Pellegrini", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "RC Celta de Vigo": { "name": "Claudio Giráldez", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "RC Deportivo La Coruña": { "name": "Antonio Hidalgo", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Elche CF": { "name": "Martín Anselmi", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "RCD Espanyol de Barcelona": { "name": "Manolo González", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Getafe CF": { "name": "José Bordalás", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Levante UD": { "name": "Luís Castro", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Málaga CF": { "name": "Juanfran Funes", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "CA Osasuna": { "name": "Luis Miguel Ramis", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Real Racing Club de Santander": { "name": "José Alberto López", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Rayo Vallecano de Madrid": { "name": "Beñat San José", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Real Madrid CF": {
+        "name": "José Mourinho",
+        "previous_name": "Xabi Alonso",
+        "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/"
+      },
+      "Real Sociedad de Fútbol": { "name": "Rino Matarazzo", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Sevilla FC": { "name": "Luis García Plaza", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Valencia CF": { "name": "Carlos Corberán", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" },
+      "Villarreal CF": { "name": "Iñigo Pérez", "source_url": "https://as.com/futbol/primera/mercado-de-fichajes-de-laliga-ea-sports-202627-altas-y-bajas-f202605-n/" }
+    }
+  },
+  "bundesliga": {
+    "2026_2027": {
+      "RB Leipzig": {
+        "name": "Martín Demichelis",
+        "previous_name": "Ole Werner",
+        "contract_start": "2026-06-22",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "Bayer 04 Leverkusen": {
+        "name": "Carles Martínez",
+        "previous_name": "Kasper Hjulmand",
+        "contract_start": "2026-07-01",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "Eintracht Frankfurt": {
+        "name": "Adi Hütter",
+        "previous_name": "Albert Riera",
+        "contract_start": "2026-07-01",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "1. FC Union Berlin": {
+        "name": "Mauro Lustrinelli",
+        "previous_name": "Marie-Louise Eta",
+        "contract_start": "2026-07-01",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "1. FC Köln": {
+        "name": "René Wagner",
+        "previous_name": "Lukas Kwasniok",
+        "contract_start": "2026-03-23",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "SV Werder Bremen": {
+        "name": "Daniel Thioune",
+        "previous_name": "Horst Steffen",
+        "contract_start": "2026-02-04",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "FC Augsburg": {
+        "name": "Manuel Baum",
+        "previous_name": "Sandro Wagner",
+        "contract_start": "2025-12-01",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "1. FSV Mainz 05": {
+        "name": "Urs Fischer",
+        "contract_start": "2025-12-07",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "Borussia Mönchengladbach": {
+        "name": "Eugen Polanski",
+        "contract_start": "2025-11-18",
+        "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966"
+      },
+      "Hamburger SV": { "name": "Merlin Polzin", "contract_start": "2024-11-25", "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966" },
+      "FC Schalke 04": { "name": "Miron Muslić", "contract_start": "2025-05-31", "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966" },
+      "SV 07 Elversberg": { "name": "Vincent Wagner", "contract_start": "2025-07-01", "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966" },
+      "SC Paderborn 07": { "name": "Ralf Kettemann", "contract_start": "2025-07-01", "source_url": "https://www.bundesliga.com/en/bundesliga/news/meet-the-26-27-head-coaches-kompany-kovac-schuster-muslic-37966" }
+    }
+  },
+  "serie-a": {
+    "2026_2027": {
+      "Atalanta BC": { "name": "Maurizio Sarri", "previous_name": "Raffaele Palladino", "contract_start": "2026-06-15", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "Bologna FC 1909": { "name": "Domenico Tedesco", "previous_name": "Vincenzo Italiano", "contract_start": "2026-06-10", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "AC Milan": { "name": "Rúben Amorim", "previous_name": "Massimiliano Allegri", "contract_start": "2026-07-01", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "SS Lazio": { "name": "Gennaro Gattuso", "previous_name": "Maurizio Sarri", "contract_start": "2026-06-23", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "AC Monza": { "name": "Ivan Jurić", "previous_name": "Paolo Bianco", "contract_start": "2026-07-01", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "ACF Fiorentina": { "name": "Fabio Grosso", "contract_start": "2026-06-08", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "SSC Napoli": { "name": "Massimiliano Allegri", "previous_name": "Antonio Conte", "contract_start": "2026-07-01", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "US Sassuolo Calcio": { "name": "Alberto Aquilani", "previous_name": "Fabio Grosso", "contract_start": "2026-06-12", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "Torino FC": { "name": "Ignazio Abate", "contract_start": "2026-07-01", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "Frosinone Calcio": { "name": "Massimiliano Alvini", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" },
+      "Venezia FC": { "name": "Giovanni Stroppa", "source_url": "https://www.legaseriea.it/serie-a/news/gli-allenatori-della-serie-a-enilive-2026-27" }
+    }
+  },
+  "ligue-1": {
+    "2026_2027": {
+      "FC Lorient": { "name": "Alexandre Dujeux", "previous_name": "Olivier Pantaloni", "contract_start": "2026-06-15", "source_url": "https://ligue1.com/en/articles/l1_article_5315-alexandre-dujeux-appointment-a-sign-of-lorient-s-ambition" },
+      "Toulouse FC": { "name": "Jacob Neestrup Askou", "previous_name": "Carles Martinez Novell", "contract_start": "2026-07-01", "source_url": "https://ligue1.com/en/articles/l1_article_5520-coaches-in-demand-ligue-1-clubs-usher-in-record-summer-of-change" },
+      "AJ Auxerre": { "name": "Will Still", "previous_name": "Christophe Pélissier", "contract_start": "2026-06-15", "source_url": "https://ligue1.com/en/articles/l1_article_5317-will-still-returns-to-ligue-1-there-are-no-limits-to-our-ambitions-at-auxerre" },
+      "Lille OSC": { "name": "Davide Ancelotti", "previous_name": "Bruno Genesio", "contract_start": "2026-07-01", "source_url": "https://ligue1.com/en/articles/l1_article_5520-coaches-in-demand-ligue-1-clubs-usher-in-record-summer-of-change" },
+      "Paris FC": { "name": "Liam Rosenior", "previous_name": "Antoine Kombouaré", "contract_start": "2026-07-07", "source_url": "https://ligue1.com/en/articles/l1_article_5445-liam-the-revenant-paris-fc-appoint-liam-rosenior" },
+      "AS Monaco FC": { "name": "Filipe Luís", "previous_name": "Sébastien Pocognoli", "contract_start": "2026-07-01", "source_url": "https://ligue1.com/en/articles/l1_article_5520-coaches-in-demand-ligue-1-clubs-usher-in-record-summer-of-change" },
+      "RC Strasbourg Alsace": { "name": "Hugo Oliveira", "previous_name": "Gary O'Neil", "contract_start": "2026-07-12", "source_url": "https://ligue1.com/en/articles/l1_article_5520-coaches-in-demand-ligue-1-clubs-usher-in-record-summer-of-change" },
+      "Racing Club de Lens": { "name": "Dino Toppmöller", "previous_name": "Pierre Sage", "contract_start": "2026-07-01", "source_url": "https://ligue1.com/en/articles/l1_article_5520-coaches-in-demand-ligue-1-clubs-usher-in-record-summer-of-change" },
+      "Olympique de Marseille": { "name": "Bruno Genesio", "previous_name": "Roberto De Zerbi", "contract_start": "2026-07-01", "source_url": "https://ligue1.com/en/articles/l1_article_5267-bruno-genesio-appointed-olympique-de-marseille-manager" },
+      "OGC Nice": { "name": "Olivier Pantaloni", "previous_name": "Claude Puel", "contract_start": "2026-07-01", "source_url": "https://ligue1.com/en/articles/l1_article_5520-coaches-in-demand-ligue-1-clubs-usher-in-record-summer-of-change" },
+      "Angers SCO": { "name": "Stéphane Gilli", "previous_name": "Alexandre Dujeux", "contract_start": "2026-07-01", "source_url": "https://ligue1.com/en/articles/l1_article_5520-coaches-in-demand-ligue-1-clubs-usher-in-record-summer-of-change" },
+      "Stade Brestois 29": { "name": "Julien Lachuer", "previous_name": "Éric Roy", "contract_start": "2026-07-01", "source_url": "https://ligue1.com/en/articles/l1_article_5520-coaches-in-demand-ligue-1-clubs-usher-in-record-summer-of-change" }
+    }
+  }
+}

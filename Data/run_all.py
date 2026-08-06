@@ -20,10 +20,10 @@ def send_discord_notification(webhook_url, message):
 jobs = [
     #("england", "premier-league", "2025/2026"),
     #("spain", "laliga", "2025/2026"),
-    #("italy", "serie-a", "2025/2026"),
+    ("italy", "serie-a", "2025/2026"),
     #("germany", "bundesliga", "2025/2026"),
-    #("france", "ligue-1", "2025/2026"),
-    ("international", "fifa-world-cup", "2026")
+    ("france", "ligue-1", "2025/2026"),
+    #("international", "fifa-world-cup", "2026")
     #("europe", "champions-league", "2025/2026")
     #("england" , "league-one", "2024/2025")
 ]

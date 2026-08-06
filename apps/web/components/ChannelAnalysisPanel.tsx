@@ -45,7 +45,8 @@ type ZoneRow = AreaStats & {
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   team: string;
   teamColor: string;
@@ -66,7 +67,7 @@ function shortName(name: string) {
   return parts.length > 1 ? `${parts[0][0]}. ${parts[parts.length - 1]}` : name;
 }
 
-export function ChannelAnalysisPanel({ matchId, source, filePath, jobId, team, teamColor }: Props) {
+export function ChannelAnalysisPanel({ matchId, source, league, season, jobId, team, teamColor }: Props) {
   const [channels, setChannels] = useState<ChannelRow[]>([]);
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [channelsReceived, setChannelsReceived] = useState<ChannelRow[]>([]);
@@ -83,7 +84,7 @@ export function ChannelAnalysisPanel({ matchId, source, filePath, jobId, team, t
     const body =
       source !== "r2"
         ? { match_id: matchId, source, filters }
-        : { match_id: matchId, source: "r2", file_path: filePath, filters };
+        : { match_id: matchId, source: "r2", league, season, filters };
     getAnalysisView("channel-analysis", body)
       .then((view) => {
         if (cancelled) return;
@@ -107,7 +108,7 @@ export function ChannelAnalysisPanel({ matchId, source, filePath, jobId, team, t
     return () => {
       cancelled = true;
     };
-  }, [matchId, source, filePath, jobId, team]);
+  }, [matchId, source, league, season, jobId, team]);
 
   if (!isLoading && !channels.length) return null;
 

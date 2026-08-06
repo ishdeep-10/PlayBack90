@@ -49,15 +49,25 @@ class StandingsResponse(BaseModel):
 
 
 class FixtureSummary(BaseModel):
-    file_path: str
     match_id: str
     start_date: datetime
     start_date_label: str
-    home_team_id: int
-    away_team_id: int
+    home_team_id: int | None = None
+    away_team_id: int | None = None
     home_team: str
     away_team: str
     score: str
+    fixture_id: str | None = None
+    state: Literal["completed", "upcoming", "postponed", "cancelled", "live", "unknown"] | None = None
+    source: Literal["r2", "football-data"] | None = None
+    round: str | None = None
+    matchday: int | None = None
+    post_match_href: str | None = None
+    opposition_href: str | None = None
+    provider_fixture_id: int | None = None
+    provider_status: str | None = None
+    home_crest: str | None = None
+    away_crest: str | None = None
 
 
 class FixtureListResponse(BaseModel):
@@ -93,6 +103,125 @@ class FixtureRoundResponse(BaseModel):
     fixtures: list[FixtureSummary]
 
 
+class FixtureHubFixture(BaseModel):
+    fixture_id: str
+    match_id: str
+    state: Literal["completed", "upcoming", "postponed", "cancelled", "live", "unknown"]
+    source: Literal["r2", "football-data"]
+    league: str
+    season: str
+    round: str | None = None
+    matchday: int | None = None
+    start_date: datetime
+    start_date_label: str
+    home_team: str
+    away_team: str
+    score: str = ""
+    post_match_href: str | None = None
+    opposition_href: str | None = None
+    provider_fixture_id: int | None = None
+    provider_status: str | None = None
+    provider_home_team: str | None = None
+    provider_away_team: str | None = None
+    home_crest: str | None = None
+    away_crest: str | None = None
+
+
+class FixtureHubCounts(BaseModel):
+    all: int
+    completed: int
+    upcoming: int
+    postponed: int
+    cancelled: int
+    live: int
+    unknown: int
+
+
+class FixtureHubResponse(BaseModel):
+    league: str
+    season: str
+    state: Literal["all", "completed", "upcoming", "postponed", "cancelled", "live", "unknown"]
+    round_id: str | None = None
+    selected_round_id: str | None = None
+    source: Literal["r2", "football-data", "hybrid"]
+    updated_at: datetime | None = None
+    is_stale: bool = False
+    warning: str | None = None
+    counts: FixtureHubCounts
+    rounds: list[FixtureRoundSummary]
+    fixtures: list[FixtureHubFixture]
+
+
+class OppositionSimilarTeam(BaseModel):
+    team: str
+    similarity: float
+    distance: float
+    matches: int
+
+
+class OppositionSampleMatch(BaseModel):
+    match_id: str
+    date: str
+    season: str
+    team: str
+    opponent: str
+    home_away: str
+    result: str
+    score: str
+    xg: float
+    xga: float
+    shots: int
+    shots_against: int
+    sample_reason: Literal["similar_opponent", "recent_fallback"]
+
+
+class OppositionTeamMatchIndexItem(BaseModel):
+    match_id: str
+    date: str
+    home_team: str
+    away_team: str
+    file_path: str
+    score: str
+
+
+class OppositionTeamMatchIndex(BaseModel):
+    team: str
+    matches: list[OppositionTeamMatchIndexItem]
+    match_count: int
+
+
+class OppositionFoundationResponse(BaseModel):
+    league: str
+    season: str
+    reference_team: str
+    opponent_team: str
+    sample_size: int
+    sample_strategy: Literal["similar_opponent_profile"]
+    pool_strategy: Literal["current_season", "previous_season", "current_plus_previous"]
+    pool_seasons: list[str]
+    features_used: list[str]
+    similar_teams: list[OppositionSimilarTeam]
+    sample_matches: list[OppositionSampleMatch]
+    warnings: list[str]
+    team_match_index: OppositionTeamMatchIndex
+
+
+class OppositionDossierResponse(BaseModel):
+    meta: dict[str, Any]
+    fixtureContext: dict[str, Any]
+    sampleContext: dict[str, Any]
+    referenceProfile: dict[str, Any]
+    teamContext: dict[str, Any] | None = None
+    lineupContext: dict[str, Any] | None = None
+    summary: dict[str, Any]
+    teamProfile: dict[str, Any]
+    inPossessionProfile: dict[str, Any] | None = None
+    recentForm: dict[str, Any]
+    strengths: list[dict[str, Any]]
+    weaknesses: list[dict[str, Any]]
+    keyPlayers: list[dict[str, Any]]
+
+
 AnalysisSource = Literal["r2", "live", "import"]
 
 
@@ -104,7 +233,7 @@ class MatchContext(BaseModel):
     away_team: str
     score: str | None = None
     source: AnalysisSource
-    file_path: str | None = None
+    start_date_label: str | None = None
     available_views: list[str]
     team_colors: dict[str, str] | None = None
 
@@ -158,7 +287,8 @@ class AnalysisViewFilters(BaseModel):
 
 class AnalysisViewRequest(BaseModel):
     match_id: str
-    file_path: str | None = None
+    league: str | None = None
+    season: str | None = None
     source: AnalysisSource = "r2"
     filters: AnalysisViewFilters = Field(default_factory=AnalysisViewFilters)
 

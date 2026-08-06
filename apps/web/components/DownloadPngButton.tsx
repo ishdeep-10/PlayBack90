@@ -58,6 +58,8 @@ type Props = {
   /** Give wrapped chart rows a full-size vertical budget instead of squeezing
    *  them into the default social canvas. */
   expandCanvasForRows?: boolean;
+  /** Override the logical canvas height for compact single-chart exports. */
+  canvasHeight?: number;
 };
 
 export type SideTableRow = {
@@ -208,6 +210,7 @@ export function DownloadPngButton({
   chartsPerRow,
   expandCanvasForRows = false,
   captureAspect,
+  canvasHeight,
 }: Props) {
   const anchorRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
@@ -393,7 +396,7 @@ export function DownloadPngButton({
 
       const resolvedTitleImages = typeof titleImages === "function" ? titleImages() : titleImages;
       const [brandImg, homeLogo, awayLogo, ...headshots] = await Promise.all([
-        loadImage("/logos/PB90.png"),
+        loadImage(isDark ? "/logos/Logo-Dark.png" : "/logos/Logo-Light.png"),
         match?.homeLogoUrl ? loadImageSafe(match.homeLogoUrl) : Promise.resolve(null),
         match?.awayLogoUrl ? loadImageSafe(match.awayLogoUrl) : Promise.resolve(null),
         ...resolvedTitleImages.map((src) => loadImageSafe(src)),
@@ -418,8 +421,8 @@ export function DownloadPngButton({
       const chartsW = hasCharts ? contentW - (hasSideTable ? sideTableW + sideGap : 0) : 0;
       const perRow = Math.max(1, Math.min(chartsPerRow ?? charts.length, charts.length));
       const rowCount = Math.ceil(charts.length / perRow);
-      const height =
-        (expandCanvasForRows && rowCount > 1 ? 900 + (rowCount - 1) * 560 : 900) * SCALE;
+      const baseHeight = canvasHeight ?? (expandCanvasForRows && rowCount > 1 ? 900 + (rowCount - 1) * 560 : 900);
+      const height = baseHeight * SCALE;
       const columnCount = Math.min(perRow, charts.length);
       const colWidth = (chartsW - gap * (columnCount - 1)) / columnCount;
       const singleRow = rowCount === 1;

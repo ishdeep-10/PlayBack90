@@ -26,6 +26,7 @@ import os
 import io
 import sys
 import re
+import json
 import sqlite3
 import argparse
 from datetime import datetime, timezone
@@ -50,8 +51,10 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "playback90.db")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "apps", "api"))
 try:
     from app.domain import TEAM_DICT
+    from app.services.views.match_summary import build_lineups
 except Exception:
     TEAM_DICT = {}
+    build_lineups = None
 
 
 def _backfill_team_names(match_df: pd.DataFrame) -> pd.DataFrame:
@@ -75,8 +78,13 @@ _DEF_TYPES  = {"Tackle", "Interception", "Challenge", "BlockedPass"}
 # All shot subtypes
 _SHOT_TYPES = {"Goal", "SavedShot", "MissedShots", "ShotOnPost"}
 
+# Goalkeeper event types — must match apps/api/app/services/views/goalkeeper.py
+_KEEPER_EVENT_TYPES = {"Save", "KeeperSave", "KeeperPickup", "Claim", "Punch", "Smother", "KeeperSweeper"}
+_SHOT_ON_TARGET_TYPES = {"Goal", "SavedShot"}
+_GK_LONG_PASS_DISTANCE = 32.0
+
 # Bump when row-level definitions change so the API can detect stale files.
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # Duel composition — must match apps/api/app/services/views/common.py
 _GROUND_DUEL_TYPES = {"TakeOn", "GoodSkill", "ShieldBallOpp", "Foul", "Tackle", "Challenge"}
@@ -203,6 +211,71 @@ def _pass_carry_value_sum(df, col, clip_negative=False):
     if clip_negative:
         series = series.clip(lower=0.0)
     return float(series.sum())
+
+
+def _identify_match_keepers(match_df):
+    """{teamName: keeper playerName} — mirrors _identify_keeper in goalkeeper.py."""
+    keepers = {}
+    if "teamName" not in match_df.columns or "type" not in match_df.columns:
+        return keepers
+    types = match_df["type"].astype(str)
+    keeper_events = match_df[types.isin(_KEEPER_EVENT_TYPES)]
+    for team, team_events in keeper_events.groupby("teamName"):
+        names = team_events["playerName"].dropna().astype(str)
+        if not names.empty:
+            keepers[str(team)] = names.mode().iloc[0]
+    return keepers
+
+
+def _compute_gk_match_stats(dfp, match_df, team):
+    """GK shot-stopping/distribution/sweeping for one player-match — mirrors goalkeeper.py."""
+    if "teamName" not in match_df.columns or "type" not in match_df.columns:
+        return {}
+    opponent_mask = match_df["teamName"].astype(str) != str(team)
+    opp = match_df[opponent_mask]
+    opp_types = opp["type"].astype(str) if "type" in opp.columns else pd.Series(dtype=str)
+    is_shot = opp_types.isin(_SHOT_TYPES)
+    own_goal = _bool_col_true(opp, "goalOwn") if "goalOwn" in opp.columns else pd.Series(False, index=opp.index)
+    shots = opp[is_shot & ~own_goal]
+    shot_types = shots["type"].astype(str) if "type" in shots.columns else pd.Series(dtype=str)
+    on_target = shots[shot_types.isin(_SHOT_ON_TARGET_TYPES)]
+    goals_conceded = int((shot_types == "Goal").sum())
+    sot_faced = int(len(on_target))
+    xg_on_target = float(_numcol(on_target, "xG").sum()) if "xG" in on_target.columns else 0.0
+    xgot_faced = float(_numcol(on_target, "xGOT").sum()) if "xGOT" in on_target.columns else 0.0
+    saves = max(0, sot_faced - goals_conceded)
+
+    types_p = dfp["type"].astype(str) if "type" in dfp.columns else pd.Series(dtype=str)
+    passes = dfp[types_p == "Pass"]
+    outcome = passes["outcomeType"].astype(str).str.lower() if "outcomeType" in passes.columns else pd.Series("", index=passes.index)
+    completed_mask = outcome.eq("successful")
+    x = _numcol(passes, "x")
+    y = _numcol(passes, "y")
+    end_x = _numcol(passes, "endX")
+    end_y = _numcol(passes, "endY")
+    length = ((end_x - x) ** 2 + (end_y - y) ** 2) ** 0.5
+    long_mask = length >= _GK_LONG_PASS_DISTANCE
+    pass_count = int(len(passes))
+
+    claims = int(types_p.isin({"Claim", "Punch"}).sum())
+    pickups = int((types_p == "KeeperPickup").sum())
+    sweeper_actions = int((types_p == "KeeperSweeper").sum())
+
+    return {
+        "gk_sot_faced": sot_faced,
+        "gk_goals_conceded": goals_conceded,
+        "gk_saves": saves,
+        "gk_save_pct": round(100.0 * saves / sot_faced, 1) if sot_faced else 0.0,
+        "gk_xg_on_target_faced": round(xg_on_target, 2),
+        "gk_xgot_faced": round(xgot_faced, 2),
+        "gk_goals_prevented": round(xgot_faced - goals_conceded, 2),
+        "gk_claims": claims,
+        "gk_pickups": pickups,
+        "gk_sweeper_actions": sweeper_actions,
+        "gk_pass_completion_pct": round(100.0 * float(completed_mask.mean()), 1) if pass_count else 0.0,
+        "gk_long_pass_pct": round(100.0 * float(long_mask.mean()), 1) if pass_count else 0.0,
+        "gk_avg_pass_length": round(float(length.mean()), 1) if pass_count else 0.0,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +456,87 @@ def _compute_team_match_stats(match_df: pd.DataFrame) -> list[dict]:
     return rows
 
 
+def _json_compact(value) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), default=str)
+
+
+def _compute_team_history(match_df: pd.DataFrame, team_match_rows: list[dict] | None = None) -> list[dict]:
+    """One row per team-match for opposition timeline/history features."""
+    if build_lineups is None or "teamName" not in match_df.columns:
+        return []
+
+    teams = [str(team) for team in match_df["teamName"].dropna().unique().tolist()]
+    if not teams:
+        return []
+
+    match_id = _norm_match_id(match_df["matchId"].iloc[0])
+    date = str(match_df["startDate"].iloc[0])[:10] if "startDate" in match_df.columns else ""
+    league = str(match_df["league"].iloc[0]) if "league" in match_df.columns else ""
+    season = str(match_df["season"].iloc[0]) if "season" in match_df.columns else ""
+    ft_score = (
+        str(match_df["ftScore"].dropna().iloc[0])
+        if "ftScore" in match_df.columns and not match_df["ftScore"].dropna().empty
+        else ""
+    )
+
+    try:
+        lineup_payload = build_lineups(match_df, teams)
+    except Exception:
+        return []
+
+    lineups = lineup_payload.get("teams", {}) if isinstance(lineup_payload, dict) else {}
+    substitutions = lineup_payload.get("substitutions", []) if isinstance(lineup_payload, dict) else []
+    phases = lineup_payload.get("phases", {}) if isinstance(lineup_payload, dict) else {}
+    stats_by_team = {
+        str(row.get("teamName") or ""): row
+        for row in (team_match_rows or [])
+        if isinstance(row, dict) and row.get("teamName")
+    }
+    metric_columns = [
+        "goals", "goals_against", "xG", "xG_against", "shots", "shots_on_target", "shots_against",
+        "big_chances", "big_chances_against", "shot_accuracy", "xG_per_shot", "passes", "passes_completed",
+        "pass_accuracy", "xpass_exp_completed", "crosses", "through_balls", "long_balls", "ppda", "turnovers",
+        "possession_pct", "field_tilt_pct", "box_entries", "prog_passes", "prog_carries", "xT", "epv_added",
+        "xGOT", "xGOT_against", "dribbles_attempted", "dribbles_won", "clearances", "fouls_committed",
+        "aerial_duels_total", "aerial_duels_won", "yellow_cards", "red_cards", "possessions",
+    ]
+    rows = []
+    for team in teams:
+        lineup = lineups.get(team, {}) if isinstance(lineups, dict) else {}
+        team_events = match_df[match_df["teamName"] == team]
+        opponent = next((item for item in teams if item != team), "")
+        stats = stats_by_team.get(team, {})
+        goals = int(float(stats.get("goals", 0) or 0))
+        goals_against = int(float(stats.get("goals_against", 0) or 0))
+        result = "W" if goals > goals_against else ("D" if goals == goals_against else "L")
+        metric_values = {column: stats[column] for column in metric_columns if column in stats}
+        rows.append(
+            {
+                "matchId": match_id,
+                "date": date,
+                "league": league,
+                "season": season,
+                "teamName": team,
+                "opponentName": opponent,
+                "homeAway": str(team_events["h_a"].iloc[0]) if "h_a" in team_events.columns and not team_events.empty else "",
+                "score": ft_score,
+                "result": result,
+                "formation_id": lineup.get("formation_id"),
+                "formation": lineup.get("formation", ""),
+                "starters_json": _json_compact(lineup.get("starters", [])),
+                "starter_ids_json": _json_compact([player.get("player_id") for player in lineup.get("starters", []) if isinstance(player, dict)]),
+                "starter_names_json": _json_compact([player.get("player") for player in lineup.get("starters", []) if isinstance(player, dict)]),
+                "bench_json": _json_compact(lineup.get("bench", [])),
+                "substitutions_json": _json_compact([sub for sub in substitutions if sub.get("team") == team]),
+                "phase_lineups_json": _json_compact(phases.get(team, []) if isinstance(phases, dict) else []),
+                "lineup_available": bool(lineup.get("starters")),
+                "history_schema_version": 1,
+                **metric_values,
+            }
+        )
+    return rows
+
+
 # ---------------------------------------------------------------------------
 # Per-match player aggregation
 # ---------------------------------------------------------------------------
@@ -395,6 +549,7 @@ def _compute_player_match_stats(match_df: pd.DataFrame) -> list[dict]:
     received_prog = receivers[_bool_col_true(match_df, "prog_pass")] if "prog_pass" in match_df.columns else pd.Series(dtype=object)
     received_counts = receivers.dropna().value_counts()
     received_prog_counts = received_prog.dropna().value_counts()
+    match_keepers = _identify_match_keepers(match_df)
     date     = str(match_df["startDate"].iloc[0])[:10] if "startDate" in match_df.columns else ""
     league   = str(match_df["league"].iloc[0]) if "league" in match_df.columns else ""
     season   = str(match_df["season"].iloc[0]) if "season" in match_df.columns else ""
@@ -567,6 +722,10 @@ def _compute_player_match_stats(match_df: pd.DataFrame) -> list[dict]:
             xp = pd.to_numeric(passes_dfp["xPass"], errors="coerce")
             extra["passes_completed"] = int(_successful_mask(passes_dfp).sum())
             extra["xpass_exp_completed"] = round(float(xp.dropna().sum()), 2)
+
+        # --- Goalkeeper metrics (only for the team's identified keeper) ---
+        if match_keepers.get(team) == player:
+            extra.update(_compute_gk_match_stats(dfp, match_df, team))
 
         rows.append({
             "matchId":           match_id,
@@ -883,6 +1042,7 @@ def main():
 
         team_rows    = []
         player_rows  = []
+        history_rows = []
         event_frames = []
         failed       = 0
 
@@ -892,8 +1052,10 @@ def main():
                     continue
                 match_df = _dedupe_events(match_df)
                 match_df = _backfill_team_names(match_df)
-                team_rows.extend(_compute_team_match_stats(match_df))
+                team_match_rows = _compute_team_match_stats(match_df)
+                team_rows.extend(team_match_rows)
                 player_rows.extend(_compute_player_match_stats(match_df))
+                history_rows.extend(_compute_team_history(match_df, team_match_rows))
                 event_frames.append(_compute_event_locations(match_df))
             except Exception as exc:
                 failed += 1
@@ -908,13 +1070,17 @@ def main():
 
         team_df     = pd.DataFrame(team_rows)
         player_df   = pd.DataFrame(player_rows)
+        history_df  = pd.DataFrame(history_rows)
         events_df   = pd.concat(event_frames, ignore_index=True) if event_frames else pd.DataFrame()
-        for df_out in (team_df, player_df):
+        for df_out in (team_df, player_df, history_df):
+            if df_out.empty:
+                continue
             df_out["source"] = args.source
             df_out["generated_at"] = generated_at
             df_out["schema_version"] = SCHEMA_VERSION
         print(f"  team_match_stats shape:   {team_df.shape}")
         print(f"  player_match_stats shape: {player_df.shape}")
+        print(f"  team_history shape:       {history_df.shape}")
         print(f"  event_locations shape:    {events_df.shape}")
 
         if args.dry_run:
@@ -923,23 +1089,30 @@ def main():
             os.makedirs(local_dir, exist_ok=True)
             team_path   = os.path.join(local_dir, "team_match_stats.parquet")
             player_path = os.path.join(local_dir, "player_match_stats.parquet")
+            history_path = os.path.join(local_dir, "team_history.parquet")
             events_path = os.path.join(local_dir, "event_locations.parquet")
             team_df.to_parquet(team_path,   index=False)
             player_df.to_parquet(player_path, index=False)
+            if not history_df.empty:
+                history_df.to_parquet(history_path, index=False)
             if not events_df.empty:
                 events_df.to_parquet(events_path, index=False)
             print(f"  [dry-run] Saved locally:")
             print(f"    {team_path}")
             print(f"    {player_path}")
+            print(f"    {history_path}  ({len(history_df)} rows)")
             print(f"    {events_path}  ({len(events_df)} rows)")
             _print_verification(team_df, player_df, events_df)
             continue
 
         team_key    = f"season_stats/{league_clean}/{season_clean}/team_match_stats.parquet"
         player_key  = f"season_stats/{league_clean}/{season_clean}/player_match_stats.parquet"
+        history_key = f"season_stats/{league_clean}/{season_clean}/team_history.parquet"
         events_key  = f"season_stats/{league_clean}/{season_clean}/event_locations.parquet"
         _upload_df(s3, team_df,   R2_BUCKET, team_key)
         _upload_df(s3, player_df, R2_BUCKET, player_key)
+        if not history_df.empty:
+            _upload_df(s3, history_df, R2_BUCKET, history_key)
         if not events_df.empty:
             _upload_df(s3, events_df, R2_BUCKET, events_key)
 

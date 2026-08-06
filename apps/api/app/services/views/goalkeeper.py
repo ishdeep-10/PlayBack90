@@ -6,11 +6,29 @@ from typing import Any
 
 import pandas as pd
 
-from app.services.matches import _coerce_numeric, _opponent_team_name
+from app.services.matches import (
+    _build_shot_detail_rows,
+    _coerce_numeric,
+    _opponent_team_name,
+    _safe_float,
+    _safe_int,
+    _with_game_state,
+    filter_shots,
+)
+from app.services.views.common import _row_successful
 
 KEEPER_EVENT_TYPES = {"Save", "KeeperSave", "KeeperPickup", "Claim", "Punch", "Smother", "KeeperSweeper"}
 SHOT_ON_TARGET_TYPES = {"Goal", "SavedShot"}
 _LONG_PASS_DISTANCE = 32.0
+_GK_ACTION_LABELS = {
+    "Save": "Save",
+    "KeeperSave": "Save",
+    "KeeperPickup": "Pickup",
+    "Claim": "Claim",
+    "Punch": "Punch",
+    "Smother": "Smother",
+    "KeeperSweeper": "Sweeper action",
+}
 
 
 def _identify_keeper(team_events: pd.DataFrame) -> str | None:
@@ -82,7 +100,27 @@ def build_goalkeeper_view(df: pd.DataFrame, team: str | None = None) -> dict[str
     claims = int(keeper_type.isin({"Claim", "Punch"}).sum())
     pickups = int(keeper_type.eq("KeeperPickup").sum())
     keeper_x = _coerce_numeric(keeper_events.get("x", pd.Series(0, index=keeper_events.index))).fillna(0.0)
-    sweeper_actions = int((keeper_x > 16.5).sum())
+    sweeper_actions = int(keeper_type.eq("KeeperSweeper").sum())
+
+    # ── Row-level GK out-of-possession actions (Claim/Punch/Pickup/Sweeper/Save) ──
+    gk_action_events = keeper_events[keeper_type.isin(KEEPER_EVENT_TYPES)]
+    gk_actions = [
+        {
+            "minute": _safe_int(row.get("minute")),
+            "type": str(row.get("type", "")),
+            "label": _GK_ACTION_LABELS.get(str(row.get("type", "")), str(row.get("type", ""))),
+            "x": round(_safe_float(row.get("x")), 2),
+            "y": round(_safe_float(row.get("y")), 2),
+            "outcome": str(row.get("outcomeType", "")),
+            "is_successful": _row_successful(row),
+        }
+        for _, row in gk_action_events.iterrows()
+    ]
+
+    # ── Shots faced (opponent shots on this team's goal, row-level) ──────────
+    enriched_df = _with_game_state(df)
+    shots_faced_scope = filter_shots(enriched_df, team=opponent)
+    shots_faced_rows = _build_shot_detail_rows(enriched_df, shots_faced_scope)
 
     return {
         "team": selected_team,
@@ -113,4 +151,6 @@ def build_goalkeeper_view(df: pd.DataFrame, team: str | None = None) -> dict[str
             "actions_outside_box": sweeper_actions,
         },
         "pass_map": pass_map,
+        "gk_actions": gk_actions,
+        "shots_faced_rows": shots_faced_rows,
     }

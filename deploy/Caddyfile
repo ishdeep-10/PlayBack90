@@ -1,0 +1,26 @@
+playback90.com {
+	handle /api/* {
+		reverse_proxy api:8000 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+	handle /health {
+		reverse_proxy api:8000 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+	handle /ready {
+		reverse_proxy api:8000 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+	handle {
+		reverse_proxy web:3000 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+}

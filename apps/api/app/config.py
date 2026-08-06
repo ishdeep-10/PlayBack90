@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +12,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     environment: str = "development"
     frontend_url: str = "http://localhost:3000"
+    database_url: str | None = None
 
     r2_account_id: str | None = None
     r2_access_key: str | None = None
@@ -26,8 +28,21 @@ class Settings(BaseSettings):
     football_data_api_key: str | None = None
     football_data_base_url: str = "https://api.football-data.org/v4"
     football_data_timeout_seconds: float = 10.0
+    football_data_verify_tls: bool | None = None
+    football_data_schedule_cache_dir: str | None = None
     standings_cache_ttl_seconds: int = 600
     standings_stale_ttl_seconds: int = 86_400
+
+    api_sports_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("X_APISPORTS_KEY", "API_SPORTS_KEY", "x-apisports-key"),
+    )
+    api_sports_base_url: str = "https://v3.football.api-sports.io"
+    api_sports_timeout_seconds: float = 10.0
+    api_sports_transfer_cache_dir: str | None = None
+
+    opposition_analysis_enabled: bool = False
+    live_scrape_enabled: bool = False
 
     auth_required: bool = False
     clerk_jwks_url: str | None = None
@@ -58,6 +73,12 @@ class Settings(BaseSettings):
                 self.r2_bucket,
             ]
         )
+
+    @property
+    def should_verify_football_data_tls(self) -> bool:
+        if self.football_data_verify_tls is not None:
+            return self.football_data_verify_tls
+        return self.environment.lower() not in {"development", "local", "test"}
 
 
 settings = Settings()

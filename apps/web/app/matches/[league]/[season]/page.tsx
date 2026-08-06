@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 
 import { MatchdayExplorer } from "../../../../components/MatchdayExplorer";
 import { FixturesLeagueTable } from "../../../../components/FixturesLeagueTable";
 import { RoundNavigator } from "../../../../components/RoundNavigator";
-import { getFixtureRound, getFixtureRounds, getLeagueTable, getSeasons } from "../../../../lib/api";
+import { getFixtureHub, getLeagueTable, getSeasons } from "../../../../lib/api";
 import { getServerAuthToken } from "../../../../lib/serverAuth";
 
 type PageProps = {
   params: Promise<{ league: string; season: string }>;
-  searchParams: Promise<{ round?: string }>;
+  searchParams: Promise<{ round?: string; state?: string }>;
 };
 
 const LEAGUE_NAMES: Record<string, string> = {
@@ -82,9 +83,12 @@ function ErrorHero({ league, title, message }: { league: string; title: string; 
 
 export default async function FixturesPage({ params, searchParams }: PageProps) {
   const { league, season } = await params;
-  const { round: requestedRoundId } = await searchParams;
+  const { round: requestedRoundId, state: requestedState } = await searchParams;
   const leagueName = formatLeagueName(league);
   const authToken = await getServerAuthToken();
+  const fixtureState = ["all", "completed", "upcoming"].includes(String(requestedState))
+    ? (requestedState as "all" | "completed" | "upcoming")
+    : "all";
 
   let seasonData: Awaited<ReturnType<typeof getSeasons>>;
   try {
@@ -113,9 +117,17 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
     redirect(`/matches/${league}/${seasonData.seasons[0]}`);
   }
 
-  let roundData: Awaited<ReturnType<typeof getFixtureRounds>>;
+  let fixtureHub: Awaited<ReturnType<typeof getFixtureHub>>;
   try {
-    roundData = await getFixtureRounds(league, season, authToken);
+    fixtureHub = await getFixtureHub(
+      league,
+      season,
+      {
+        state: fixtureState,
+        ...(requestedRoundId ? { round: requestedRoundId } : {}),
+      },
+      authToken,
+    );
   } catch {
     return (
       <ErrorHero
@@ -126,42 +138,38 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
     );
   }
 
-  if (!roundData.rounds.length || !roundData.latest_round_id) {
+  if (!fixtureHub.rounds.length || !fixtureHub.selected_round_id) {
     return (
       <ErrorHero
         league={league}
         title="No fixture rounds found yet."
-        message={`No hosted matches are currently available for ${formatSeason(season)}.`}
+        message={`No completed or scheduled matches are currently available for ${formatSeason(season)}.`}
       />
     );
   }
 
-  const selectedRoundId = roundData.rounds.some((round) => round.id === requestedRoundId)
-    ? String(requestedRoundId)
-    : roundData.latest_round_id;
+  const selectedRoundId = fixtureHub.selected_round_id;
+  const selectedRound = fixtureHub.rounds.find((round) => round.id === selectedRoundId) ?? fixtureHub.rounds[0];
 
-  const [selectedRoundResult, standingsResult] = await Promise.allSettled([
-    getFixtureRound(league, season, selectedRoundId, authToken),
-    getLeagueTable(league, season, authToken),
-  ]);
-
-  if (selectedRoundResult.status === "rejected") {
-    return (
-      <ErrorHero
-        league={league}
-        title="This fixture round could not be loaded."
-        message={`Round data for ${formatSeason(season)} is temporarily unavailable.`}
-      />
-    );
-  }
-  const selectedRoundData = selectedRoundResult.value;
-  const standings = standingsResult.status === "fulfilled" ? standingsResult.value : null;
+  const standingsResult = await Promise.allSettled([getLeagueTable(league, season, authToken)]);
+  const standings = standingsResult[0].status === "fulfilled" ? standingsResult[0].value : null;
 
   const logo = LEAGUE_LOGOS[league];
   const roundDateRange = formatRoundDateRange(
-    selectedRoundData.round.start_date,
-    selectedRoundData.round.end_date,
+    selectedRound.start_date,
+    selectedRound.end_date,
   );
+  const stateOptions = [
+    { id: "all", label: "All", count: fixtureHub.counts.all },
+    { id: "completed", label: "Completed", count: fixtureHub.counts.completed },
+    { id: "upcoming", label: "Upcoming", count: fixtureHub.counts.upcoming },
+  ] as const;
+  function stateHref(state: string) {
+    const params = new URLSearchParams();
+    params.set("state", state);
+    if (selectedRoundId) params.set("round", selectedRoundId);
+    return `/matches/${league}/${season}?${params.toString()}` as Route;
+  }
 
   return (
     <div className="stack fixtures-page">
@@ -172,9 +180,10 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
             <span className="fixtures-hero-kicker">{leagueName}</span>
             <h1>{formatSeason(season)} fixtures</h1>
             <p className="fixtures-hero-sub">
-              {roundDateRange} · {selectedRoundData.fixtures.length}{" "}
-              {selectedRoundData.fixtures.length === 1 ? "match" : "matches"}
+              {roundDateRange} · {fixtureHub.fixtures.length}{" "}
+              {fixtureHub.fixtures.length === 1 ? "match" : "matches"}
             </p>
+            {fixtureHub.warning ? <p className="inline-warning">{fixtureHub.warning}</p> : null}
           </div>
         </div>
         {seasonData.seasons.length > 1 ? (
@@ -192,17 +201,39 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
         ) : null}
       </section>
 
-      <RoundNavigator rounds={roundData.rounds} selectedRoundId={selectedRoundId} />
+      <nav className="fixture-state-tabs" aria-label="Fixture state">
+        {stateOptions.map((option) => (
+          <Link
+            key={option.id}
+            href={stateHref(option.id)}
+            className={fixtureState === option.id ? "season-pill is-active" : "season-pill"}
+          >
+            {option.label} <span>{option.count}</span>
+          </Link>
+        ))}
+      </nav>
+
+      {fixtureHub.counts.completed === 0 && fixtureHub.counts.upcoming > 0 ? (
+        <section className="fixture-low-data-banner" aria-label="Schedule-only season notice">
+          <strong>Schedule available, analysis pending</strong>
+          <span>
+            This season currently has upcoming fixtures but no completed PlayBack90 match data. Upcoming matches can open
+            the opposition dossier workspace; post-match analysis appears once matches are scraped and enriched.
+          </span>
+        </section>
+      ) : null}
+
+      <RoundNavigator rounds={fixtureHub.rounds} selectedRoundId={selectedRoundId} />
 
       <MatchdayExplorer
         league={league}
-        fixtures={selectedRoundData.fixtures}
+        fixtures={fixtureHub.fixtures}
         roundLabel={
-          selectedRoundData.round.metadata_source === "manifest"
-            ? selectedRoundData.round.label
+          selectedRound.metadata_source === "manifest"
+            ? selectedRound.label
             : roundDateRange
         }
-        roundStage={selectedRoundData.round.stage ?? "Selected round"}
+        roundStage={selectedRound.stage ?? "Selected round"}
       />
 
       {standings?.rows.length ? (

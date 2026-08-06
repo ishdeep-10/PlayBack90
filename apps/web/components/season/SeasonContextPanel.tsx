@@ -53,6 +53,12 @@ export function SeasonContextPanel({ players, groups }: Props) {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (groups.length && !groups.some((group) => group.id === groupId)) {
+      setGroupId(groups[0].id);
+    }
+  }, [groups, groupId]);
+
   const group = groups.find((candidate) => candidate.id === groupId) ?? groups[0];
   if (!group || !players.length) return null;
 

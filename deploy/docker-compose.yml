@@ -1,0 +1,34 @@
+services:
+  api:
+    image: playback90-api:latest
+    restart: unless-stopped
+    env_file:
+      - api.env.production
+    expose:
+      - "8000"
+
+  web:
+    image: playback90-web:latest
+    restart: unless-stopped
+    env_file:
+      - web.env.production
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:

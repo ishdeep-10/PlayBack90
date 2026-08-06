@@ -12,7 +12,8 @@ import { PlayerAvatar, getCachedPlayerImage } from "./PlayerAvatar";
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   team: string;
   teams: string[];
@@ -67,7 +68,7 @@ type ActiveDefender = {
 };
 
 
-export function DefenderAccountabilityPanel({ matchId, source, filePath, jobId, team, teams, teamColor }: Props) {
+export function DefenderAccountabilityPanel({ matchId, source, league, season, jobId, team, teams, teamColor }: Props) {
   const [entries, setEntries] = useState<{ final_third: EntryRow[]; box: EntryRow[] } | null>(null);
   const [activeDefenders, setActiveDefenders] = useState<ActiveDefender[]>([]);
   const [defensiveActions, setDefensiveActions] = useState<ActionRow[]>([]);
@@ -93,7 +94,7 @@ export function DefenderAccountabilityPanel({ matchId, source, filePath, jobId, 
     const makeBody = (filters: Record<string, string | undefined>) =>
       source !== "r2"
         ? { match_id: matchId, source, filters }
-        : { match_id: matchId, source: "r2", file_path: filePath, filters };
+        : { match_id: matchId, source: "r2", league, season, filters };
 
     Promise.all([
       getAnalysisView("territory-entries", makeBody(entriesFilters)),
@@ -121,7 +122,7 @@ export function DefenderAccountabilityPanel({ matchId, source, filePath, jobId, 
   useEffect(() => {
     fetchData("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchId, source, filePath, jobId, opponent]);
+  }, [matchId, source, league, season, jobId, opponent]);
 
   const scopedEntries = useMemo(() => entries?.[scope] ?? [], [entries, scope]);
 

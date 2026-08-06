@@ -8,6 +8,8 @@ node_modules/
 *.tsbuildinfo
 __pycache__/
 **/__pycache__/
+apps/api/.cache/
+apps/api/app/.cache/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -19,3 +21,8 @@ apps/web/node_modules/
 Data/playback90.db
 *.sqlite
 *.sqlite3
+deploy/*.env.production
+!deploy/*.env.production.example
+geckodriver
+geckodriver.tar.gz
+Data/season_stats/

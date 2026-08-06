@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { PUBLIC_API_BASE, getAuthHeaders } from "../lib/api";
 import { colorWithAlpha } from "../lib/theme";
 import { DownloadPngButton } from "./DownloadPngButton";
-
-const PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
 type LineupPlayer = {
   player_id: number;
@@ -107,7 +106,10 @@ function useSquadImages(team: string, names: string[]) {
   useEffect(() => {
     if (!team || !namesKey) return;
     let cancelled = false;
-    fetch(`${PUBLIC_API_BASE}/players/images?names=${encodeURIComponent(namesKey)}&team=${encodeURIComponent(team)}`)
+    getAuthHeaders()
+      .then((headers) =>
+        fetch(`${PUBLIC_API_BASE}/players/images?names=${encodeURIComponent(namesKey)}&team=${encodeURIComponent(team)}`, { headers })
+      )
       .then((response) => response.json())
       .then((data: Record<string, string | null>) => {
         if (!cancelled) setImages((prev) => ({ ...prev, ...data }));

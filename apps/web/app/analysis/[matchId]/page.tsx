@@ -31,7 +31,8 @@ type PageProps = {
   params: Promise<{ matchId: string }>;
   searchParams: Promise<{
     source?: string;
-    filePath?: string;
+    league?: string;
+    season?: string;
     team?: string;
     jobId?: string;
     situation?: string;
@@ -156,16 +157,6 @@ function normalizeLeagueKey(league?: string | null) {
   return key;
 }
 
-function leagueFromPath(path?: string | null) {
-  const parts = String(path ?? "").split("/event_data/");
-  return parts[1]?.split("/")?.[0] ?? null;
-}
-
-function seasonFromPath(path?: string | null) {
-  const parts = String(path ?? "").split("/event_data/");
-  return parts[1]?.split("/")?.[1] ?? null;
-}
-
 function teamLogoUrl(league: string | null | undefined, teamName: string) {
   const leagueKey = normalizeLeagueKey(league);
   const folder = LOGO_LEAGUE_FOLDERS[leagueKey];
@@ -177,22 +168,22 @@ function teamLogoUrl(league: string | null | undefined, teamName: string) {
 
 export async function generateMetadata({ params, searchParams }: PageProps) {
   const { matchId } = await params;
-  const { filePath, source = "r2", jobId } = await searchParams;
+  const { league, season, source = "r2", jobId } = await searchParams;
   const authToken = await getServerAuthToken();
   const fallback = { title: "Match Analysis | PlayBack90" };
-  if (source === "r2" && !filePath) return fallback;
+  if (source === "r2" && (!league || !season)) return fallback;
   try {
     const analysis =
       source !== "r2" && jobId
         ? await getTransientAnalysis(matchId, source === "import" ? "import" : "live", jobId, authToken)
-        : await getAnalysis(matchId, filePath!, authToken);
+        : await getAnalysis(matchId, league!, season!, authToken);
     const home = analysis.context.home_team ?? "";
     const away = analysis.context.away_team ?? "";
     const score = analysis.context.score?.replace(/--/g, "-") ?? "vs";
     const colors = analysis.context.team_colors ?? {};
-    const league = analysis.context.league ?? leagueFromPath(filePath) ?? "";
+    const leagueLabelValue = analysis.context.league ?? league ?? "";
     const title = `${home} ${score} ${away} | PlayBack90`;
-    const ogUrl = `/og?home=${encodeURIComponent(home)}&away=${encodeURIComponent(away)}&score=${encodeURIComponent(score)}&league=${encodeURIComponent(league)}&homeColor=${encodeURIComponent(colors[home] ?? "#22c55e")}&awayColor=${encodeURIComponent(colors[away] ?? "#38bdf8")}`;
+    const ogUrl = `/og?home=${encodeURIComponent(home)}&away=${encodeURIComponent(away)}&score=${encodeURIComponent(score)}&league=${encodeURIComponent(leagueLabelValue)}&homeColor=${encodeURIComponent(colors[home] ?? "#22c55e")}&awayColor=${encodeURIComponent(colors[away] ?? "#38bdf8")}`;
     return {
       title,
       description: `Full tactical breakdown: xG, pass networks, duels, set pieces and player analysis for ${home} vs ${away}.`,
@@ -207,7 +198,8 @@ export async function generateMetadata({ params, searchParams }: PageProps) {
 export default async function AnalysisPage({ params, searchParams }: PageProps) {
   const { matchId } = await params;
   const {
-    filePath,
+    league,
+    season,
     team,
     source = "r2",
     jobId,
@@ -224,11 +216,11 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
   } = await searchParams;
   const authToken = await getServerAuthToken();
 
-  if (source === "r2" && !filePath) {
+  if (source === "r2" && (!league || !season)) {
     return (
       <div className="placeholder card" style={{ marginTop: 24 }}>
         <div className="stack">
-          <h1>Analysis link is missing a file path.</h1>
+          <h1>Analysis link is missing league/season context.</h1>
           <p className="muted">Use the fixture browser to open a match.</p>
         </div>
       </div>
@@ -251,7 +243,7 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
     analysis =
       source !== "r2" && jobId
         ? await getTransientAnalysis(matchId, source === "import" ? "import" : "live", jobId, authToken)
-        : await getAnalysis(matchId, filePath!, authToken);
+        : await getAnalysis(matchId, league!, season!, authToken);
   } catch {
     return (
       <div className="placeholder card" style={{ marginTop: 24 }}>
@@ -279,7 +271,7 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
   const base =
     source !== "r2" && jobId
       ? `/analysis/${matchId}?source=${encodeURIComponent(source)}&jobId=${encodeURIComponent(jobId)}`
-      : `/analysis/${matchId}?source=r2&filePath=${encodeURIComponent(filePath!)}`;
+      : `/analysis/${matchId}?source=r2&league=${encodeURIComponent(league!)}&season=${encodeURIComponent(season!)}`;
 
   const preserveFilters = `&team=${encodeURIComponent(selectedTeam)}&situation=${encodeURIComponent(situation)}${player ? `&player=${encodeURIComponent(player)}` : ""}&half=${encodeURIComponent(half)}&duelType=${encodeURIComponent(duelType)}&transitionType=${encodeURIComponent(transitionType)}&subWindow=${encodeURIComponent(subWindow)}&gameState=${encodeURIComponent(gameState)}&timeRange=${encodeURIComponent(timeRange)}`;
 
@@ -289,12 +281,12 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
 
   const teamA = homeTeam || analysis.team_summaries[0]?.team || "";
   const teamB = awayTeam || analysis.team_summaries.find((row) => row.team !== teamA)?.team || "";
-  const leagueKey = normalizeLeagueKey(analysis.context.league ?? leagueFromPath(filePath));
+  const leagueKey = normalizeLeagueKey(analysis.context.league ?? league);
   const teamALogoUrl = teamLogoUrl(leagueKey, teamA);
   const teamBLogoUrl = teamLogoUrl(leagueKey, teamB);
   const contentKey = [view, selectedTeam, situation, player ?? "", subWindow, gameState, timeRange, duelType, transitionType, third].join("|");
-  const matchDateLabel = filePath?.split("/").pop()?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
-  const leagueLabel = (analysis.context.league ?? leagueFromPath(filePath) ?? "")
+  const matchDateLabel = analysis.context.start_date_label;
+  const leagueLabel = (analysis.context.league ?? league ?? "")
     .replace(/-/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -305,7 +297,7 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
         away: teamB,
         score: displayScore ?? undefined,
         league: leagueLabel || undefined,
-        dateLabel: matchDateLabel,
+        dateLabel: matchDateLabel ?? undefined,
         homeLogoUrl: teamALogoUrl,
         awayLogoUrl: teamBLogoUrl,
         homeColor: matchTeamColors[teamA],
@@ -330,8 +322,8 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
               <p style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>{displayScore}</p>
             )}
             <div className="form-strip-row">
-              <TeamFormStrip league={leagueFromPath(filePath)} season={seasonFromPath(filePath)} team={teamA} />
-              <TeamFormStrip league={leagueFromPath(filePath)} season={seasonFromPath(filePath)} team={teamB} />
+              <TeamFormStrip league={league} season={season} team={teamA} />
+              <TeamFormStrip league={league} season={season} team={teamB} />
             </div>
           </div>
         </div>
@@ -362,7 +354,8 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
           <AnalysisContent
             matchId={matchId}
             source={source}
-            filePath={filePath}
+            league={league}
+            season={season}
             jobId={jobId}
             view={view}
             situation={situation}
@@ -403,7 +396,8 @@ type AnalysisData = Awaited<ReturnType<typeof getAnalysis>>;
 type AnalysisContentProps = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   view: string;
   situation: string;
@@ -425,7 +419,8 @@ type AnalysisContentProps = {
 async function AnalysisContent({
   matchId,
   source,
-  filePath,
+  league,
+  season,
   jobId,
   view,
   situation,
@@ -446,20 +441,20 @@ async function AnalysisContent({
   const commonBody =
     source !== "r2"
       ? { match_id: matchId, source, filters: { team: selectedTeam, situation, player, subWindow, gameState, timeRange, third, job_id: jobId } }
-      : { match_id: matchId, source: "r2", file_path: filePath, filters: { team: selectedTeam, situation, player, subWindow, gameState, timeRange, third } };
+      : { match_id: matchId, source: "r2", league, season, filters: { team: selectedTeam, situation, player, subWindow, gameState, timeRange, third } };
   const inPossessionMetricsBody =
     source !== "r2"
       ? { match_id: matchId, source, filters: { team: selectedTeam, situation, player, subWindow: "all", gameState: "all", timeRange: "all", job_id: jobId } }
-      : { match_id: matchId, source: "r2", file_path: filePath, filters: { team: selectedTeam, situation, player, subWindow: "all", gameState: "all", timeRange: "all" } };
+      : { match_id: matchId, source: "r2", league, season, filters: { team: selectedTeam, situation, player, subWindow: "all", gameState: "all", timeRange: "all" } };
   const duelsTransitionsBody =
     source !== "r2"
       ? { match_id: matchId, source, filters: { team: "__both__", duelType, transitionType, gameState, timeRange, job_id: jobId } }
-      : { match_id: matchId, source: "r2", file_path: filePath, filters: { team: "__both__", duelType, transitionType, gameState, timeRange } };
+      : { match_id: matchId, source: "r2", league, season, filters: { team: "__both__", duelType, transitionType, gameState, timeRange } };
 
   // Fetch only the data needed by the active view. A failed view request must
   // not crash the page — sections render their own empty states on null.
   const safeView = (promise: ReturnType<typeof getAnalysisView>) => promise.catch(() => null);
-  const seasonBaselineBody = { match_id: matchId, source: "r2", file_path: filePath, filters: {} };
+  const seasonBaselineBody = { match_id: matchId, source: "r2", league, season, filters: {} };
   const wantsSeasonBaseline = source === "r2" && ["match-dynamics", "in-possession", "out-of-possession", "duels-transitions", "player-analysis"].includes(view);
   const [shotsScaView, dynamicsView, passNetworkView, inPossessionMetricsView, defensiveActionsView, duelsTransitionsView, playerAnalysisView, seasonBaselineView] = await Promise.all([
     view === "shots" ? safeView(getAnalysisView("shots-sca", commonBody, authToken)) : Promise.resolve(null),
@@ -497,7 +492,7 @@ async function AnalysisContent({
   const dynamicsTeams = (dynamicsPayload.teams as string[] | undefined) ?? [];
   const teamA = homeTeam || dynamicsTeams[0] || analysis.team_summaries[0]?.team || "";
   const teamB = awayTeam || dynamicsTeams.find((name) => name !== teamA) || analysis.team_summaries.find((row) => row.team !== teamA)?.team || "";
-  const leagueKey = normalizeLeagueKey(analysis.context.league ?? leagueFromPath(filePath));
+  const leagueKey = normalizeLeagueKey(analysis.context.league ?? league);
   const teamALogoUrl = teamLogoUrl(leagueKey, teamA);
   const teamBLogoUrl = teamLogoUrl(leagueKey, teamB);
   const xgFlowRows = (dynamicsPayload.xg_flow as Array<Record<string, string | number>> | undefined) ?? [];
@@ -536,7 +531,8 @@ async function AnalysisContent({
       <AiInsightCard
         matchId={matchId}
         source={source}
-        filePath={filePath}
+        league={league}
+        season={season}
         jobId={jobId}
         view={view}
         team={view === "duels-transitions" ? undefined : selectedTeam}
@@ -618,7 +614,8 @@ async function AnalysisContent({
               <InPossessionNetworkSection
                 matchId={matchId}
                 source={source}
-                filePath={filePath}
+                league={league}
+        season={season}
                 jobId={jobId}
                 situation={situation}
                 player={player}
@@ -644,7 +641,8 @@ async function AnalysisContent({
             <OutOfPossessionSection
               matchId={matchId}
               source={source}
-              filePath={filePath}
+              league={league}
+        season={season}
               jobId={jobId}
               teams={[homeTeam, awayTeam].filter(Boolean)}
               selectedTeam={selectedTeam}
@@ -659,7 +657,8 @@ async function AnalysisContent({
             <DuelsTransitionsSection
               matchId={matchId}
               source={source}
-              filePath={filePath}
+              league={league}
+        season={season}
               jobId={jobId}
               teams={[teamA, teamB].filter(Boolean)}
               selectedTeam="__both__"
@@ -676,7 +675,8 @@ async function AnalysisContent({
             <PlayerAnalysisSection
               matchId={matchId}
               source={source}
-              filePath={filePath}
+              league={league}
+        season={season}
               jobId={jobId}
               teams={[homeTeam, awayTeam].filter(Boolean)}
               selectedTeam={selectedTeam}

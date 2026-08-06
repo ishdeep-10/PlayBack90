@@ -2,9 +2,8 @@
 
 import { memo, useEffect, useState } from "react";
 
-import { CARD_ICON_RED, CARD_ICON_YELLOW, SUB_ICON, circularImageDataUrl } from "../lib/images";
-
-
+import { PUBLIC_API_BASE, getAuthHeaders } from "../lib/api";
+import { CARD_ICON_RED, CARD_ICON_SECOND_YELLOW, CARD_ICON_YELLOW, SUB_ICON, circularImageDataUrl } from "../lib/images";
 import { Plot } from "../lib/plotly";
 import { CHART_FONT_FAMILY, readThemeColors } from "../lib/theme";
 
@@ -58,8 +57,6 @@ function ThirdSelect({ value, onChange, id }: { value: ThirdKey; onChange: (valu
     </select>
   );
 }
-
-const PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
 const plotConfig = {
   responsive: true,
@@ -142,7 +139,8 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
       for (const [team, names] of byTeam) {
         try {
           const response = await fetch(
-            `${PUBLIC_API_BASE}/players/images?names=${encodeURIComponent([...names].join(","))}&team=${encodeURIComponent(team)}`
+            `${PUBLIC_API_BASE}/players/images?names=${encodeURIComponent([...names].join(","))}&team=${encodeURIComponent(team)}`,
+            { headers: await getAuthHeaders() }
           );
           const data = (await response.json()) as Record<string, string | null>;
           const border = teamColors[team] ?? "#22c55e";
@@ -263,6 +261,8 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
   const momentumGoals = eventMarkers.filter((row) => String(row.event_type ?? "") === "goal");
   const yellowCards = eventMarkers.filter((row) => String(row.event_type ?? "") === "yellow_card");
   const redCards = eventMarkers.filter((row) => String(row.event_type ?? "") === "red_card");
+  const straightRedCards = redCards.filter((row) => String(row.card_kind ?? "") !== "second_yellow_red");
+  const secondYellowRedCards = redCards.filter((row) => String(row.card_kind ?? "") === "second_yellow_red");
   const xgMax = Math.max(0.1, ...xgFlowRows.map((row) => Number(row.cumulative_xg ?? 0)));
   const ppdaMax = Math.max(1, ...ppdaA.map((row) => row.value), ...ppdaB.map((row) => row.value));
   const ppdaSeasonRefs = [teamA, teamB]
@@ -316,7 +316,8 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
       .filter((row) => headshotFor(row))
       .map((row) => markerImage(headshotFor(row)!, Number(row.minute ?? 0), eventYFor(row, selectedMomentumMax, 0.9), xSpan * 0.05, momentumSpanY * 0.12)),
     ...yellowCards.map((row) => markerImage(CARD_ICON_YELLOW, Number(row.minute ?? 0), eventYFor(row, selectedMomentumMax, 0.72), xSpan * 0.026, momentumSpanY * 0.085)),
-    ...redCards.map((row) => markerImage(CARD_ICON_RED, Number(row.minute ?? 0), eventYFor(row, selectedMomentumMax, 0.72), xSpan * 0.028, momentumSpanY * 0.09)),
+    ...straightRedCards.map((row) => markerImage(CARD_ICON_RED, Number(row.minute ?? 0), eventYFor(row, selectedMomentumMax, 0.72), xSpan * 0.028, momentumSpanY * 0.09)),
+    ...secondYellowRedCards.map((row) => markerImage(CARD_ICON_SECOND_YELLOW, Number(row.minute ?? 0), eventYFor(row, selectedMomentumMax, 0.72), xSpan * 0.04, momentumSpanY * 0.09)),
   ];
 
   function lineTrace(name: string, data: Array<{ minute: number; value: number }>, color: string, extra: Record<string, unknown> = {}) {
@@ -599,7 +600,12 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
               <option value="epv">EPV</option>
               <option value="combined">xT + EPV</option>
             </select>
-            <DownloadPngButton filename={`${teamA}-vs-${teamB}-${momentumFilenameMetric}-momentum`} title={`${momentumLabel} Momentum`} scopeSelector=".xt-momentum-card" />
+            <DownloadPngButton
+              filename={`${teamA}-vs-${teamB}-${momentumFilenameMetric}-momentum`}
+              title={`${momentumLabel} Momentum`}
+              scopeSelector=".xt-momentum-card"
+              canvasHeight={720}
+            />
           </div>
         </div>
         <Plot

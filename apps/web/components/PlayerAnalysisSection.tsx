@@ -35,7 +35,8 @@ const PLAYER_COMPARISON_COLORS = [
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   teams: string[];
   selectedTeam: string;
@@ -82,9 +83,46 @@ const shotMarkerLegend = [
   ["SCA-created shot", "circle", "#a78bfa"],
 ] as const;
 const pitchAreaLabels = ["Own box", "Defensive third", "Middle third", "Final third", "Opp. box"] as const;
+const gkPassLegend = [
+  ["Short pass", "circle"],
+  ["Long pass", "diamond"],
+] as const;
+const gkActionMarkerLegend = [
+  ["Save", "star"],
+  ["Claim", "diamond"],
+  ["Punch", "hexagon"],
+  ["Pickup", "circle"],
+  ["Sweeper action", "triangle-down"],
+] as const;
+const gkActionSymbolByType: Record<string, string> = {
+  Save: "star",
+  KeeperSave: "star",
+  Claim: "diamond",
+  Punch: "hexagon",
+  KeeperPickup: "circle",
+  KeeperSweeper: "triangle-down",
+  Smother: "hexagon",
+};
 
 function playerKey(row: Row) {
   return `${String(row.player ?? "")}|${String(row.team ?? "")}`;
+}
+
+function playerPositions(row: Row): string[] {
+  const raw = row.positions as unknown;
+  return Array.isArray(raw) ? raw.map((value) => String(value)) : [];
+}
+
+function positionsLabel(row: Row): string {
+  const positions = playerPositions(row);
+  if (positions.length > 1) return positions.join(" / ");
+  if (positions.length === 1) return positions[0];
+  return row.position ? String(row.position) : "";
+}
+
+function playerOptionLabel(row: Row): string {
+  const label = positionsLabel(row);
+  return label ? `${String(row.player ?? "")} (${label})` : String(row.player ?? "");
 }
 
 function rowsFromPayload(payload: Record<string, unknown>, key: string) {
@@ -331,6 +369,23 @@ function defensiveAreaForRows(rows: Row[]): DefensiveArea | null {
   };
 }
 
+function defensiveAreaForPoints(rows: Row[]): DefensiveArea | null {
+  const points = rows
+    .map(pitchPoint)
+    .filter((point) => point.x >= 0 && point.x <= 68 && point.y >= 0 && point.y <= 105);
+  if (!points.length) return null;
+  const xValues = points.map((point) => point.x);
+  const yValues = points.map((point) => point.y);
+  const xRange = clampSpan(percentile(xValues, 0.25) - 3, percentile(xValues, 0.75) + 3, 0, 68, 12, 30);
+  const yRange = clampSpan(percentile(yValues, 0.25) - 4, percentile(yValues, 0.75) + 4, 0, 105, 14, 34);
+  return {
+    x0: xRange.min,
+    x1: xRange.max,
+    y0: yRange.min,
+    y1: yRange.max,
+  };
+}
+
 function pointInArea(point: { x: number; y: number }, area: DefensiveArea) {
   return point.x >= area.x0 && point.x <= area.x1 && point.y >= area.y0 && point.y <= area.y1;
 }
@@ -527,7 +582,8 @@ function statMatches(row: Row, kind: PitchKind, label: string) {
 export function PlayerAnalysisSection({
   matchId,
   source,
-  filePath,
+  league,
+  season,
   jobId,
   teams,
   selectedTeam,
@@ -566,6 +622,7 @@ export function PlayerAnalysisSection({
   const [activePassSubtype, setActivePassSubtype] = useState<string | null>(null);
   const [showOpponentActionsInDefensiveArea, setShowOpponentActionsInDefensiveArea] = useState(false);
   const [showProgressiveReceives, setShowProgressiveReceives] = useState(false);
+  const [positionFilter, setPositionFilter] = useState<string | null>(null);
 
   const visibleTeams = compareTeams ? teams : [currentTeam];
   const players = useMemo(
@@ -590,11 +647,14 @@ export function PlayerAnalysisSection({
   );
   const selectedSet = useMemo(() => new Set(selectedPlayers), [selectedPlayers]);
   const selectedRows = players.filter((row) => selectedSet.has(playerKey(row)));
-  const selectedActions = actions.filter((row) => selectedSet.has(playerKey(row)));
+  const selectedActions = actions.filter(
+    (row) => selectedSet.has(playerKey(row)) && (!positionFilter || String(row.position ?? "") === positionFilter),
+  );
   const activeTeamColor = teamColors[currentTeam] ?? "#22c55e";
   const selectedTitle = selectedRows.length
-    ? selectedRows.map((row) => String(row.player ?? "")).join(", ")
+    ? selectedRows.map((row) => playerOptionLabel(row)).join(", ")
     : "Select a player";
+  const primaryPositions = !allowMultiplePlayers && selectedRows[0] ? playerPositions(selectedRows[0]) : [];
   const [theme, setTheme] = useState(readThemeColors);
   const unsuccessfulColor = unsuccessfulActionColor(theme.mode);
 
@@ -605,6 +665,11 @@ export function PlayerAnalysisSection({
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    setPositionFilter(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlayers.join(",")]);
   const gameStateOptions = ((payloadsByTeam[currentTeam]?.game_state_options as GameStateOption[] | undefined) ?? [])
     .filter((option) => String(option.value ?? "").trim());
 
@@ -613,7 +678,7 @@ export function PlayerAnalysisSection({
     if (source !== "r2") filters.job_id = jobId;
     return source !== "r2"
       ? { match_id: matchId, source, filters }
-      : { match_id: matchId, source: "r2", file_path: filePath, filters };
+      : { match_id: matchId, source: "r2", league, season, filters };
   };
 
   const fetchTeamPayload = async (team: string, gameState = selectedGameState, force = false) => {
@@ -623,6 +688,30 @@ export function PlayerAnalysisSection({
     setPayloadsByTeam((current) => ({ ...current, [String(nextPayload.team ?? team)]: nextPayload }));
     return nextPayload;
   };
+
+  const isPrimaryGoalkeeper = !allowMultiplePlayers && String(selectedRows[0]?.position_group ?? "") === "GK";
+  const [goalkeeperPayload, setGoalkeeperPayload] = useState<Record<string, unknown> | null>(null);
+  const [showGkOpponentActions, setShowGkOpponentActions] = useState(false);
+
+  useEffect(() => {
+    if (!isPrimaryGoalkeeper) {
+      setGoalkeeperPayload(null);
+      return;
+    }
+    let cancelled = false;
+    setIsLoading(true);
+    getAnalysisView("goalkeeper", buildBody(currentTeam))
+      .then((response) => {
+        if (!cancelled) setGoalkeeperPayload(response.payload ?? {});
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPrimaryGoalkeeper, currentTeam, selectedGameState]);
 
   const loadTeam = async (team: string) => {
     if (team === currentTeam && !compareTeams) return;
@@ -744,6 +833,12 @@ export function PlayerAnalysisSection({
       { type: "line", x0: 30.34, y0: 105.8, x1: 37.66, y1: 105.8, line: { color: theme.text, width: 3 } },
     ],
     yaxis: { range: [52.5, 105.8], visible: false, fixedrange: true, scaleanchor: "x", scaleratio: 1, constrain: "domain" },
+  });
+
+  const goalkeeperDefensiveThirdLayout = (height = 500) => ({
+    ...pitchLayout(height),
+    xaxis: { range: [7, 61], visible: false, fixedrange: true, constrain: "domain" },
+    yaxis: { range: [0, 30], visible: false, fixedrange: true, scaleanchor: "x", scaleratio: 1, constrain: "domain" },
   });
 
   const goalLayout = (height = 260) => {
@@ -1661,6 +1756,232 @@ export function PlayerAnalysisSection({
     </div>
   );
 
+  const gkPassTraces = (passMap: Row[]) => {
+    const groups: Record<string, Row[]> = { "short-ok": [], "short-bad": [], "long-ok": [], "long-bad": [] };
+    passMap.forEach((row) => {
+      const key = `${row.long === true ? "long" : "short"}-${row.successful === true ? "ok" : "bad"}`;
+      groups[key].push(row);
+    });
+    const lineTraces = Object.entries(groups)
+      .filter(([, rows]) => rows.length)
+      .map(([key, rows]) => {
+        const xs: Array<number | null> = [];
+        const ys: Array<number | null> = [];
+        rows.forEach((row) => {
+          const start = pitchPoint(row);
+          const end = pitchEndPoint(row);
+          xs.push(start.x, end.x, null);
+          ys.push(start.y, end.y, null);
+        });
+        const successful = key.endsWith("ok");
+        return {
+          x: xs,
+          y: ys,
+          type: "scatter",
+          mode: "lines",
+          line: { color: successful ? activeTeamColor : unsuccessfulColor, width: key.startsWith("long") ? 2.2 : 1.5, dash: key.startsWith("long") ? "dot" : "solid" },
+          opacity: 0.75,
+          hoverinfo: "skip",
+          showlegend: false,
+        };
+      });
+    const markerTrace = {
+      x: passMap.map((row) => pitchEndPoint(row).x),
+      y: passMap.map((row) => pitchEndPoint(row).y),
+      text: passMap.map((row) => `${row.successful ? "Completed" : "Incomplete"} ${row.long ? "long" : "short"} pass`),
+      type: "scatter",
+      mode: "markers",
+      marker: {
+        symbol: passMap.map((row) => row.long ? "diamond" : "circle"),
+        size: 8,
+        color: passMap.map((row) => row.successful ? activeTeamColor : "rgba(0,0,0,0)"),
+        line: { color: passMap.map((row) => row.successful ? activeTeamColor : unsuccessfulColor), width: 1.6 },
+      },
+      hovertemplate: "%{text}<extra></extra>",
+      showlegend: false,
+    };
+    return [...lineTraces, markerTrace];
+  };
+
+  const gkActionTraces = (rows: Row[]) => {
+    const points = rows.map((row) => ({ row, ...pitchPoint(row) }));
+    return [{
+      x: points.map((point) => point.x),
+      y: points.map((point) => point.y),
+      text: points.map(({ row }) => `${rowClock(row)} · ${String(row.label ?? row.type ?? "")} · ${row.is_successful ? "Successful" : "Unsuccessful"}`),
+      type: "scatter",
+      mode: "markers",
+      marker: {
+        symbol: rows.map((row) => gkActionSymbolByType[String(row.type ?? "")] ?? "circle"),
+        size: 13,
+        color: rows.map((row) => row.is_successful ? activeTeamColor : "rgba(0,0,0,0)"),
+        line: { color: rows.map((row) => row.is_successful ? activeTeamColor : unsuccessfulColor), width: 2 },
+      },
+      hovertemplate: "%{text}<extra></extra>",
+      showlegend: false,
+    }];
+  };
+
+  const renderGoalkeeperPanel = () => {
+    const gkRow = selectedRows[0];
+    const keeperName = String(gkRow?.player ?? "");
+    const keeperTeam = String(gkRow?.team ?? currentTeam);
+    if (!goalkeeperPayload || goalkeeperPayload.available !== true) {
+      return (
+        <div className="player-analysis-player-panel">
+          <p className="chart-footnote">Loading goalkeeper data…</p>
+        </div>
+      );
+    }
+    const distribution = (goalkeeperPayload.distribution as Record<string, unknown>) ?? {};
+    const sweeping = (goalkeeperPayload.sweeping as Record<string, unknown>) ?? {};
+    const shotStopping = (goalkeeperPayload.shot_stopping as Record<string, unknown>) ?? {};
+    const passMap = rowsFromPayload(goalkeeperPayload, "pass_map");
+    const gkActions = rowsFromPayload(goalkeeperPayload, "gk_actions");
+    const shotsFaced = rowsFromPayload(goalkeeperPayload, "shots_faced_rows");
+    const gkArea = defensiveAreaForPoints(gkActions);
+    const opponentTeam = teams.find((team) => team !== keeperTeam);
+    const gkOpponentActions = showGkOpponentActions && gkArea
+      ? loadedActions.filter((row) => {
+          const type = String(row.type ?? "");
+          return (
+            String(row.team ?? "") === opponentTeam &&
+            ["Pass", "Carry", "TakeOn"].includes(type) &&
+            row.is_successful === true &&
+            row.is_progressive === true &&
+            actionTouchesArea(row, gkArea, true)
+          );
+        })
+      : [];
+
+    return (
+      <div className="player-analysis-player-panel is-goalkeeper">
+        <div className="player-analysis-player-panel-title">
+          <PlayerAvatar name={keeperName} team={keeperTeam} size={48} />
+          <div>
+            <strong>{keeperName}</strong>
+            <span>{keeperTeam} · Goalkeeper</span>
+          </div>
+        </div>
+        <div className="player-analysis-action-grid">
+          <div className="plotly-chart-shell player-analysis-action-pitch">
+            <div className="player-analysis-pitch-head"><span>In possession</span></div>
+            <div className="player-analysis-pitch-control-row" />
+            <div className="player-analysis-pitch-viewport">
+              <Plot data={gkPassTraces(passMap)} layout={pitchLayout(500)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+            </div>
+            <div className="player-analysis-stat-buttons">
+              <span className="player-analysis-static-stat"><span>Passes</span><strong>{formatNumber(distribution.completed)}/{formatNumber(distribution.passes)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Completion %</span><strong>{formatNumber(distribution.completion_pct, 1)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Long %</span><strong>{formatNumber(distribution.long_pct, 1)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Avg length</span><strong>{formatNumber(distribution.avg_length, 1)}</strong></span>
+            </div>
+            <div className="player-analysis-detail-slot">
+              <ActionOutcomeLegend color={activeTeamColor} unsuccessfulColor={unsuccessfulColor} />
+              <div className="player-analysis-oop-legend-panel">
+                <div className="player-analysis-oop-legend" aria-label="Pass length legend">
+                  {gkPassLegend.map(([label, symbol]) => (
+                    <span key={label}><i className={`is-marker is-${symbol}`} />{label}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="plotly-chart-shell player-analysis-action-pitch">
+            <div className="player-analysis-pitch-head"><span>Out of possession</span></div>
+            <div className="player-analysis-pitch-control-row">
+              <div className="player-analysis-pitch-options">
+                <label className="player-analysis-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={showGkOpponentActions}
+                    onChange={async (event) => {
+                      const checked = event.target.checked;
+                      setShowGkOpponentActions(checked);
+                      if (checked && opponentTeam && !payloadsByTeam[opponentTeam]) {
+                        setIsLoading(true);
+                        try {
+                          await fetchTeamPayload(opponentTeam, selectedGameState, true);
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }
+                    }}
+                  />
+                  <span>Opp. actions in area</span>
+                </label>
+              </div>
+            </div>
+            <div className="player-analysis-pitch-viewport">
+              <Plot
+                data={[
+                  ...defensiveAreaTrace(gkArea),
+                  ...opponentAreaActionTraces(gkOpponentActions, true),
+                  ...gkActionTraces(gkActions),
+                ]}
+                layout={goalkeeperDefensiveThirdLayout(500)}
+                config={plotConfig}
+                className="plotly-chart"
+                style={{ width: "100%", height: "100%" }}
+              />
+            </div>
+            <div className="player-analysis-stat-buttons">
+              <span className="player-analysis-static-stat"><span>Claims</span><strong>{formatNumber(sweeping.claims)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Pickups</span><strong>{formatNumber(sweeping.pickups)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Sweeper actions</span><strong>{formatNumber(sweeping.actions_outside_box)}</strong></span>
+            </div>
+            <div className="player-analysis-detail-slot">
+              <div className="player-analysis-oop-legend-panel">
+                <div className="player-analysis-oop-legend" aria-label="Goalkeeper action marker legend">
+                  {showGkOpponentActions && <span><i className="is-opponent" />Opponent action in area</span>}
+                  {gkActionMarkerLegend.map(([label, symbol]) => (
+                    <span key={label}><i className={`is-marker is-${symbol}`} />{label}</span>
+                  ))}
+                </div>
+              </div>
+              {showGkOpponentActions && gkArea && (
+                <div className="player-analysis-oop-summary">
+                  <span><em>Opp. progressive actions</em><strong>{gkOpponentActions.length}</strong></span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="plotly-chart-shell player-analysis-action-pitch is-shots">
+            <div className="player-analysis-pitch-head"><span>Shots faced</span></div>
+            <div className="player-analysis-pitch-control-row" />
+            <div className="player-analysis-pitch-viewport">
+              <div className="player-analysis-shot-split">
+                <Plot data={goalTrace(shotsFaced)} layout={goalLayout(160)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+                <Plot data={shotTrace(shotsFaced)} layout={shotHalfPitchLayout(356)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+              </div>
+            </div>
+            <div className="player-analysis-stat-buttons">
+              <span className="player-analysis-static-stat"><span>Shots faced</span><strong>{formatNumber(shotStopping.sot_faced)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Goals conceded</span><strong>{formatNumber(shotStopping.goals_conceded)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Saves</span><strong>{formatNumber(shotStopping.saves)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Save %</span><strong>{formatNumber(shotStopping.save_pct, 1)}</strong></span>
+              <span className="player-analysis-static-stat"><span>xG faced</span><strong>{formatNumber(shotStopping.xg_on_target_faced, 2)}</strong></span>
+              <span className="player-analysis-static-stat"><span>xGOT faced</span><strong>{formatNumber(shotStopping.xgot_faced, 2)}</strong></span>
+              <span className="player-analysis-static-stat"><span>Goals prevented</span><strong>{formatNumber(shotStopping.goals_prevented, 2)}</strong></span>
+            </div>
+            <div className="player-analysis-detail-slot">
+              <div className="player-analysis-shot-legend" aria-label="Shot marker legend">
+                {shotMarkerLegend.map(([label, symbol, color]) => (
+                  <span key={label}>
+                    <i className={`is-${symbol}`} style={{ borderColor: color, color }} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
     <section className={`card stack player-analysis-section${isLoading ? " is-loading-soft" : ""}`}>
@@ -1694,12 +2015,14 @@ export function PlayerAnalysisSection({
             }}
             chartLabels={() =>
               [...document.querySelectorAll<HTMLElement>(".player-analysis-action-pitch")].map((panel) => {
-                const select = panel.querySelector<HTMLSelectElement>("select");
-                const kindLabel = select?.selectedOptions?.[0]?.textContent?.trim() ?? "";
+                const select = panel.querySelector<HTMLSelectElement>(".player-analysis-pitch-head select");
+                const heading = panel.querySelector<HTMLElement>(".player-analysis-pitch-head span");
+                const kindLabel = select?.selectedOptions?.[0]?.textContent?.trim() ?? heading?.textContent?.trim() ?? "";
                 const active = panel.querySelector<HTMLElement>(".player-analysis-stat-buttons button.is-active span");
                 const base = active?.textContent ? `${kindLabel} · ${active.textContent.trim()}` : kindLabel;
                 const owner = panel.closest(".player-analysis-player-panel")?.querySelector(".player-analysis-player-panel-title strong")?.textContent?.trim();
-                return owner && !allowMultiplePlayers ? `${owner} — ${base}` : base;
+                const isGoalkeeperPanel = Boolean(panel.closest(".player-analysis-player-panel.is-goalkeeper"));
+                return owner && !allowMultiplePlayers && !isGoalkeeperPanel ? `${owner} — ${base}` : base;
               })}
             chartSubtitles={() =>
               [...document.querySelectorAll<HTMLElement>(".player-analysis-action-pitch")].map((panel) => {
@@ -1838,7 +2161,7 @@ export function PlayerAnalysisSection({
                     <optgroup key={team} label={team}>
                       {players.filter((row) => String(row.team ?? "") === team).map((row) => (
                         <option key={playerKey(row)} value={playerKey(row)}>
-                          {String(row.player ?? "")}
+                          {playerOptionLabel(row)}
                         </option>
                       ))}
                     </optgroup>
@@ -1848,20 +2171,33 @@ export function PlayerAnalysisSection({
             ))}
           </div>
         ) : (
-          <label>
-            <span>Player</span>
-            <select className="select" value={selectedPlayers[0] ?? ""} onChange={(event) => setSinglePlayer(event.target.value)}>
-              {visibleTeams.map((team) => (
-                <optgroup key={team} label={team}>
-                  {players.filter((row) => String(row.team ?? "") === team).map((row) => (
-                    <option key={playerKey(row)} value={playerKey(row)}>
-                      {String(row.player ?? "")}
-                    </option>
+          <div className="player-analysis-player-filter-row">
+            <label className="player-analysis-player-filter">
+              <span>Player</span>
+              <select className="select" value={selectedPlayers[0] ?? ""} onChange={(event) => setSinglePlayer(event.target.value)}>
+                {visibleTeams.map((team) => (
+                  <optgroup key={team} label={team}>
+                    {players.filter((row) => String(row.team ?? "") === team).map((row) => (
+                      <option key={playerKey(row)} value={playerKey(row)}>
+                        {playerOptionLabel(row)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            {primaryPositions.length > 1 && (
+              <label className="player-analysis-position-filter">
+                <span>Position</span>
+                <select className="select" value={positionFilter ?? ""} onChange={(event) => setPositionFilter(event.target.value || null)}>
+                  <option value="">All positions</option>
+                  {primaryPositions.map((position) => (
+                    <option key={position} value={position}>{position}</option>
                   ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+                </select>
+              </label>
+            )}
+          </div>
         )}
         <div className="player-analysis-selector-actions">
           <button type="button" className={allowMultiplePlayers ? "button" : "ghost-button"} onClick={toggleMultiplePlayers}>
@@ -1879,7 +2215,7 @@ export function PlayerAnalysisSection({
           <div className="player-analysis-selected-pills">
             {selectedRows.map((row) => (
               <button key={playerKey(row)} type="button" onClick={() => togglePlayer(row)}>
-                {String(row.player ?? "")}
+                {playerOptionLabel(row)}
               </button>
             ))}
           </div>
@@ -1887,15 +2223,17 @@ export function PlayerAnalysisSection({
       </div>
 
       <div className="player-analysis-main">
-        {allowMultiplePlayers
-          ? selectedRows.map((row) => renderPlayerPanel(
-              selectedActions.filter((action) => playerKey(action) === playerKey(row)),
-              [row],
-              String(row.player ?? ""),
-              String(row.team ?? ""),
-              playerKey(row),
-            ))
-          : renderPlayerPanel(selectedActions, selectedRows)}
+        {isPrimaryGoalkeeper
+          ? renderGoalkeeperPanel()
+          : allowMultiplePlayers
+            ? selectedRows.map((row) => renderPlayerPanel(
+                selectedActions.filter((action) => playerKey(action) === playerKey(row)),
+                [row],
+                String(row.player ?? ""),
+                String(row.team ?? ""),
+                playerKey(row),
+              ))
+            : renderPlayerPanel(selectedActions, selectedRows)}
       </div>
     </section>
     {(() => {
@@ -1911,10 +2249,16 @@ export function PlayerAnalysisSection({
         }];
       });
       if (!contextPlayers.length) return null;
+      const allGroups = seasonBaseline.meta?.metricGroups ?? [];
+      const onlyGoalkeepers = contextPlayers.every(({ baseline }) => baseline.positionGroup === "GK");
+      const groups = onlyGoalkeepers
+        ? allGroups.filter((group) => group.id === "goalkeeping")
+        : allGroups.filter((group) => group.id !== "goalkeeping");
+      if (!groups.length) return null;
       return (
         <SeasonContextPanel
           players={contextPlayers}
-          groups={seasonBaseline.meta?.metricGroups ?? []}
+          groups={groups}
         />
       );
     })()}

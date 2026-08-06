@@ -90,6 +90,15 @@ def list_all_fixtures(league: str, season: str) -> list[dict[str, object]]:
     return fixtures
 
 
+def find_file_path(league: str, season: str, match_id: str) -> str | None:
+    """Resolve a match's R2 object path server-side so clients only need league+season+match_id,
+    never the internal storage path itself."""
+    for fixture in list_all_fixtures(league, season):
+        if str(fixture.get("match_id")) == str(match_id):
+            return str(fixture["file_path"])
+    return None
+
+
 def list_fixtures(league: str, season: str, limit: int, offset: int) -> list[dict[str, object]]:
     fixtures = list_all_fixtures(league, season)
     return fixtures[offset : offset + limit]

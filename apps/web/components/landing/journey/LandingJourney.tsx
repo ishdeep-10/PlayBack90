@@ -169,7 +169,7 @@ function FullJourney() {
           trigger: root,
           start: "top top",
           end: "bottom bottom",
-          scrub: 0.5,
+          scrub: 1,
           onToggle: (self) => {
             canvasRef.current?.setActive(self.isActive);
             const video = videoRef.current;

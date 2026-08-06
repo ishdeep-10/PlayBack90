@@ -5,7 +5,7 @@ from time import monotonic
 
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.middleware.gzip import GZipMiddleware
 
 from app.auth import require_auth_middleware
@@ -15,6 +15,7 @@ from app.schemas import (
     AnalysisResponse,
     AnalysisViewRequest,
     AnalysisViewResponse,
+    FixtureHubResponse,
     FixtureListResponse,
     FixtureRoundListResponse,
     FixtureRoundResponse,
@@ -22,6 +23,8 @@ from app.schemas import (
     LeagueSummary,
     LiveScrapeJobCreate,
     MatchByFileResponse,
+    OppositionDossierResponse,
+    OppositionFoundationResponse,
     SeasonList,
     StandingsResponse,
 )
@@ -66,8 +69,11 @@ from app.services.views.set_pieces import build_set_pieces_view
 from app.services.views.shots import build_shots_sca_view
 from app.services import season_stats as ss
 from app.services.standings import StandingsProviderError, standings_service
+from app.services.schedules import provider_season_keys, schedule_service
 from app.services.season_baseline import build_season_baseline_view
 from app.services import opposition as opp_svc
+from app.services.opposition_foundation import build_opposition_foundation
+from app.services.opposition_dossier import build_opposition_dossier
 
 
 app = FastAPI(title=settings.app_name)
@@ -103,7 +109,9 @@ def _cached_payload(key: tuple[str, ...], builder):
 def resolve_analysis_source(
     *,
     source: str,
-    file_path: str | None = None,
+    match_id: str | None = None,
+    league: str | None = None,
+    season: str | None = None,
     job_id: str | None = None,
 ):
     if source == "live":
@@ -124,8 +132,12 @@ def resolve_analysis_source(
         context = derive_match_context(job.data, file_path=None, source="import")
         return job.data, context
 
+    if not match_id or not league or not season:
+        raise HTTPException(status_code=400, detail="match_id, league, and season are required for historical analysis.")
+
+    file_path = r2.find_file_path(league, season, match_id)
     if not file_path:
-        raise HTTPException(status_code=400, detail="file_path query parameter is required for historical analysis.")
+        raise HTTPException(status_code=404, detail="Match not found.")
 
     df, context = get_match_by_file(file_path)
     if df.empty:
@@ -140,8 +152,41 @@ def healthcheck() -> dict[str, object]:
         "environment": settings.environment,
         "r2_configured": settings.has_r2_credentials,
         "official_standings_configured": bool(settings.football_data_api_key),
-        "redis_url": settings.redis_url,
+        "api_sports_configured": bool(settings.api_sports_key),
+        "redis_configured": bool(settings.redis_url),
+        "database_configured": bool(settings.database_url),
     }
+
+
+def _auth_is_ready() -> bool:
+    if not settings.auth_required:
+        return True
+    has_provider = bool(settings.clerk_jwks_url and settings.clerk_issuer)
+    has_allowlist = bool(settings.auth_allowed_emails or settings.auth_allowed_user_ids)
+    return has_provider and has_allowlist
+
+
+def _readiness_checks() -> dict[str, bool]:
+    return {
+        "r2": settings.has_r2_credentials,
+        "redis": bool(settings.redis_url),
+        "database": bool(settings.database_url),
+        "auth": _auth_is_ready(),
+    }
+
+
+@app.get("/ready")
+def readiness() -> JSONResponse:
+    checks = _readiness_checks()
+    ready = all(checks.values())
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={
+            "ok": ready,
+            "environment": settings.environment,
+            "checks": checks,
+        },
+    )
 
 
 @app.get(f"{settings.api_prefix}/leagues", response_model=list[LeagueSummary])
@@ -188,14 +233,25 @@ def proxy_player_image(url: str) -> Response:
 
 @app.get(f"{settings.api_prefix}/leagues/{{league}}/seasons", response_model=SeasonList)
 def list_seasons(league: str) -> SeasonList:
-    seasons = r2.list_league_seasons(league)
+    seasons = sorted(set(r2.list_league_seasons(league) + provider_season_keys(league)), reverse=True)
     return SeasonList(league=league, seasons=seasons)
 
 
 @app.get(f"{settings.api_prefix}/leagues/{{league}}/seasons/{{season}}/fixtures", response_model=FixtureListResponse)
 def list_fixtures(league: str, season: str, offset: int = 0, limit: int = 10) -> FixtureListResponse:
-    fixtures = [fixture for fixture in r2.list_fixtures(league, season, limit=limit, offset=offset)]
+    hub = schedule_service.build_fixture_hub(league, season, state="all")
+    fixtures = hub.get("fixtures", [])[offset : offset + limit]
     return FixtureListResponse(league=league, season=season, offset=offset, limit=limit, fixtures=fixtures)
+
+
+@app.get(f"{settings.api_prefix}/leagues/{{league}}/seasons/{{season}}/fixture-hub", response_model=FixtureHubResponse)
+def get_fixture_hub(
+    league: str,
+    season: str,
+    state: str = Query(default="all", pattern="^(all|completed|upcoming|postponed|cancelled|live|unknown)$"),
+    round_id: str | None = Query(default=None, alias="round"),
+) -> FixtureHubResponse:
+    return schedule_service.build_fixture_hub(league, season, state=state, round_id=round_id)
 
 
 @app.get(
@@ -247,11 +303,12 @@ def get_match_by_file_endpoint(file_path: str = Query(..., alias="file_path")) -
 @app.get(f"{settings.api_prefix}/analysis/{{match_id}}", response_model=AnalysisResponse)
 def get_analysis(
     match_id: str,
-    file_path: str | None = Query(default=None, alias="file_path"),
+    league: str | None = Query(default=None),
+    season: str | None = Query(default=None),
     source: str = Query(default="r2"),
     job_id: str | None = Query(default=None, alias="job_id"),
 ) -> AnalysisResponse:
-    df, context = resolve_analysis_source(source=source, file_path=file_path, job_id=job_id)
+    df, context = resolve_analysis_source(source=source, match_id=match_id, league=league, season=season, job_id=job_id)
     if source not in {"live", "import"} and context.match_id != match_id:
         raise HTTPException(status_code=400, detail="match_id does not match the supplied file.")
 
@@ -265,6 +322,7 @@ def get_analysis(
 
 @app.post(f"{settings.api_prefix}/analysis/views/{{view_id}}", response_model=AnalysisViewResponse)
 def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisViewResponse:
+    file_path: str | None = None
     if request.source in {"live", "import"}:
         job_id = request.filters.get("job_id")
         if not isinstance(job_id, str):
@@ -273,9 +331,12 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
         df = job.data if job and job.data is not None else None
         context = derive_match_context(df, file_path=None, source=request.source) if df is not None else None
     else:
-        if not request.file_path:
-            raise HTTPException(status_code=400, detail="file_path is required for historical matches.")
-        df, context = get_match_by_file(request.file_path)
+        if not request.league or not request.season:
+            raise HTTPException(status_code=400, detail="league and season are required for historical matches.")
+        file_path = r2.find_file_path(request.league, request.season, request.match_id)
+        if not file_path:
+            raise HTTPException(status_code=404, detail="Match not found.")
+        df, context = get_match_by_file(file_path)
 
     if df is None or df.empty or context is None:
         raise HTTPException(status_code=404, detail="Analysis data is not available.")
@@ -304,9 +365,9 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
                 kind="message",
                 payload={"message": "Season context is not available for transient imports."},
             )
-        cache_token = request.file_path or f"live:{context.match_id}"
+        cache_token = file_path or f"live:{context.match_id}"
         payload = _cached_payload(
-            ("season-baseline-v6", cache_token),
+            ("season-baseline-v7-gk", cache_token),
             lambda: build_season_baseline_view(df, context),
         )
         return AnalysisViewResponse(
@@ -344,7 +405,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
         third = request.filters.get("third")
         if request.source == "r2":
             payload = _cached_payload(
-                ("pass-network", request.file_path or "", str(team or ""), str(sub_window or "0"), str(score_state or "all"), str(time_range or "all"), str(third or "all")),
+                ("pass-network", file_path or "", str(team or ""), str(sub_window or "0"), str(score_state or "all"), str(time_range or "all"), str(third or "all")),
                 lambda: build_pass_network(df, team=team, sub_window=sub_window, score_state=score_state, time_range=time_range, third=third),
             )
         else:
@@ -359,7 +420,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "in-possession-player-metrics":
         if request.source == "r2":
             payload = _cached_payload(
-                ("in-possession-player-metrics-v2-epv", request.file_path or "", str(team or ""), str(sub_window or "all"), str(score_state or "all"), str(time_range or "all")),
+                ("in-possession-player-metrics-v2-epv", file_path or "", str(team or ""), str(sub_window or "all"), str(score_state or "all"), str(time_range or "all")),
                 lambda: build_in_possession_player_metrics(df, team=team, sub_window=sub_window, score_state=score_state, time_range=time_range),
             )
         else:
@@ -381,8 +442,8 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
             )
         player_b = request.filters.get("playerB")
         payload = _cached_payload(
-            ("player-history", request.file_path or "", str(player or ""), str(player_b or ""), request.match_id),
-            lambda: build_player_history_view(request.file_path, player, request.match_id, player_b),
+            ("player-history", file_path or "", str(player or ""), str(player_b or ""), request.match_id),
+            lambda: build_player_history_view(file_path, player, request.match_id, player_b),
         )
         return AnalysisViewResponse(
             view_id=view_id,
@@ -394,7 +455,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "goalkeeper":
         if request.source == "r2":
             payload = _cached_payload(
-                ("goalkeeper", request.file_path or "", str(team or "")),
+                ("goalkeeper-v2-actions-shots", file_path or "", str(team or "")),
                 lambda: build_goalkeeper_view(df, team=team),
             )
         else:
@@ -409,7 +470,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "set-pieces":
         if request.source == "r2":
             payload = _cached_payload(
-                ("set-pieces", request.file_path or "", str(team or ""), str(score_state or "all"), str(time_range or "all")),
+                ("set-pieces", file_path or "", str(team or ""), str(score_state or "all"), str(time_range or "all")),
                 lambda: build_set_pieces_view(df, team=team, score_state=score_state, time_range=time_range),
             )
         else:
@@ -424,7 +485,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "territory-entries":
         if request.source == "r2":
             payload = _cached_payload(
-                ("territory-entries", request.file_path or "", str(team or ""), str(time_range or "all")),
+                ("territory-entries", file_path or "", str(team or ""), str(time_range or "all")),
                 lambda: build_territory_entries(df, team=team, time_range=time_range),
             )
         else:
@@ -439,7 +500,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "channel-analysis":
         if request.source == "r2":
             payload = _cached_payload(
-                ("channel-analysis", request.file_path or "", str(team or ""), str(score_state or "all"), str(time_range or "all")),
+                ("channel-analysis", file_path or "", str(team or ""), str(score_state or "all"), str(time_range or "all")),
                 lambda: build_channel_analysis(df, team=team, score_state=score_state, time_range=time_range),
             )
         else:
@@ -455,7 +516,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
         third = request.filters.get("third")
         if request.source == "r2":
             payload = _cached_payload(
-                ("in-possession-actions-v2-epv", request.file_path or "", str(team or ""), str(sub_window or "0"), str(score_state or "all"), str(time_range or "all"), str(third or "all")),
+                ("in-possession-actions-v2-epv", file_path or "", str(team or ""), str(sub_window or "0"), str(score_state or "all"), str(time_range or "all"), str(third or "all")),
                 lambda: build_in_possession_actions_view(df, team=team, sub_window=sub_window, score_state=score_state, time_range=time_range, third=third),
             )
         else:
@@ -470,7 +531,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "defensive-actions":
         if request.source == "r2":
             payload = _cached_payload(
-                ("defensive-actions-v2-transitions", request.file_path or "", str(team or ""), str(score_state or "all"), str(time_range or "all")),
+                ("defensive-actions-v2-transitions", file_path or "", str(team or ""), str(score_state or "all"), str(time_range or "all")),
                 lambda: build_defensive_actions_view(df, team=team, score_state=score_state, time_range=time_range),
             )
         else:
@@ -489,7 +550,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
             payload = _cached_payload(
                 (
                     "duels-transitions",
-                    request.file_path or "",
+                    file_path or "",
                     str(team or ""),
                     str(duel_type or "Total"),
                     str(transition_type or "Offensive"),
@@ -524,7 +585,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "player-analysis":
         if request.source == "r2":
             payload = _cached_payload(
-                ("player-analysis-v15-epv", request.file_path or "", str(team or ""), str(score_state or "all"), str(time_range or "all")),
+                ("player-analysis-v16-position", file_path or "", str(team or ""), str(score_state or "all"), str(time_range or "all")),
                 lambda: build_player_analysis_view(df, team=team, score_state=score_state, time_range=time_range),
             )
         else:
@@ -547,7 +608,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "shot-player-summary":
         if request.source == "r2":
             payload = _cached_payload(
-                ("shot-player-summary-v2-xgot", request.file_path or "", str(team or ""), str(situation or "All")),
+                ("shot-player-summary-v2-xgot", file_path or "", str(team or ""), str(situation or "All")),
                 lambda: {"rows": build_shot_player_summary(df, team=team, situation=situation)},
             )
         else:
@@ -562,7 +623,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "shot-details":
         if request.source == "r2":
             payload = _cached_payload(
-                ("shot-details-v2-xgot", request.file_path or "", str(team or ""), str(situation or "All"), str(player or "")),
+                ("shot-details-v2-xgot", file_path or "", str(team or ""), str(situation or "All"), str(player or "")),
                 lambda: {"rows": build_shot_details(df, team=team, situation=situation, player=player)},
             )
         else:
@@ -577,7 +638,7 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
     if view_id == "shots-sca":
         if request.source == "r2":
             payload = _cached_payload(
-                ("shots-sca-v2-xgot", request.file_path or "", str(situation or "All")),
+                ("shots-sca-v2-xgot", file_path or "", str(situation or "All")),
                 lambda: build_shots_sca_view(df, situation=situation),
             )
         else:
@@ -608,8 +669,8 @@ def get_analysis_view(view_id: str, request: AnalysisViewRequest) -> AnalysisVie
 
     if view_id in {"shot-map", "transitions"}:
         query = f"source={context.source}"
-        if context.file_path:
-            query += f"&file_path={context.file_path}"
+        if context.source == "r2" and request.league and request.season:
+            query += f"&league={request.league}&season={request.season}"
         if context.source == "live":
             job_id = request.filters.get("job_id")
             if isinstance(job_id, str):
@@ -655,10 +716,14 @@ def get_ai_insights(
         else:
             job = import_job_store.get(job_id) if isinstance(job_id, str) else None
         df = job.data if job and job.data is not None else None
+        file_path = None
     else:
-        if not request.file_path:
-            raise HTTPException(status_code=400, detail="file_path is required.")
-        df, _context = get_match_by_file(request.file_path)
+        if not request.league or not request.season:
+            raise HTTPException(status_code=400, detail="league and season are required.")
+        file_path = r2.find_file_path(request.league, request.season, request.match_id)
+        if not file_path:
+            raise HTTPException(status_code=404, detail="Match not found.")
+        df, _context = get_match_by_file(file_path)
     if df is None or df.empty:
         raise HTTPException(status_code=404, detail="Analysis data is not available.")
 
@@ -667,8 +732,8 @@ def get_ai_insights(
     headers = {"X-AI-Available": "1" if ai_available else "0"}
 
     if mode == "ai" and ai_available:
-        digest = ai_analyst.build_view_digest(df, view, team, request.file_path)
-        cache_key = ai_analyst.make_cache_key(request.file_path, view, team)
+        digest = ai_analyst.build_view_digest(df, view, team, file_path)
+        cache_key = ai_analyst.make_cache_key(file_path, view, team)
         return StreamingResponse(
             ai_analyst.stream_insights(digest, cache_key), media_type="text/plain", headers=headers
         )
@@ -684,7 +749,8 @@ def get_ai_insights(
 def get_analysis_asset(
     match_id: str,
     asset_id: str,
-    file_path: str | None = Query(default=None, alias="file_path"),
+    league: str | None = Query(default=None),
+    season: str | None = Query(default=None),
     source: str = Query(default="r2"),
     job_id: str | None = Query(default=None, alias="job_id"),
     team: str | None = None,
@@ -697,7 +763,7 @@ def get_analysis_asset(
 ) -> Response:
     from app.services.visuals import build_asset_png
 
-    df, context = resolve_analysis_source(source=source, file_path=file_path, job_id=job_id)
+    df, context = resolve_analysis_source(source=source, match_id=match_id, league=league, season=season, job_id=job_id)
     if df.empty or (source not in {"live", "import"} and context.match_id != match_id):
         raise HTTPException(status_code=404, detail="Asset source data not found.")
     image_bytes = build_asset_png(
@@ -719,10 +785,13 @@ def get_analysis_asset(
 def create_report_job(request: AnalysisViewRequest) -> dict[str, str]:
     from app.services.report_jobs import report_job_store
 
-    if not request.file_path:
-        raise HTTPException(status_code=400, detail="file_path is required.")
+    if not request.league or not request.season:
+        raise HTTPException(status_code=400, detail="league and season are required.")
+    file_path = r2.find_file_path(request.league, request.season, request.match_id)
+    if not file_path:
+        raise HTTPException(status_code=404, detail="Match not found.")
     job = report_job_store.create()
-    report_job_store.submit(job.job_id, request.file_path)
+    report_job_store.submit(job.job_id, file_path)
     return {"job_id": job.job_id, "status": job.status}
 
 
@@ -753,13 +822,14 @@ def download_report_job(job_id: str) -> Response:
 @app.get(f"{settings.api_prefix}/analysis/{{match_id}}/report.pdf")
 def get_match_report(
     match_id: str,
-    file_path: str | None = Query(default=None, alias="file_path"),
+    league: str | None = Query(default=None),
+    season: str | None = Query(default=None),
     source: str = Query(default="r2"),
     job_id: str | None = Query(default=None, alias="job_id"),
 ) -> StreamingResponse:
     from app.services.visuals import build_match_report_pdf
 
-    df, context = resolve_analysis_source(source=source, file_path=file_path, job_id=job_id)
+    df, context = resolve_analysis_source(source=source, match_id=match_id, league=league, season=season, job_id=job_id)
     if df.empty or (source not in {"live", "import"} and context.match_id != match_id):
         raise HTTPException(status_code=404, detail="Match data not found.")
     pdf_bytes = build_match_report_pdf(df, context)
@@ -833,8 +903,14 @@ def get_season_asset(
 
 # ── Opposition Analysis ───────────────────────────────────────────────────────
 
+def _require_opposition_analysis_enabled() -> None:
+    if not settings.opposition_analysis_enabled:
+        raise HTTPException(status_code=404, detail="Opposition Analysis is not available yet.")
+
+
 @app.get(f"{settings.api_prefix}/leagues/{{league}}/seasons/{{season}}/opposition/{{team}}/report")
 def get_opposition_report(league: str, season: str, team: str) -> dict:
+    _require_opposition_analysis_enabled()
     team_df = ss.load_team_season_stats(league, season)
     player_df = ss.load_player_season_stats(league, season)
     if team_df.empty:
@@ -842,8 +918,63 @@ def get_opposition_report(league: str, season: str, team: str) -> dict:
     return opp_svc.build_opposition_report(team_df, player_df, team, league, season)
 
 
+@app.get(
+    f"{settings.api_prefix}/leagues/{{league}}/seasons/{{season}}/opposition/{{opponent_team}}/foundation",
+    response_model=OppositionFoundationResponse,
+)
+def get_opposition_foundation(
+    league: str,
+    season: str,
+    opponent_team: str,
+    reference_team: str = Query(..., alias="reference_team"),
+    sample_size: int = Query(default=5, ge=3, le=10),
+) -> OppositionFoundationResponse:
+    _require_opposition_analysis_enabled()
+    payload = build_opposition_foundation(
+        league=league,
+        season=season,
+        opponent_team=opponent_team,
+        reference_team=reference_team,
+        sample_size=sample_size,
+    )
+    if not payload["sample_matches"] and any("not available" in warning for warning in payload["warnings"]):
+        raise HTTPException(status_code=404, detail="Opposition foundation data is not available.")
+    return payload
+
+
+@app.get(
+    f"{settings.api_prefix}/leagues/{{league}}/seasons/{{season}}/opposition/{{opponent_team}}/dossier",
+    response_model=OppositionDossierResponse,
+)
+def get_opposition_dossier(
+    league: str,
+    season: str,
+    opponent_team: str,
+    reference_team: str = Query(..., alias="referenceTeam"),
+    fixture_id: str | None = Query(default=None, alias="fixtureId"),
+    home_team: str | None = Query(default=None, alias="home"),
+    away_team: str | None = Query(default=None, alias="away"),
+    sample_size: int = Query(default=5, ge=3, le=10, alias="sampleSize"),
+) -> OppositionDossierResponse:
+    _require_opposition_analysis_enabled()
+    payload = build_opposition_dossier(
+        league=league,
+        season=season,
+        opponent_team=opponent_team,
+        reference_team=reference_team,
+        fixture_id=fixture_id,
+        home_team=home_team,
+        away_team=away_team,
+        sample_size=sample_size,
+    )
+    if not payload["sampleContext"]["sample_matches"]:
+        raise HTTPException(status_code=404, detail="Opposition dossier data is not available.")
+    return payload
+
+
 @app.get(f"{settings.api_prefix}/leagues/{{league}}/seasons/{{season}}/opposition/{{team}}/assets/{{asset_id}}.png")
 def get_opposition_asset(league: str, season: str, team: str, asset_id: str) -> Response:
+    _require_opposition_analysis_enabled()
     team_df = ss.load_team_season_stats(league, season)
     player_df = ss.load_player_season_stats(league, season)
     image_bytes = opp_svc.build_opposition_asset(team_df, player_df, team, asset_id)
@@ -852,6 +983,8 @@ def get_opposition_asset(league: str, season: str, team: str, asset_id: str) -> 
 
 @app.post(f"{settings.api_prefix}/live-scrape-jobs")
 def create_live_scrape_job(request: LiveScrapeJobCreate):
+    if not settings.live_scrape_enabled:
+        raise HTTPException(status_code=404, detail="Live WhoScored scraping is not available yet.")
     job = job_store.create_job(str(request.url))
     job_store.submit(job.job_id, live_scrape.run_live_scrape, str(request.url))
     return job_store.to_response(job.job_id)

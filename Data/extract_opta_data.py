@@ -284,7 +284,20 @@ def extract_single_match_data(url, raise_errors=False):
     import requests
     import tarfile
     import platform
-    import streamlit as st 
+
+    class _ConsoleStatus:
+        @staticmethod
+        def error(message):
+            print(message)
+
+        @staticmethod
+        def warning(message):
+            print(message)
+
+    try:
+        import streamlit as st
+    except ModuleNotFoundError:
+        st = _ConsoleStatus()
 
     def fail(message, exc=None):
         detail = f"{message}: {exc}" if exc else message

@@ -10,7 +10,9 @@ from typing import Any
 import re
 import unicodedata
 
+import certifi
 import requests
+import urllib3
 
 from app.config import settings
 
@@ -34,8 +36,21 @@ _TEAM_ALIASES = {
     "manchester united": "man utd",
     "newcastle united": "newcastle",
     "paris saint germain": "psg",
+    "rcd espanyol de barcelona": "espanyol",
+    "espanyol de barcelona": "espanyol",
     "tottenham hotspur": "tottenham",
     "wolverhampton wanderers": "wolves",
+    "olympique lyonnais": "lyon",
+    "stade rennais 1901": "rennes",
+    "stade rennais": "rennes",
+    "stade brestois 29": "brest",
+    "olympique de marseille": "marseille",
+    "losc lille": "lille",
+    "aj auxerre": "auxerre",
+    "racing club de lens": "lens",
+    "as monaco": "monaco",
+    "toulouse fc": "toulouse",
+    "angers sco": "angers",
 }
 
 
@@ -89,12 +104,16 @@ class FootballDataStandingsProvider:
         *,
         base_url: str = "https://api.football-data.org/v4",
         timeout_seconds: float = 10.0,
+        verify_tls: bool = True,
         session: requests.Session | None = None,
     ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
+        self.verify_tls = verify_tls
         self.session = session or requests.Session()
+        if not verify_tls:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def fetch(self, league: str, season: str) -> list[dict[str, Any]]:
         competition_code = TOP_FIVE_COMPETITION_CODES.get(league)
@@ -107,6 +126,7 @@ class FootballDataStandingsProvider:
                 headers={"X-Auth-Token": self.api_key},
                 params={"season": provider_season_year(season)},
                 timeout=self.timeout_seconds,
+                verify=certifi.where() if self.verify_tls else False,
             )
             response.raise_for_status()
             payload = response.json()
@@ -272,6 +292,7 @@ _provider = (
         settings.football_data_api_key,
         base_url=settings.football_data_base_url,
         timeout_seconds=settings.football_data_timeout_seconds,
+        verify_tls=settings.should_verify_football_data_tls,
     )
     if settings.football_data_api_key
     else None

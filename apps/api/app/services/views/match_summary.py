@@ -614,3 +614,78 @@ def build_lineups(df: pd.DataFrame, teams: list[str]) -> dict[str, Any]:
         }
 
     return {"teams": lineups, "substitutions": substitutions, "phases": phases, "full_time": full_time}
+
+
+def player_position_timeline(df: pd.DataFrame, teams: list[str]) -> dict[str, dict[str, Any]]:
+    """Per-player position history derived from build_lineups()'s per-team phases.
+
+    Returns, for each player name that appeared in at least one phase:
+      primary_position / primary_position_group: the position held for the most minutes
+      position_group: alias of primary_position_group (top-level convenience field)
+      positions: unique positions played, ordered by first occurrence
+      timeline: [{position, position_group, start, end}] with consecutive
+                same-position phases collapsed into one entry
+    """
+    lineups = build_lineups(df, teams)
+    phases_by_team: dict[str, list[dict[str, Any]]] = lineups.get("phases", {})
+
+    raw: dict[str, list[dict[str, Any]]] = {}
+    for team_phases in phases_by_team.values():
+        for phase in team_phases:
+            start, end = int(phase.get("start", 0)), int(phase.get("end", 0))
+            for player in phase.get("players", []):
+                name = str(player.get("player") or "").strip()
+                if not name:
+                    continue
+                position = player.get("position") or "UNK"
+                position_group = player.get("position_group") or "SUB"
+                raw.setdefault(name, []).append({
+                    "position": position,
+                    "position_group": position_group,
+                    "start": start,
+                    "end": end,
+                })
+
+    result: dict[str, dict[str, Any]] = {}
+    for name, entries in raw.items():
+        entries.sort(key=lambda item: item["start"])
+        collapsed: list[dict[str, Any]] = []
+        for entry in entries:
+            if collapsed and collapsed[-1]["position"] == entry["position"] and collapsed[-1]["end"] >= entry["start"]:
+                collapsed[-1]["end"] = max(collapsed[-1]["end"], entry["end"])
+            else:
+                collapsed.append(dict(entry))
+
+        minutes_by_position: dict[str, int] = {}
+        for entry in collapsed:
+            minutes_by_position[entry["position"]] = minutes_by_position.get(entry["position"], 0) + max(0, entry["end"] - entry["start"])
+        primary_position = max(minutes_by_position, key=lambda key: minutes_by_position[key]) if minutes_by_position else "UNK"
+        primary_group = next((entry["position_group"] for entry in collapsed if entry["position"] == primary_position), "SUB")
+        positions_ordered: list[str] = []
+        for entry in collapsed:
+            if entry["position"] not in positions_ordered:
+                positions_ordered.append(entry["position"])
+
+        result[name] = {
+            "primary_position": primary_position,
+            "primary_position_group": primary_group,
+            "position_group": primary_group,
+            "positions": positions_ordered,
+            "timeline": collapsed,
+        }
+    return result
+
+
+def position_at_minute(timeline: list[dict[str, Any]], minute: float) -> str | None:
+    """Look up the position active at a given match minute from a player's timeline."""
+    for entry in timeline:
+        if entry["start"] <= minute < entry["end"]:
+            return str(entry["position"])
+    if timeline:
+        last = timeline[-1]
+        if minute >= last["end"]:
+            return str(last["position"])
+        first = timeline[0]
+        if minute < first["start"]:
+            return str(first["position"])
+    return None

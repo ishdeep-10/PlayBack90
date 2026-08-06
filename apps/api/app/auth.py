@@ -22,6 +22,7 @@ class AuthUser:
 
 PUBLIC_API_PATHS = {
     "/health",
+    "/ready",
 }
 
 PUBLIC_API_PREFIXES = (

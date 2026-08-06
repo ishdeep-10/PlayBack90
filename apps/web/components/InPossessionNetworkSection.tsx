@@ -39,7 +39,8 @@ type ActionScope = "filtered" | "all";
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   situation: string;
   player?: string;
@@ -76,7 +77,8 @@ function fallbackTeamColor(team: string) {
 export function InPossessionNetworkSection({
   matchId,
   source,
-  filePath,
+  league,
+  season,
   jobId,
   situation,
   player,
@@ -249,7 +251,7 @@ export function InPossessionNetworkSection({
     if (source !== "r2") filters.job_id = jobId;
     return source !== "r2"
       ? { match_id: matchId, source, filters }
-      : { match_id: matchId, source: "r2", file_path: filePath, filters };
+      : { match_id: matchId, source: "r2", league, season, filters };
   };
 
   const buildActionsBody = (
@@ -753,7 +755,8 @@ export function InPossessionNetworkSection({
     <ChannelAnalysisPanel
       matchId={matchId}
       source={source}
-      filePath={filePath}
+      league={league}
+      season={season}
       jobId={jobId}
       team={currentTeam}
       teamColor={activeTeamColor}
@@ -761,7 +764,8 @@ export function InPossessionNetworkSection({
     <EntriesPenetrationPanel
       matchId={matchId}
       source={source}
-      filePath={filePath}
+      league={league}
+      season={season}
       jobId={jobId}
       team={currentTeam}
       teams={teams}
@@ -770,7 +774,8 @@ export function InPossessionNetworkSection({
     <SetPiecesPanel
       matchId={matchId}
       source={source}
-      filePath={filePath}
+      league={league}
+      season={season}
       jobId={jobId}
       team={currentTeam}
       teamColor={activeTeamColor}

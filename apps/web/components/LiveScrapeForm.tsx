@@ -278,7 +278,7 @@ async function buildStatsBombPayloadFromFiles(files: File[]) {
 
 export function LiveScrapeForm() {
   const router = useRouter();
-  const [mode, setMode] = useState<ImportMode>("whoscored");
+  const [mode, setMode] = useState<ImportMode>("wyscout");
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
@@ -443,9 +443,11 @@ export function LiveScrapeForm() {
         <button
           type="button"
           className={mode === "whoscored" ? "active" : ""}
-          onClick={() => selectMode("whoscored")}
+          onClick={undefined}
+          disabled
+          title="Live WhoScored scraping is temporarily unavailable in this beta."
         >
-          WhoScored URL
+          WhoScored URL (unavailable)
         </button>
         <button
           type="button"

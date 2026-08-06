@@ -8,12 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from app.services.r2 import list_fixtures, parse_fixture_filename
+from app.services.r2 import list_fixtures
 
 matplotlib.use("Agg")
 
 
-# Metrics used for scouting report with direction (True = higher is better)
+# Transitional season-stat baseline for the Phase 0 opposition page.
+# The dossier endpoint will replace this with fixture-aware similar-opponent sampling.
 _METRICS: list[tuple[str, str, bool]] = [
     ("xG",               "xG / Game",           True),
     ("shot_accuracy",    "Shot Accuracy %",      True),
@@ -46,12 +47,12 @@ def build_opposition_report(
     season: str,
 ) -> dict[str, Any]:
     if team_df.empty or "teamName" not in team_df.columns:
-        return {"team": target_team, "strengths": [], "weaknesses": [], "top_players": [], "h2h": []}
+        return {"team": target_team, "strengths": [], "weaknesses": [], "top_players": [], "recent_results": [], "h2h": []}
 
     # Per-match averages for target team
     t_df = team_df[team_df["teamName"] == target_team].copy()
     if t_df.empty:
-        return {"team": target_team, "strengths": [], "weaknesses": [], "top_players": [], "h2h": []}
+        return {"team": target_team, "strengths": [], "weaknesses": [], "top_players": [], "recent_results": [], "h2h": []}
 
     strengths = []
     weaknesses = []
@@ -87,18 +88,17 @@ def build_opposition_report(
                     "player": str(row["playerName"]),
                     "goals": int(row["goals"]),
                     "xg": round(float(row["xg"]), 2),
-                    "assists": 0,   # xA proxy
+                    "xa": round(float(row["xA"]), 2),
                     "mins": int(row["mins"]),
                 })
 
-    # Head-to-head (scan fixture filenames from R2 – no parquet load needed)
-    h2h: list[dict[str, Any]] = []
+    # Recent completed results for this team. This scans fixture filenames only,
+    # so it is fast but intentionally does not claim true head-to-head context.
+    recent_results: list[dict[str, Any]] = []
     try:
         all_fixtures = list_fixtures(league, season, limit=200, offset=0)
         for fixture in all_fixtures:
             if fixture.get("home_team") == target_team or fixture.get("away_team") == target_team:
-                gf_col = "home_goals" if fixture.get("home_team") == target_team else "away_goals"
-                ga_col = "away_goals" if fixture.get("home_team") == target_team else "home_goals"
                 score_str = str(fixture.get("score", ""))
                 # score is formatted like "2-1" after parsing
                 parts = score_str.replace("–", "-").split("-")
@@ -112,7 +112,7 @@ def build_opposition_report(
                             gf, ga = away_g, home_g
                             opponent = str(fixture.get("home_team", ""))
                         result = "W" if gf > ga else ("D" if gf == ga else "L")
-                        h2h.append({
+                        recent_results.append({
                             "date": str(fixture.get("start_date_label", "")),
                             "opponent": opponent,
                             "result": result,
@@ -130,7 +130,8 @@ def build_opposition_report(
         "strengths": strengths,
         "weaknesses": weaknesses,
         "top_players": top_players,
-        "h2h": h2h[:10],
+        "recent_results": recent_results[:10],
+        "h2h": recent_results[:10],
     }
 
 

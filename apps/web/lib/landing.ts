@@ -26,7 +26,6 @@ export type LandingPayload = {
   refresh_key: string;
   featured_match: {
     match_id: string;
-    file_path: string;
     league: string;
     league_name: string;
     season: string;
@@ -98,7 +97,6 @@ export const FALLBACK_LANDING_PAYLOAD: LandingPayload = {
   refresh_key: "curated-villarreal-atletico",
   featured_match: {
     match_id: "1914257",
-    file_path: "playback90/event_data/laliga/2025_2026/2026-05-24_1914257_839_vs_63_5___1.parquet",
     league: "laliga",
     league_name: "La Liga",
     season: "2025_2026",
@@ -206,7 +204,8 @@ export function featuredAnalysisUrl(payload: LandingPayload) {
   const match = payload.featured_match;
   const params = new URLSearchParams({
     source: "r2",
-    filePath: match.file_path,
+    league: match.league,
+    season: match.season,
     view: "match-dynamics",
     team: match.home_team,
     situation: "All",

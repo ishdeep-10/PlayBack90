@@ -22,7 +22,8 @@ type SummaryRow = Record<string, string | number | boolean | null | undefined>;
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   teams: string[];
   selectedTeam: string;
@@ -34,7 +35,8 @@ type Props = {
 export function OutOfPossessionSection({
   matchId,
   source,
-  filePath,
+  league,
+  season,
   jobId,
   teams,
   selectedTeam,
@@ -76,7 +78,7 @@ export function OutOfPossessionSection({
     if (source !== "r2") filters.job_id = jobId;
     return source !== "r2"
       ? { match_id: matchId, source, filters }
-      : { match_id: matchId, source: "r2", file_path: filePath, filters };
+      : { match_id: matchId, source: "r2", league, season, filters };
   };
 
   const loadView = async (next: { team?: string; gameState?: string; timeRange?: string }) => {
@@ -436,7 +438,8 @@ export function OutOfPossessionSection({
     <DefensiveVulnerabilityPanel
       matchId={matchId}
       source={source}
-      filePath={filePath}
+      league={league}
+      season={season}
       jobId={jobId}
       team={currentTeam}
       teams={teams}
@@ -445,7 +448,8 @@ export function OutOfPossessionSection({
     <DefenderAccountabilityPanel
       matchId={matchId}
       source={source}
-      filePath={filePath}
+      league={league}
+      season={season}
       jobId={jobId}
       team={currentTeam}
       teams={teams}

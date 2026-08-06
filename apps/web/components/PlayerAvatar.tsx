@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+import { PUBLIC_API_BASE, getAuthHeaders } from "../lib/api";
 
 const imageCache = new Map<string, string | null>();
 const pendingByTeam = new Map<string, Set<string>>();
@@ -31,7 +31,8 @@ function requestImage(name: string, team?: string) {
           try {
             const teamParam = teamKey ? `&team=${encodeURIComponent(teamKey)}` : "";
             const response = await fetch(
-              `${PUBLIC_API_BASE}/players/images?names=${encodeURIComponent(batch.join(","))}${teamParam}`
+              `${PUBLIC_API_BASE}/players/images?names=${encodeURIComponent(batch.join(","))}${teamParam}`,
+              { headers: await getAuthHeaders() }
             );
             const data = (await response.json()) as Record<string, string | null>;
             for (const key of batch) imageCache.set(cacheKey(key, teamKey || undefined), data[key] ?? null);

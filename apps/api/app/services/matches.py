@@ -876,6 +876,7 @@ def derive_match_context(df: pd.DataFrame, file_path: str | None, source: str) -
     league = None
     season = None
     match_id = "unknown"
+    start_date_label = None
 
     if not df.empty:
         if "h_a" in df.columns and "teamName" in df.columns:
@@ -901,6 +902,7 @@ def derive_match_context(df: pd.DataFrame, file_path: str | None, source: str) -
             match_id = str(fixture["match_id"])
             home_team = str(fixture["home_team"])
             away_team = str(fixture["away_team"])
+            start_date_label = str(fixture["start_date_label"])
 
     return MatchContext(
         match_id=match_id,
@@ -910,7 +912,7 @@ def derive_match_context(df: pd.DataFrame, file_path: str | None, source: str) -
         away_team=away_team,
         score=score,
         source="live" if source == "live" else "import" if source == "import" else "r2",
-        file_path=file_path,
+        start_date_label=start_date_label,
         available_views=AVAILABLE_VIEWS,
         team_colors=display_team_colors(home_team, away_team),
     )
@@ -1818,18 +1820,29 @@ def build_match_dynamics(df: pd.DataFrame) -> dict[str, Any]:
             continue
         card_text = " ".join(str(row.get(col, "")) for col in possible_card_columns)
         combined = f"{event_type} {card_text}".lower()
+        is_second_yellow = (
+            "second yellow" in combined
+            or "secondyellow" in combined
+            or "2nd yellow" in combined
+            or "second booking" in combined
+            or "second caution" in combined
+            or "yellow red" in combined
+            or "yellow-red" in combined
+        )
         is_yellow = "yellow" in combined
-        is_red = "red" in combined
+        is_red = "red" in combined or is_second_yellow
         minute = _minute_bucket(row.get("minute"))
         if minute is None:
             continue
+        card_kind = "second_yellow_red" if is_second_yellow else "straight_red" if is_red else "yellow"
         event_markers.append(
             {
                 "team": str(row.get("teamName", "")),
                 "minute": min(minute, full_time),
                 "event_type": "red_card" if is_red else "yellow_card",
                 "player": str(row.get("playerName", "")),
-                "label": "Red card" if is_red else "Yellow card",
+                "label": "Second yellow red" if card_kind == "second_yellow_red" else "Straight red" if card_kind == "straight_red" else "Yellow card",
+                "card_kind": card_kind,
             }
         )
 

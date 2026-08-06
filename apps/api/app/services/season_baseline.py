@@ -16,6 +16,7 @@ import pandas as pd
 from app.schemas import MatchContext
 from app.services import season_stats as ss
 from app.services.opposition import _percentile
+from app.services.views.match_summary import player_position_timeline
 
 # Small-sample thresholds surfaced to the frontend via meta.
 TEAM_MATCHES_MIN = 4
@@ -24,6 +25,9 @@ MATCH_MINS_MIN = 20
 
 _DEF_TYPES = {"Tackle", "Interception", "Challenge", "BlockedPass"}
 _SHOT_TYPES = {"Goal", "SavedShot", "MissedShots", "ShotOnPost"}
+_KEEPER_EVENT_TYPES = {"Save", "KeeperSave", "KeeperPickup", "Claim", "Punch", "Smother", "KeeperSweeper"}
+_SHOT_ON_TARGET_TYPES = {"Goal", "SavedShot"}
+_GK_LONG_PASS_DISTANCE = 32.0
 
 # season column, frontend key, label, lower-is-better
 _TEAM_METRICS: list[tuple[str, str, str, bool]] = [
@@ -96,9 +100,29 @@ _PLAYER_METRICS: list[tuple[str, str, str, bool]] = [
     ("def_actions_att_third", "def_actions_att_third", "Att 3rd Actions", False),
 ]
 
+# Goalkeeper-only metrics — only applied when a player's position group is GK.
+_GK_METRICS: list[tuple[str, str, str, bool]] = [
+    ("gk_sot_faced", "gk_sot_faced", "Shots Faced", False),
+    ("gk_goals_conceded", "gk_goals_conceded", "Goals Conceded", True),
+    ("gk_saves", "gk_saves", "Saves", False),
+    ("gk_save_pct", "gk_save_pct", "Save %", False),
+    ("gk_xg_on_target_faced", "gk_xg_on_target_faced", "xG Faced", False),
+    ("gk_xgot_faced", "gk_xgot_faced", "xGOT Faced", False),
+    ("gk_goals_prevented", "gk_goals_prevented", "Goals Prevented", False),
+    ("gk_claims", "gk_claims", "Claims", False),
+    ("gk_pickups", "gk_pickups", "Pickups", False),
+    ("gk_sweeper_actions", "gk_sweeper_actions", "Sweeper Actions", False),
+    ("gk_pass_completion_pct", "gk_pass_completion_pct", "Pass Completion %", False),
+    ("gk_long_pass_pct", "gk_long_pass_pct", "Long Pass %", False),
+    ("gk_avg_pass_length", "gk_avg_pass_length", "Avg Pass Length", False),
+]
+
 # Rate/average metrics: per-90 scaling is meaningless — chips and baselines
 # compare the value directly.
-_RATE_COLS = {"pass_accuracy", "avg_pass_distance", "duel_win_pct"}
+_RATE_COLS = {
+    "pass_accuracy", "avg_pass_distance", "duel_win_pct",
+    "gk_save_pct", "gk_pass_completion_pct", "gk_long_pass_pct", "gk_avg_pass_length",
+}
 
 # Phase tabs for the Season Context panel — one selector drives both the
 # match-vs-season dumbbell strips and the percentile radar.
@@ -114,6 +138,10 @@ _METRIC_GROUPS = [
     {"id": "out_of_possession", "label": "Out of Possession",
      "keys": ["def_actions_total", "tackles", "interceptions", "recoveries", "blocked_passes",
               "clearances", "dribbled_past", "aerial_duels_won"]},
+    {"id": "goalkeeping", "label": "Goalkeeping",
+     "keys": ["gk_saves", "gk_save_pct", "gk_goals_conceded", "gk_xg_on_target_faced", "gk_xgot_faced",
+              "gk_goals_prevented", "gk_claims", "gk_pickups", "gk_sweeper_actions",
+              "gk_pass_completion_pct", "gk_long_pass_pct"]},
 ]
 
 
@@ -409,6 +437,58 @@ def compute_player_match_values(
     return values, _player_minutes(dfp)
 
 
+def compute_gk_match_values(dfp: pd.DataFrame, match_df: pd.DataFrame, team: str) -> dict[str, float]:
+    """GK shot-stopping/distribution/sweeping for one player-match.
+
+    Mirrors goalkeeper.py's build_goalkeeper_view and
+    Data/generate_season_stats.py's _compute_gk_match_stats — kept as a
+    separate implementation per this module's existing "mirror the
+    generator's definitions" convention (see module docstring).
+    """
+    opp = match_df[(match_df.get("teamName") != team) & match_df.get("teamName").notna()]
+    opp_types = _types(opp)
+    is_shot = opp_types.isin(_SHOT_TYPES)
+    own_goal = _bool_col_true(opp, "goalOwn")
+    shots = opp[is_shot & ~own_goal]
+    shot_types = _types(shots)
+    on_target = shots[shot_types.isin(_SHOT_ON_TARGET_TYPES)]
+    goals_conceded = int((shot_types == "Goal").sum())
+    sot_faced = int(len(on_target))
+    xg_on_target = float(_num(on_target, "xG").sum())
+    xgot_faced = float(_num(on_target, "xGOT").sum())
+    saves = max(0, sot_faced - goals_conceded)
+
+    types_p = _types(dfp)
+    passes = dfp[types_p == "Pass"]
+    outcome = passes["outcomeType"].astype(str).str.lower() if "outcomeType" in passes.columns else pd.Series("", index=passes.index)
+    completed_mask = outcome.eq("successful")
+    x, y = _num(passes, "x"), _num(passes, "y")
+    end_x, end_y = _num(passes, "endX"), _num(passes, "endY")
+    length = ((end_x - x) ** 2 + (end_y - y) ** 2) ** 0.5
+    long_mask = length >= _GK_LONG_PASS_DISTANCE
+    pass_count = int(len(passes))
+
+    claims = int(types_p.isin({"Claim", "Punch"}).sum())
+    pickups = int((types_p == "KeeperPickup").sum())
+    sweeper_actions = int((types_p == "KeeperSweeper").sum())
+
+    return {
+        "gk_sot_faced": float(sot_faced),
+        "gk_goals_conceded": float(goals_conceded),
+        "gk_saves": float(saves),
+        "gk_save_pct": round(100.0 * saves / sot_faced, 1) if sot_faced else 0.0,
+        "gk_xg_on_target_faced": round(xg_on_target, 2),
+        "gk_xgot_faced": round(xgot_faced, 2),
+        "gk_goals_prevented": round(xgot_faced - goals_conceded, 2),
+        "gk_claims": float(claims),
+        "gk_pickups": float(pickups),
+        "gk_sweeper_actions": float(sweeper_actions),
+        "gk_pass_completion_pct": round(100.0 * float(completed_mask.mean()), 1) if pass_count else 0.0,
+        "gk_long_pass_pct": round(100.0 * float(long_mask.mean()), 1) if pass_count else 0.0,
+        "gk_avg_pass_length": round(float(length.mean()), 1) if pass_count else 0.0,
+    }
+
+
 # ── baseline builders ─────────────────────────────────────────────────────────
 
 def _round(value: float, digits: int = 2) -> float:
@@ -540,6 +620,7 @@ def build_player_season_baseline(
     match_df: pd.DataFrame,
     context: MatchContext,
     player_season_df: pd.DataFrame,
+    position_by_player: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     players: dict[str, Any] = {}
     if (
@@ -549,6 +630,9 @@ def build_player_season_baseline(
         or "playerName" not in player_season_df.columns
     ):
         return players
+
+    position_by_player = position_by_player or {}
+    all_metrics = [*_PLAYER_METRICS, *_GK_METRICS]
 
     season_df = _exclude_current_match(player_season_df, context.match_id).copy()
     # Derived duel columns (the parquet stores totals and wins only).
@@ -561,7 +645,7 @@ def build_player_season_baseline(
 
     # League per-90 pool for percentiles: season totals per player, minutes-gated.
     # Rate metrics are averaged, not summed.
-    count_cols = [col for col, *_ in _PLAYER_METRICS if col in season_df.columns and col not in _RATE_COLS]
+    count_cols = [col for col, *_ in all_metrics if col in season_df.columns and col not in _RATE_COLS]
     agg_cols: dict[str, str] = {col: "sum" for col in count_cols}
     agg_cols["mins_played"] = "sum"
     league_agg = season_df.groupby("playerName").agg(agg_cols)
@@ -569,7 +653,7 @@ def build_player_season_baseline(
     league_per90 = league_agg.drop(columns=["mins_played"]).div(
         league_agg["mins_played"].clip(lower=1), axis=0
     ) * 90
-    rate_cols = [col for col, *_ in _PLAYER_METRICS if col in season_df.columns and col in _RATE_COLS]
+    rate_cols = [col for col, *_ in all_metrics if col in season_df.columns and col in _RATE_COLS]
     league_rates = (
         season_df[season_df["playerName"].isin(league_agg.index)]
         .groupby("playerName")[rate_cols]
@@ -595,18 +679,22 @@ def build_player_season_baseline(
         if p_season.empty:
             continue
 
+        position_group = position_by_player.get(str(player), {}).get("position_group")
+
         p_mins_season = float(season_mins.loc[p_season.index].sum())
         match_values, match_mins = compute_player_match_values(
             dfp,
             passes_received=int(received_counts.get(player, 0)),
             prog_passes_received=int(prog_received_counts.get(player, 0)),
         )
+        if position_group == "GK" and team:
+            match_values.update(compute_gk_match_values(dfp, match_df, team))
         low_sample = p_mins_season < PLAYER_MINS_MIN or match_mins < MATCH_MINS_MIN
         p_recent = p_season.sort_values("date", ascending=False).head(5)
         p_season_mins_sum = max(1.0, p_mins_season)
 
         metrics = []
-        for col, key, label, lower in _PLAYER_METRICS:
+        for col, key, label, lower in (all_metrics if position_group == "GK" else _PLAYER_METRICS):
             if col not in p_season.columns or col not in match_values:
                 continue
             entry = _metric_entry(
@@ -655,7 +743,7 @@ def build_player_season_baseline(
             "matchesPlayed": int(len(p_season)),
             "matchMins": int(match_mins),
             "lowSample": bool(low_sample),
-            "positionGroup": None,
+            "positionGroup": position_group,
             "metrics": metrics,
         }
     return players
@@ -676,6 +764,11 @@ def build_season_baseline_view(match_df: pd.DataFrame, context: MatchContext) ->
         if "source" in team_season_df.columns and len(team_season_df)
         else "sqlite"
     )
+    teams_in_match = [t for t in (context.home_team, context.away_team) if t]
+    try:
+        position_by_player = player_position_timeline(match_df, teams_in_match)
+    except Exception:
+        position_by_player = {}
     return {
         "available": True,
         "meta": {
@@ -688,5 +781,5 @@ def build_season_baseline_view(match_df: pd.DataFrame, context: MatchContext) ->
             "metricGroups": _METRIC_GROUPS,
         },
         "teams": build_team_season_baseline(match_df, context, team_season_df),
-        "players": build_player_season_baseline(match_df, context, player_season_df),
+        "players": build_player_season_baseline(match_df, context, player_season_df, position_by_player),
     }

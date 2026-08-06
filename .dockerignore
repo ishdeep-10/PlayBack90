@@ -1,0 +1,20 @@
+# Local pipeline database and caches — never needed inside the API image.
+# The API reads match/season data from Cloudflare R2, not this local SQLite db.
+Data/playback90.db
+Data/season_stats/
+Data/__pycache__/
+Data/*.pyc
+
+.git/
+.DS_Store
+**/__pycache__/
+**/*.pyc
+apps/api/.venv/
+apps/api/.cache/
+apps/api/geckodriver
+apps/api/geckodriver.tar.gz
+geckodriver
+geckodriver.tar.gz
+apps/web/node_modules/
+apps/web/.next/
+.pytest_cache/

@@ -49,7 +49,8 @@ type TransitionSortKey = keyof Pick<TransitionPlayerRow, "player" | "transitions
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   teams: string[];
   selectedTeam: string;
@@ -225,7 +226,8 @@ function buildDuelProfiles(rows: SummaryRow[]): { profiles: DuelProfile[]; insig
 export function DuelsTransitionsSection({
   matchId,
   source,
-  filePath,
+  league,
+  season,
   jobId,
   teams,
   selectedTeam,
@@ -366,7 +368,7 @@ export function DuelsTransitionsSection({
     if (source !== "r2") filters.job_id = jobId;
     return source !== "r2"
       ? { match_id: matchId, source, filters }
-      : { match_id: matchId, source: "r2", file_path: filePath, filters };
+      : { match_id: matchId, source: "r2", league, season, filters };
   };
 
   const applyPayload = (

@@ -5,13 +5,13 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { Fixture } from "../lib/api";
+import type { FixtureHubFixture } from "../lib/api";
 import { findStadium, teamCode, teamLogo } from "../lib/stadiums";
 import { CountryFixturesMap } from "./CountryFixturesMap";
 
 type Props = {
   league: string;
-  fixtures: Fixture[];
+  fixtures: FixtureHubFixture[];
   roundLabel: string;
   roundStage: string;
 };
@@ -32,12 +32,25 @@ function cleanScore(score: string) {
   return String(score || "").replace(/--/g, "-").replace(/_/g, "-");
 }
 
-function analysisHref(fixture: Fixture) {
-  return `/analysis/${fixture.match_id}?source=r2&filePath=${encodeURIComponent(fixture.file_path)}` as Route;
+function fixtureHref(fixture: FixtureHubFixture) {
+  return (fixture.post_match_href || fixture.opposition_href || "#") as Route;
 }
 
-function TeamCrest({ league, team }: { league: string; team: string }) {
-  const logo = teamLogo(team);
+function fixtureActionLabel(fixture: FixtureHubFixture) {
+  if (fixture.state === "completed") return "Open match analysis";
+  if (fixture.state === "upcoming") return "Analyse opposition";
+  if (fixture.state === "postponed") return "Postponed";
+  if (fixture.state === "cancelled") return "Cancelled";
+  if (fixture.state === "live") return "Live";
+  return "View fixture";
+}
+
+function fixtureScoreLabel(fixture: FixtureHubFixture) {
+  return fixture.state === "completed" ? cleanScore(fixture.score) : "vs";
+}
+
+function TeamCrest({ league, team, crest }: { league: string; team: string; crest?: string | null }) {
+  const logo = crest ?? teamLogo(team);
   if (logo) {
     return <img className="team-crest-img" src={logo} alt="" loading="lazy" />;
   }
@@ -47,8 +60,8 @@ function TeamCrest({ league, team }: { league: string; team: string }) {
 export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: Props) {
   const explorerRef = useRef<HTMLElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
-  const [hoverMatchId, setHoverMatchId] = useState<string | null>(null);
-  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [hoverFixtureId, setHoverFixtureId] = useState<string | null>(null);
+  const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null);
   const [teamFilter, setTeamFilter] = useState("");
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -63,8 +76,8 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
         : fixtures,
     [fixtures, teamFilter],
   );
-  const selectedFixture = fixtures.find((fixture) => fixture.match_id === selectedMatchId) ?? null;
-  const activeMatchId = hoverMatchId ?? selectedMatchId;
+  const selectedFixture = fixtures.find((fixture) => fixture.fixture_id === selectedFixtureId) ?? null;
+  const activeFixtureId = hoverFixtureId ?? selectedFixtureId;
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -75,13 +88,13 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
   }, []);
 
   useEffect(() => {
-    if (!activeMatchId || !filteredFixtures.some((fixture) => fixture.match_id === activeMatchId)) return;
-    rowRefs.current.get(activeMatchId)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [activeMatchId, filteredFixtures]);
+    if (!activeFixtureId || !filteredFixtures.some((fixture) => fixture.fixture_id === activeFixtureId)) return;
+    rowRefs.current.get(activeFixtureId)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [activeFixtureId, filteredFixtures]);
 
   useEffect(() => {
-    setHoverMatchId(null);
-    setSelectedMatchId(null);
+    setHoverFixtureId(null);
+    setSelectedFixtureId(null);
   }, [teamFilter]);
 
   const toggleFullscreen = async () => {
@@ -102,9 +115,9 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
 
   const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Open fullscreen";
   const FullscreenIcon = isFullscreen ? Minimize2 : Maximize2;
-  const selectMatch = useCallback((matchId: string) => {
-    setSelectedMatchId(matchId);
-    setHoverMatchId(null);
+  const selectFixture = useCallback((fixtureId: string) => {
+    setSelectedFixtureId(fixtureId);
+    setHoverFixtureId(null);
     setIsSheetExpanded(false);
   }, []);
   const selectedStadium = selectedFixture ? findStadium(league, selectedFixture.home_team) : null;
@@ -118,9 +131,9 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
       <CountryFixturesMap
         league={league}
         fixtures={filteredFixtures}
-        activeMatchId={activeMatchId}
-        onActiveMatchChange={setHoverMatchId}
-        onSelectMatch={selectMatch}
+        activeFixtureId={activeFixtureId}
+        onActiveFixtureChange={setHoverFixtureId}
+        onSelectFixture={selectFixture}
         workspace
         overlay={
           selectedFixture ? (
@@ -130,7 +143,7 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
                 className="matchday-map-preview-close"
                 aria-label="Close match preview"
                 title="Close match preview"
-                onClick={() => setSelectedMatchId(null)}
+                onClick={() => setSelectedFixtureId(null)}
               >
                 <X aria-hidden="true" size={17} />
               </button>
@@ -140,17 +153,17 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
               <time dateTime={selectedFixture.start_date}>{formatFixtureDate(selectedFixture.start_date)}</time>
               <div className="matchday-map-preview-matchup">
                 <span>
-                  <TeamCrest league={league} team={selectedFixture.home_team} />
+                  <TeamCrest league={league} team={selectedFixture.home_team} crest={selectedFixture.home_crest} />
                   <strong>{selectedFixture.home_team}</strong>
                 </span>
-                <b>{cleanScore(selectedFixture.score)}</b>
+                <b>{fixtureScoreLabel(selectedFixture)}</b>
                 <span>
-                  <TeamCrest league={league} team={selectedFixture.away_team} />
+                  <TeamCrest league={league} team={selectedFixture.away_team} crest={selectedFixture.away_crest} />
                   <strong>{selectedFixture.away_team}</strong>
                 </span>
               </div>
-              <Link className="matchday-map-preview-link" href={analysisHref(selectedFixture)}>
-                Open match analysis
+              <Link className="matchday-map-preview-link" href={fixtureHref(selectedFixture)}>
+                {fixtureActionLabel(selectedFixture)}
                 <ArrowUpRight aria-hidden="true" size={16} />
               </Link>
             </article>
@@ -205,47 +218,48 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
 
         <div className="matchday-fixture-scroll">
           {filteredFixtures.map((fixture) => {
-            const isActive = activeMatchId === fixture.match_id;
+            const isActive = activeFixtureId === fixture.fixture_id;
             return (
               <div
-                key={fixture.match_id}
+                key={fixture.fixture_id}
                 ref={(node) => {
-                  if (node) rowRefs.current.set(fixture.match_id, node);
-                  else rowRefs.current.delete(fixture.match_id);
+                  if (node) rowRefs.current.set(fixture.fixture_id, node);
+                  else rowRefs.current.delete(fixture.fixture_id);
                 }}
-                className={isActive ? "explorer-fixture-row is-active" : "explorer-fixture-row"}
-                onMouseEnter={() => setHoverMatchId(fixture.match_id)}
-                onMouseLeave={() => setHoverMatchId(null)}
+                className={isActive ? `explorer-fixture-row is-active is-${fixture.state}` : `explorer-fixture-row is-${fixture.state}`}
+                onMouseEnter={() => setHoverFixtureId(fixture.fixture_id)}
+                onMouseLeave={() => setHoverFixtureId(null)}
               >
                 <button
                   type="button"
                   className="explorer-fixture-select"
-                  aria-pressed={selectedMatchId === fixture.match_id}
-                  aria-label={`Preview ${fixture.home_team} versus ${fixture.away_team}, ${cleanScore(fixture.score)}`}
-                  onClick={() => selectMatch(fixture.match_id)}
-                  onFocus={() => setHoverMatchId(fixture.match_id)}
-                  onBlur={() => setHoverMatchId(null)}
+                  aria-pressed={selectedFixtureId === fixture.fixture_id}
+                  aria-label={`Preview ${fixture.home_team} versus ${fixture.away_team}`}
+                  onClick={() => selectFixture(fixture.fixture_id)}
+                  onFocus={() => setHoverFixtureId(fixture.fixture_id)}
+                  onBlur={() => setHoverFixtureId(null)}
                 >
                   <time className="explorer-fixture-date" dateTime={fixture.start_date}>
                     {formatFixtureDate(fixture.start_date)}
                   </time>
+                  <span className={`fixture-state-badge is-${fixture.state}`}>{fixture.state}</span>
                   <span className="explorer-fixture-matchup">
                     <span className="explorer-fixture-team">
-                      <TeamCrest league={league} team={fixture.home_team} />
+                      <TeamCrest league={league} team={fixture.home_team} crest={fixture.home_crest} />
                       <span>{fixture.home_team}</span>
                     </span>
-                    <span className="explorer-fixture-score">{cleanScore(fixture.score)}</span>
+                    <span className="explorer-fixture-score">{fixtureScoreLabel(fixture)}</span>
                     <span className="explorer-fixture-team away">
                       <span>{fixture.away_team}</span>
-                      <TeamCrest league={league} team={fixture.away_team} />
+                      <TeamCrest league={league} team={fixture.away_team} crest={fixture.away_crest} />
                     </span>
                   </span>
                 </button>
                 <Link
                   className="explorer-fixture-action"
-                  href={analysisHref(fixture)}
-                  aria-label={`Open analysis for ${fixture.home_team} versus ${fixture.away_team}`}
-                  title="Open match analysis"
+                  href={fixtureHref(fixture)}
+                  aria-label={`${fixtureActionLabel(fixture)} for ${fixture.home_team} versus ${fixture.away_team}`}
+                  title={fixtureActionLabel(fixture)}
                 >
                   <ArrowUpRight aria-hidden="true" size={17} strokeWidth={2} />
                 </Link>

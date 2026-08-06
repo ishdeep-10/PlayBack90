@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+import { PUBLIC_API_BASE, getAuthHeaders } from "../lib/api";
 
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   view: string;
   team?: string;
 };
 
-export function AiInsightCard({ matchId, source, filePath, jobId, view, team }: Props) {
+export function AiInsightCard({ matchId, source, league, season, jobId, view, team }: Props) {
   const [text, setText] = useState("");
   const [status, setStatus] = useState<"loading" | "streaming" | "done" | "error">("loading");
   const [aiAvailable, setAiAvailable] = useState(false);
@@ -31,11 +32,11 @@ export function AiInsightCard({ matchId, source, filePath, jobId, view, team }: 
         `${PUBLIC_API_BASE}/analysis/ai/insights?view=${encodeURIComponent(view)}&mode=${requestMode}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
           body: JSON.stringify(
             source !== "r2"
               ? { match_id: matchId, source, filters }
-              : { match_id: matchId, source: "r2", file_path: filePath, filters }
+              : { match_id: matchId, source: "r2", league, season, filters }
           ),
         }
       );
@@ -65,7 +66,7 @@ export function AiInsightCard({ matchId, source, filePath, jobId, view, team }: 
   useEffect(() => {
     generate("baseline");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, team, filePath, jobId]);
+  }, [view, team, league, season, jobId]);
 
   const bullets = text
     .split("\n")

@@ -34,6 +34,7 @@ from app.services.views.common import (
     _progressive_action_mask,
     _row_successful,
 )
+from app.services.views.match_summary import player_position_timeline, position_at_minute
 
 
 PLAYER_ANALYSIS_EXCLUDED_TYPES = {
@@ -68,6 +69,7 @@ _ACTION_REQUIRED_FIELDS = {
     "y",
     "end_x",
     "end_y",
+    "position",
 }
 
 
@@ -113,6 +115,7 @@ def build_player_analysis_view(
     )
 
     teams = _match_team_order(enriched_df)
+    position_by_player = player_position_timeline(enriched_df, teams)
     selected_team = team if team and team != "__both__" else (teams[0] if teams else str(enriched_df["teamName"].dropna().iloc[0]))
     team_df = enriched_df[enriched_df["teamName"].astype(str).eq(str(selected_team))].copy()
     if team_df.empty:
@@ -175,11 +178,16 @@ def build_player_analysis_view(
         valid_success = valid_player_actions.apply(_row_successful, axis=1) if not valid_player_actions.empty else pd.Series(dtype=bool)
         valid_touch_mask = _bool_series(valid_player_actions, "isTouch") & ~valid_types.eq("Carry") if not valid_player_actions.empty else pd.Series(dtype=bool)
         status = player_status.get(player_text, {"minutes_played": 0})
+        position_info = position_by_player.get(player_text, {})
         players.append(
             {
                 "player": player_text,
                 "team": selected_team,
                 "player_id": _safe_int(player_df.get("playerId", pd.Series(0, index=player_df.index)).iloc[0]) if "playerId" in player_df.columns else 0,
+                "position": position_info.get("primary_position"),
+                "position_group": position_info.get("position_group"),
+                "positions": position_info.get("positions", []),
+                "position_timeline": position_info.get("timeline", []),
                 "minutes": int(status["minutes_played"]),
                 "actions": int(len(valid_player_actions)),
                 "touches": int(valid_touch_mask.sum()),
@@ -204,14 +212,17 @@ def build_player_analysis_view(
         raw_type = str(row.get("type", ""))
         display_type = "TakeOn" if raw_type == "GoodSkill" else raw_type
         row_index = _safe_int(row.get("index"))
+        row_player = str(row.get("playerName", ""))
+        row_timeline = position_by_player.get(row_player, {}).get("timeline", [])
         actions.append(
             _compact_action({
                 "id": str(row.get("index", "")),
                 "minute": _safe_int(row.get("minute")),
                 "second": _safe_int(row.get("second")),
                 "team": str(row.get("teamName", selected_team)),
-                "player": str(row.get("playerName", "")),
+                "player": row_player,
                 "player_id": _safe_int(row.get("playerId")),
+                "position": position_at_minute(row_timeline, _safe_float(row.get("minute"))),
                 "type": display_type,
                 "phase": _player_analysis_phase(raw_type, row),
                 "outcome": str(row.get("outcomeType", "")),

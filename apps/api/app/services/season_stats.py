@@ -38,6 +38,24 @@ def load_player_season_stats(league: str, season: str) -> pd.DataFrame:
     return pd.read_parquet(f"s3://{path}", storage_options=get_storage_options())
 
 
+def load_team_history(league: str, season: str) -> pd.DataFrame:
+    from app.config import settings
+    fs = make_fs()
+    path = _r2_parquet_path(settings.r2_bucket, league, season, "team_history.parquet")
+    if not fs.exists(path):
+        return pd.DataFrame()
+    return pd.read_parquet(f"s3://{path}", storage_options=get_storage_options())
+
+
+def load_event_locations(league: str, season: str) -> pd.DataFrame:
+    from app.config import settings
+    fs = make_fs()
+    path = _r2_parquet_path(settings.r2_bucket, league, season, "event_locations.parquet")
+    if not fs.exists(path):
+        return pd.DataFrame()
+    return pd.read_parquet(f"s3://{path}", storage_options=get_storage_options())
+
+
 # ── League table ──────────────────────────────────────────────────────────────
 
 def build_league_table(df: pd.DataFrame) -> list[dict[str, Any]]:

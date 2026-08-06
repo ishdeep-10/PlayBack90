@@ -28,18 +28,21 @@ export type JourneyChapter = {
 
 export function analysisHref({
   matchId,
-  filePath,
+  league,
+  season,
   view,
   team,
 }: {
   matchId: string;
-  filePath: string;
+  league: string;
+  season: string;
   view: string;
   team: string;
 }) {
   const params = new URLSearchParams({
     source: "r2",
-    filePath,
+    league,
+    season,
     view,
     team,
     situation: "All",
@@ -73,8 +76,8 @@ export const JOURNEY_CHAPTERS: JourneyChapter[] = [
     sequence: CHAPTER_SEQUENCES.momentum,
     href: analysisHref({
       matchId: "1903353",
-      filePath:
-        "playback90/event_data/premier-league/2025_2026/2026-05-24_1903353_162_vs_13_1___2.parquet",
+      league: "premier-league",
+      season: "2025_2026",
       view: "match-dynamics",
       team: "Crystal Palace",
     }),
@@ -100,8 +103,8 @@ export const JOURNEY_CHAPTERS: JourneyChapter[] = [
     sequence: CHAPTER_SEQUENCES.shots,
     href: analysisHref({
       matchId: "1914257",
-      filePath:
-        "playback90/event_data/laliga/2025_2026/2026-05-24_1914257_839_vs_63_5___1.parquet",
+      league: "laliga",
+      season: "2025_2026",
       view: "shots",
       team: "Villarreal",
     }),
@@ -126,8 +129,8 @@ export const JOURNEY_CHAPTERS: JourneyChapter[] = [
     sequence: CHAPTER_SEQUENCES["pass-network"],
     href: analysisHref({
       matchId: "1910895",
-      filePath:
-        "playback90/event_data/bundesliga/2025_2026/2026-05-16_1910895_37_vs_282_5___1.parquet",
+      league: "bundesliga",
+      season: "2025_2026",
       view: "in-possession",
       team: "Bayern Munich",
     }),
@@ -152,8 +155,8 @@ export const JOURNEY_CHAPTERS: JourneyChapter[] = [
     sequence: CHAPTER_SEQUENCES["defensive-shape"],
     href: analysisHref({
       matchId: "1901418",
-      filePath:
-        "playback90/event_data/serie-a/2025_2026/2026-05-11_1901418_276_vs_71_2___3.parquet",
+      league: "serie-a",
+      season: "2025_2026",
       view: "out-of-possession",
       team: "Napoli",
     }),
@@ -178,8 +181,8 @@ export const JOURNEY_CHAPTERS: JourneyChapter[] = [
     sequence: CHAPTER_SEQUENCES.duels,
     href: analysisHref({
       matchId: "1911516",
-      filePath:
-        "playback90/event_data/ligue-1/2025_2026/2026-05-17_1911516_2332_vs_614_1___1.parquet",
+      league: "ligue-1",
+      season: "2025_2026",
       view: "duels-transitions",
       team: "__both__",
     }),
@@ -204,8 +207,8 @@ export const JOURNEY_CHAPTERS: JourneyChapter[] = [
     sequence: CHAPTER_SEQUENCES["player-focus"],
     href: analysisHref({
       matchId: "1903459",
-      filePath:
-        "playback90/event_data/premier-league/2025_2026/2026-03-14_1903459_29_vs_167_1___1.parquet",
+      league: "premier-league",
+      season: "2025_2026",
       view: "player-analysis",
       team: "Man City",
     }),

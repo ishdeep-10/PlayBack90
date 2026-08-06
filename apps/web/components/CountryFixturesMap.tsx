@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps";
 
-import type { Fixture } from "../lib/api";
+import type { FixtureHubFixture } from "../lib/api";
 import { LEAGUE_MAPS, findStadium, teamCode, teamLogo } from "../lib/stadiums";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
@@ -12,17 +12,17 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 type Props = {
   league: string;
-  fixtures: Fixture[];
-  activeMatchId?: string | null;
-  onActiveMatchChange?: (matchId: string | null) => void;
-  onSelectMatch?: (matchId: string) => void;
+  fixtures: FixtureHubFixture[];
+  activeFixtureId?: string | null;
+  onActiveFixtureChange?: (fixtureId: string | null) => void;
+  onSelectFixture?: (fixtureId: string) => void;
   actions?: ReactNode;
   overlay?: ReactNode;
   workspace?: boolean;
 };
 
 type PlacedFixture = {
-  fixture: Fixture;
+  fixture: FixtureHubFixture;
   coordinates: [number, number];
   stadium: string;
   city: string;
@@ -32,8 +32,14 @@ type PlacedFixture = {
   awayLogo: string | null;
 };
 
-function analysisHref(fixture: Fixture) {
-  return `/analysis/${fixture.match_id}?source=r2&filePath=${encodeURIComponent(fixture.file_path)}`;
+function fixtureHref(fixture: FixtureHubFixture) {
+  return fixture.post_match_href || fixture.opposition_href || "#";
+}
+
+function fixtureActionLabel(fixture: FixtureHubFixture) {
+  if (fixture.state === "completed") return "Open match analysis";
+  if (fixture.state === "upcoming") return "Analyse opposition";
+  return "View fixture";
 }
 
 function cleanScore(score: string) {
@@ -47,7 +53,7 @@ function formatDay(iso: string) {
   return `${day} ${MONTHS[month - 1]} ${year}`;
 }
 
-function dateRangeLabel(fixtures: Fixture[]) {
+function dateRangeLabel(fixtures: FixtureHubFixture[]) {
   const dates = fixtures.map((f) => (f.start_date || f.start_date_label || "").split("T")[0]).filter(Boolean).sort();
   if (!dates.length) return "";
   const first = dates[0];
@@ -87,9 +93,9 @@ function Badge({ logo, code, x, y, r, away }: { logo: string | null; code: strin
 export function CountryFixturesMap({
   league,
   fixtures,
-  activeMatchId,
-  onActiveMatchChange,
-  onSelectMatch,
+  activeFixtureId,
+  onActiveFixtureChange,
+  onSelectFixture,
   actions,
   overlay,
   workspace = false,
@@ -123,8 +129,8 @@ export function CountryFixturesMap({
           city: stadium.city,
           homeCode: teamCode(league, fixture.home_team),
           awayCode: teamCode(league, fixture.away_team),
-          homeLogo: teamLogo(fixture.home_team),
-          awayLogo: teamLogo(fixture.away_team),
+          homeLogo: fixture.home_crest ?? teamLogo(fixture.home_team),
+          awayLogo: fixture.away_crest ?? teamLogo(fixture.away_team),
         };
       })
       .filter((item): item is PlacedFixture => item !== null);
@@ -162,7 +168,7 @@ export function CountryFixturesMap({
       setTooltipPos({ x: event.clientX - bounds.left, y: event.clientY - bounds.top });
     }
     setHovered(item);
-    onActiveMatchChange?.(item.fixture.match_id);
+    onActiveFixtureChange?.(item.fixture.fixture_id);
   };
 
   const zoomTo = (zoom: number) => {
@@ -244,7 +250,7 @@ export function CountryFixturesMap({
                       >
                         <g
                           className={
-                            cluster.items.some((item) => item.fixture.match_id === activeMatchId)
+                            cluster.items.some((item) => item.fixture.fixture_id === activeFixtureId)
                               ? "stadium-cluster is-active"
                               : "stadium-cluster"
                           }
@@ -263,37 +269,37 @@ export function CountryFixturesMap({
                     </Marker>
                   ) : (
                     <FixtureMarker
-                      key={cluster.items[0].fixture.match_id}
+                      key={cluster.items[0].fixture.fixture_id}
                       item={cluster.items[0]}
                       index={index}
                       markerScale={markerScale}
-                      activeMatchId={activeMatchId}
-                      hoveredMatchId={hovered?.fixture.match_id}
+                      activeFixtureId={activeFixtureId}
+                      hoveredFixtureId={hovered?.fixture.fixture_id}
                       onHover={handleHover}
                       onLeave={() => {
                         setHovered(null);
-                        onActiveMatchChange?.(null);
+                        onActiveFixtureChange?.(null);
                       }}
-                      onActiveMatchChange={onActiveMatchChange}
-                      onSelectMatch={onSelectMatch}
+                      onActiveFixtureChange={onActiveFixtureChange}
+                      onSelectFixture={onSelectFixture}
                     />
                   ),
                 )
               : placed.map((item, index) => (
                   <FixtureMarker
-                    key={item.fixture.match_id}
+                    key={item.fixture.fixture_id}
                     item={item}
                     index={index}
                     markerScale={markerScale}
-                    activeMatchId={activeMatchId}
-                    hoveredMatchId={hovered?.fixture.match_id}
+                    activeFixtureId={activeFixtureId}
+                    hoveredFixtureId={hovered?.fixture.fixture_id}
                     onHover={handleHover}
                     onLeave={() => {
                       setHovered(null);
-                      onActiveMatchChange?.(null);
+                      onActiveFixtureChange?.(null);
                     }}
-                    onActiveMatchChange={onActiveMatchChange}
-                    onSelectMatch={onSelectMatch}
+                    onActiveFixtureChange={onActiveFixtureChange}
+                    onSelectFixture={onSelectFixture}
                   />
                 ))}
           </ZoomableGroup>
@@ -331,7 +337,7 @@ export function CountryFixturesMap({
             {hovered.fixture.home_team} <b>{cleanScore(hovered.fixture.score)}</b> {hovered.fixture.away_team}
           </strong>
           <span className="stadium-tooltip-date">{formatDay(hovered.fixture.start_date || hovered.fixture.start_date_label)}</span>
-          <span className="stadium-tooltip-cta">Select match →</span>
+          <span className="stadium-tooltip-cta">{fixtureActionLabel(hovered.fixture)} →</span>
         </div>
       ) : null}
     </div>
@@ -342,47 +348,47 @@ type FixtureMarkerProps = {
   item: PlacedFixture;
   index: number;
   markerScale: number;
-  activeMatchId?: string | null;
-  hoveredMatchId?: string;
+  activeFixtureId?: string | null;
+  hoveredFixtureId?: string;
   onHover: (item: PlacedFixture, event: React.MouseEvent) => void;
   onLeave: () => void;
-  onActiveMatchChange?: (matchId: string | null) => void;
-  onSelectMatch?: (matchId: string) => void;
+  onActiveFixtureChange?: (fixtureId: string | null) => void;
+  onSelectFixture?: (fixtureId: string) => void;
 };
 
 function FixtureMarker({
   item,
   index,
   markerScale,
-  activeMatchId,
-  hoveredMatchId,
+  activeFixtureId,
+  hoveredFixtureId,
   onHover,
   onLeave,
-  onActiveMatchChange,
-  onSelectMatch,
+  onActiveFixtureChange,
+  onSelectFixture,
 }: FixtureMarkerProps) {
   return (
     <Marker coordinates={item.coordinates}>
       <g className="stadium-marker-scale" style={{ transform: `scale(${markerScale})` }}>
         <a
-          href={analysisHref(item.fixture)}
+          href={fixtureHref(item.fixture)}
           className={
-            hoveredMatchId === item.fixture.match_id || activeMatchId === item.fixture.match_id
+            `${hoveredFixtureId === item.fixture.fixture_id || activeFixtureId === item.fixture.fixture_id
               ? "stadium-marker is-active"
-              : "stadium-marker"
+              : "stadium-marker"} is-${item.fixture.state}`
           }
           style={{ animationDelay: `${index * 90}ms` }}
           aria-label={`${item.fixture.home_team} vs ${item.fixture.away_team} at ${item.stadium}`}
           onClick={(event) => {
-            if (!onSelectMatch) return;
+            if (!onSelectFixture) return;
             event.preventDefault();
-            onSelectMatch(item.fixture.match_id);
+            onSelectFixture(item.fixture.fixture_id);
           }}
           onMouseEnter={(event) => onHover(item, event)}
           onMouseMove={(event) => onHover(item, event)}
           onMouseLeave={onLeave}
-          onFocus={() => onActiveMatchChange?.(item.fixture.match_id)}
-          onBlur={() => onActiveMatchChange?.(null)}
+          onFocus={() => onActiveFixtureChange?.(item.fixture.fixture_id)}
+          onBlur={() => onActiveFixtureChange?.(null)}
         >
           <StadiumGlyph />
           <g className="stadium-badges">

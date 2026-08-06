@@ -49,7 +49,8 @@ type TypeStats = {
 type Props = {
   matchId: string;
   source: string;
-  filePath?: string;
+  league?: string;
+  season?: string;
   jobId?: string;
   team: string;
   teamColor: string;
@@ -500,7 +501,7 @@ function DeliveryPitchPlotly({ deliveries, team, teamColor, label }: { deliverie
   );
 }
 
-export function SetPiecesPanel({ matchId, source, filePath, jobId, team, teamColor }: Props) {
+export function SetPiecesPanel({ matchId, source, league, season, jobId, team, teamColor }: Props) {
   const [types, setTypes] = useState<Record<string, TypeStats>>({});
   const [activeType, setActiveType] = useState<string>("corner");
   const [cornerView, setCornerView] = useState<"arrows" | "zones">("arrows");
@@ -515,7 +516,7 @@ export function SetPiecesPanel({ matchId, source, filePath, jobId, team, teamCol
     const body =
       source !== "r2"
         ? { match_id: matchId, source, filters }
-        : { match_id: matchId, source: "r2", file_path: filePath, filters };
+        : { match_id: matchId, source: "r2", league, season, filters };
     getAnalysisView("set-pieces", body)
       .then((view) => {
         if (!cancelled) setTypes(((view.payload ?? {}).types as Record<string, TypeStats> | undefined) ?? {});
@@ -529,7 +530,7 @@ export function SetPiecesPanel({ matchId, source, filePath, jobId, team, teamCol
     return () => {
       cancelled = true;
     };
-  }, [matchId, source, filePath, jobId, team]);
+  }, [matchId, source, league, season, jobId, team]);
 
   const active = types[activeType];
   const isCorner = activeType === "corner";

@@ -39,7 +39,8 @@ Useful checks:
 
 ```bash
 curl -s http://127.0.0.1:8000/health
+curl -s http://127.0.0.1:8000/ready
 curl -s http://127.0.0.1:8000/api/leagues/premier-league/seasons
 ```
 
-See `docs/deployment-onboarding-analytics-plan.md` for the private beta deployment plan.
+See `docs/deployment-onboarding-analytics-plan.md` for the private beta deployment plan and `docs/railway-phase2-deployment-runbook.md` for the Railway staging runbook.

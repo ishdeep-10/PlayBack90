@@ -13,7 +13,14 @@ export const JourneyHero = forwardRef<HTMLDivElement>(function JourneyHero(_, re
         actions, players, and tactical context connected.
       </p>
       <div className="pbj-hero-actions">
-        <a className="button" href="#league-coverage">
+        <a
+          className="button"
+          href="#league-coverage"
+          onClick={(event) => {
+            event.preventDefault();
+            document.getElementById("league-coverage")?.scrollIntoView({ behavior: "smooth" });
+          }}
+        >
           Explore Match Analysis
         </a>
         <Link className="ghost-button" href="/live-scrape">
