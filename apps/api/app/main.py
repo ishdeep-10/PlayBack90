@@ -3,7 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 from time import monotonic
 
-from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.middleware.gzip import GZipMiddleware
@@ -29,6 +29,7 @@ from app.schemas import (
     StandingsResponse,
 )
 from app.services import fixture_rounds, live_scrape, r2
+from app.services.rate_limit import enforce_rate_limit
 from app.services.import_jobs import import_job_store
 from app.services.live_jobs import job_store
 from app.services.providers.statsbomb import StatsBombImportError, normalize_statsbomb_match
@@ -74,6 +75,14 @@ from app.services.season_baseline import build_season_baseline_view
 from app.services import opposition as opp_svc
 from app.services.opposition_foundation import build_opposition_foundation
 from app.services.opposition_dossier import build_opposition_dossier
+
+if settings.sentry_dsn:
+    import sentry_sdk
+
+    try:
+        sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment, send_default_pii=False)
+    except Exception:  # noqa: BLE001 - a bad DSN must never prevent the app from starting
+        pass
 
 
 app = FastAPI(title=settings.app_name)
@@ -155,6 +164,7 @@ def healthcheck() -> dict[str, object]:
         "api_sports_configured": bool(settings.api_sports_key),
         "redis_configured": bool(settings.redis_url),
         "database_configured": bool(settings.database_url),
+        "sentry_configured": bool(settings.sentry_dsn),
     }
 
 
@@ -747,6 +757,7 @@ def get_ai_insights(
 
 @app.get(f"{settings.api_prefix}/analysis/{{match_id}}/assets/{{asset_id}}.png")
 def get_analysis_asset(
+    http_request: Request,
     match_id: str,
     asset_id: str,
     league: str | None = Query(default=None),
@@ -763,6 +774,7 @@ def get_analysis_asset(
 ) -> Response:
     from app.services.visuals import build_asset_png
 
+    enforce_rate_limit(http_request, bucket="asset-png", limit=60, window_seconds=60)
     df, context = resolve_analysis_source(source=source, match_id=match_id, league=league, season=season, job_id=job_id)
     if df.empty or (source not in {"live", "import"} and context.match_id != match_id):
         raise HTTPException(status_code=404, detail="Asset source data not found.")
@@ -782,9 +794,10 @@ def get_analysis_asset(
 
 
 @app.post(f"{settings.api_prefix}/analysis/report-jobs")
-def create_report_job(request: AnalysisViewRequest) -> dict[str, str]:
+def create_report_job(http_request: Request, request: AnalysisViewRequest) -> dict[str, str]:
     from app.services.report_jobs import report_job_store
 
+    enforce_rate_limit(http_request, bucket="report-pdf", limit=5, window_seconds=60)
     if not request.league or not request.season:
         raise HTTPException(status_code=400, detail="league and season are required.")
     file_path = r2.find_file_path(request.league, request.season, request.match_id)
@@ -821,6 +834,7 @@ def download_report_job(job_id: str) -> Response:
 
 @app.get(f"{settings.api_prefix}/analysis/{{match_id}}/report.pdf")
 def get_match_report(
+    http_request: Request,
     match_id: str,
     league: str | None = Query(default=None),
     season: str | None = Query(default=None),
@@ -829,6 +843,7 @@ def get_match_report(
 ) -> StreamingResponse:
     from app.services.visuals import build_match_report_pdf
 
+    enforce_rate_limit(http_request, bucket="report-pdf", limit=5, window_seconds=60)
     df, context = resolve_analysis_source(source=source, match_id=match_id, league=league, season=season, job_id=job_id)
     if df.empty or (source not in {"live", "import"} and context.match_id != match_id):
         raise HTTPException(status_code=404, detail="Match data not found.")
@@ -982,9 +997,15 @@ def get_opposition_asset(league: str, season: str, team: str, asset_id: str) -> 
 
 
 @app.post(f"{settings.api_prefix}/live-scrape-jobs")
-def create_live_scrape_job(request: LiveScrapeJobCreate):
+def create_live_scrape_job(http_request: Request, request: LiveScrapeJobCreate):
     if not settings.live_scrape_enabled:
         raise HTTPException(status_code=404, detail="Live WhoScored scraping is not available yet.")
+    enforce_rate_limit(
+        http_request,
+        bucket="live-scrape",
+        limit=settings.live_scrape_rate_limit_per_minute,
+        window_seconds=60,
+    )
     job = job_store.create_job(str(request.url))
     job_store.submit(job.job_id, live_scrape.run_live_scrape, str(request.url))
     return job_store.to_response(job.job_id)
@@ -999,7 +1020,8 @@ def get_live_scrape_job(job_id: str):
 
 
 @app.post(f"{settings.api_prefix}/import-jobs/wyscout", response_model=ImportJobResponse)
-def create_wyscout_import_job(payload: dict = Body(...)):
+def create_wyscout_import_job(http_request: Request, payload: dict = Body(...)):
+    enforce_rate_limit(http_request, bucket="import", limit=10, window_seconds=60)
     job = import_job_store.create("wyscout")
     import_job_store.update(job.job_id, status="running", message="Normalizing Wyscout match data")
     try:
@@ -1030,7 +1052,8 @@ def create_wyscout_import_job(payload: dict = Body(...)):
 
 
 @app.post(f"{settings.api_prefix}/import-jobs/statsbomb", response_model=ImportJobResponse)
-def create_statsbomb_import_job(payload: object = Body(...)):
+def create_statsbomb_import_job(http_request: Request, payload: object = Body(...)):
+    enforce_rate_limit(http_request, bucket="import", limit=10, window_seconds=60)
     return _create_statsbomb_import_job(payload, message="StatsBomb import completed")
 
 
@@ -1070,7 +1093,8 @@ def list_statsbomb_sample_matches() -> dict[str, list[dict[str, object]]]:
 
 
 @app.post(f"{settings.api_prefix}/import-jobs/statsbomb/samples/{{sample_id}}", response_model=ImportJobResponse)
-def create_statsbomb_sample_import_job(sample_id: str):
+def create_statsbomb_sample_import_job(http_request: Request, sample_id: str):
+    enforce_rate_limit(http_request, bucket="import", limit=10, window_seconds=60)
     try:
         payload = fetch_statsbomb_open_data_sample(sample_id)
     except StatsBombSampleError as exc:

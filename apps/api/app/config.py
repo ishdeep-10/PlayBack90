@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     opposition_analysis_enabled: bool = False
     live_scrape_enabled: bool = False
 
+    sentry_dsn: str | None = None
+
     auth_required: bool = False
     clerk_jwks_url: str | None = None
     clerk_issuer: str | None = None

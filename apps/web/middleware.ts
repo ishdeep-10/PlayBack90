@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-const publicAuthPrefixes = ["/sign-in", "/sign-up"];
+const publicAuthPrefixes = ["/sign-in", "/sign-up", "/privacy"];
 
 function isPublicAuthRoute(pathname: string) {
   return publicAuthPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/" ));

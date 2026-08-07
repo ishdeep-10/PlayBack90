@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { PUBLIC_API_BASE, getAuthHeaders } from "../lib/api";
+import { capture } from "../lib/posthog";
 
 type Props = {
   matchId: string;
@@ -86,7 +87,11 @@ export function AiInsightCard({ matchId, source, league, season, jobId, view, te
           <button
             type="button"
             className="button ai-generate-button"
-            onClick={() => generate(mode === "ai" ? "baseline" : "ai")}
+            onClick={() => {
+              const nextMode = mode === "ai" ? "baseline" : "ai";
+              if (nextMode === "ai") capture("ai_insight_requested", { view });
+              generate(nextMode);
+            }}
             disabled={status === "streaming" || status === "loading"}
           >
             {status === "streaming" ? "Analysing…" : mode === "ai" ? "Back to baseline" : "✦ AI deep dive"}

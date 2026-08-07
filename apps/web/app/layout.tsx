@@ -6,6 +6,8 @@ import Link from "next/link";
 
 import { AuthControls } from "../components/AuthControls";
 import { AuthProvider } from "../components/AuthProvider";
+import { PostHogProvider } from "../components/PostHogProvider";
+import { PostHogIdentify } from "../components/PostHogIdentify";
 import { ThemeToggle } from "../components/ThemeToggle";
 
 
@@ -28,7 +30,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body suppressHydrationWarning>
+        <PostHogProvider>
         <AuthProvider>
+        <PostHogIdentify />
         <header className="site-nav">
           <div className="nav-inner">
             <Link href="/" className="nav-brand">
@@ -46,7 +50,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <div className="container" style={{ paddingTop: 24, paddingBottom: 40 }}>
           {children}
         </div>
+        <footer style={{ padding: "24px 0", textAlign: "center" }}>
+          <Link href="/privacy" className="muted" style={{ fontSize: "0.85rem" }}>Privacy</Link>
+        </footer>
         </AuthProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

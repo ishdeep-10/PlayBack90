@@ -1,4 +1,10 @@
 playback90.com {
+	# Cloudflare Origin CA cert (not Let's Encrypt) — required once the DNS record is
+	# proxied through Cloudflare, since that terminates TLS-ALPN-01/HTTP-01 ACME
+	# challenges before they reach the origin. Only trusted by Cloudflare itself,
+	# which is fine because traffic only ever reaches this origin via their proxy.
+	tls /etc/caddy/certs/certificate.pem /etc/caddy/certs/private_key.key
+
 	handle /api/* {
 		reverse_proxy api:8000 {
 			header_up Host {host}

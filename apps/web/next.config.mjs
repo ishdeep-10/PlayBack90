@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typedRoutes: true,
@@ -28,4 +30,18 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// Source-map upload (needs SENTRY_ORG/SENTRY_PROJECT/SENTRY_AUTH_TOKEN) is entirely
+// opt-in — without those set this wrap is a no-op passthrough, same as the app's
+// other integrations (Clerk, PostHog) when their keys are unset.
+const sentryBuildOptions = {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  disableLogger: true,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+};
+
+export default process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
+  ? withSentryConfig(nextConfig, sentryBuildOptions)
+  : nextConfig;

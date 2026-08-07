@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import { toProxiedDataUrl as toDataUrl } from "../lib/images";
 import { getPlotly } from "../lib/plotly";
+import { capture } from "../lib/posthog";
 import { CHART_FONT_FAMILY } from "../lib/theme";
 import { useShareMatchInfo } from "./ShareExportContext";
 
@@ -1192,6 +1193,7 @@ export function DownloadPngButton({
       ctx.fillText(rightText, width - margin - ctx.measureText(rightText).width, footerY);
 
       setPreview(canvas.toDataURL("image/png"));
+      capture("share_export_opened", { filename });
     } catch {
       // Export is best-effort; leave the chart untouched on failure.
     } finally {
@@ -1205,6 +1207,7 @@ export function DownloadPngButton({
     link.href = preview;
     link.download = cleanName;
     link.click();
+    capture("share_export_downloaded", { filename });
     setPreview(null);
   };
 

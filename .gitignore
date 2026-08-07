@@ -26,3 +26,6 @@ deploy/*.env.production
 geckodriver
 geckodriver.tar.gz
 Data/season_stats/
+certs/
+*.pem
+*.key

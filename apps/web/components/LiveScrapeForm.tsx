@@ -10,6 +10,7 @@ import {
   createWyscoutImportJob,
   type StatsBombSampleMatch,
 } from "../lib/api";
+import { capture } from "../lib/posthog";
 
 const MAX_WYSCOUT_FILE_BYTES = 75 * 1024 * 1024;
 const MAX_STATSBOMB_FILE_BYTES = 75 * 1024 * 1024;
@@ -334,6 +335,7 @@ export function LiveScrapeForm() {
 
     setLoading(true);
     setStatus("Reading file...");
+    capture("import_started", { provider: "wyscout" });
 
     try {
       const text = await file.text();
@@ -354,10 +356,12 @@ export function LiveScrapeForm() {
         throw new Error("Wyscout import completed without a match id.");
       }
       setStatus("Opening analysis...");
+      capture("import_completed", { provider: "wyscout" });
       router.push(`/analysis/${matchId}?source=import&jobId=${encodeURIComponent(job.job_id)}&provider=wyscout`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to import Wyscout JSON.");
       setStatus(null);
+      capture("import_failed", { provider: "wyscout" });
     } finally {
       setLoading(false);
       event.target.value = "";
@@ -388,6 +392,7 @@ export function LiveScrapeForm() {
 
     setLoading(true);
     setStatus("Reading file...");
+    capture("import_started", { provider: "statsbomb" });
 
     try {
       const payload = await buildStatsBombPayloadFromFiles(files);
@@ -401,10 +406,12 @@ export function LiveScrapeForm() {
         throw new Error("StatsBomb import completed without a match id.");
       }
       setStatus("Opening analysis...");
+      capture("import_completed", { provider: "statsbomb" });
       router.push(`/analysis/${matchId}?source=import&jobId=${encodeURIComponent(job.job_id)}&provider=statsbomb`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to import StatsBomb JSON.");
       setStatus(null);
+      capture("import_failed", { provider: "statsbomb" });
     } finally {
       setLoading(false);
       event.target.value = "";
@@ -416,6 +423,7 @@ export function LiveScrapeForm() {
     setStatus(`Loading ${sample.home_team} vs ${sample.away_team}...`);
     setLoading(true);
     setSampleLoadingId(sample.id);
+    capture("import_started", { provider: "statsbomb_sample" });
 
     try {
       const job = await createStatsBombSampleImportJob(sample.id);
@@ -427,10 +435,12 @@ export function LiveScrapeForm() {
         throw new Error("StatsBomb sample imported without a match id.");
       }
       setStatus("Opening analysis...");
+      capture("import_completed", { provider: "statsbomb_sample" });
       router.push(`/analysis/${matchId}?source=import&jobId=${encodeURIComponent(job.job_id)}&provider=statsbomb`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to import StatsBomb sample.");
       setStatus(null);
+      capture("import_failed", { provider: "statsbomb_sample" });
     } finally {
       setLoading(false);
       setSampleLoadingId(null);
