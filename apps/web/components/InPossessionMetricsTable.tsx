@@ -97,6 +97,7 @@ export function InPossessionMetricsTable({ rows, team, playerBaselines }: Props)
   const [sortKey, setSortKey] = useState<keyof MetricRow>("passes_attempted");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [showSeasonDeltas, setShowSeasonDeltas] = useState(false);
+  const [activeDefinition, setActiveDefinition] = useState<Column | null>(null);
   const hasBaselines = Boolean(playerBaselines && Object.values(playerBaselines).some((b) => !b.lowSample));
 
   const sortedRows = useMemo(() => {
@@ -136,6 +137,15 @@ export function InPossessionMetricsTable({ rows, team, playerBaselines }: Props)
           </button>
         ) : null}
       </div>
+      <div
+        id="in-possession-metric-definition"
+        className={`in-possession-metric-definition${activeDefinition ? " is-active" : ""}`}
+        role="status"
+        aria-live="polite"
+      >
+        <strong>{activeDefinition?.label ?? "Metric definitions"}</strong>
+        <span>{activeDefinition?.description ?? "Hover or focus a column heading to see how the metric is calculated."}</span>
+      </div>
       <div className="in-possession-table-wrap">
         <table className="in-possession-table">
           <thead>
@@ -147,6 +157,11 @@ export function InPossessionMetricsTable({ rows, team, playerBaselines }: Props)
                     className="metric-tooltip"
                     data-tooltip={column.description}
                     title={column.description}
+                    aria-describedby="in-possession-metric-definition"
+                    onMouseEnter={() => setActiveDefinition(column)}
+                    onMouseLeave={() => setActiveDefinition(null)}
+                    onFocus={() => setActiveDefinition(column)}
+                    onBlur={() => setActiveDefinition(null)}
                     onClick={() => changeSort(column.key)}
                   >
                     <span>{column.label}</span>

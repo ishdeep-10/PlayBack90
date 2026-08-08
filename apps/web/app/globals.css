@@ -2562,37 +2562,32 @@ html.dark .input, html.dark .select {
   cursor: pointer;
 }
 
-.in-possession-table th button.metric-tooltip::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  right: 0;
-  top: calc(100% + 10px);
-  z-index: 80;
-  width: max-content;
-  max-width: 260px;
-  padding: 8px 10px;
+.in-possession-metric-definition {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 38px;
+  padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--panel);
-  color: var(--text);
-  box-shadow: var(--shadow-md);
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0;
-  line-height: 1.35;
-  text-align: left;
-  text-transform: none;
-  white-space: normal;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-4px);
-  transition: opacity 140ms ease, transform 140ms ease;
+  background: var(--bg-subtle);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
-.in-possession-table th button.metric-tooltip:hover::after,
-.in-possession-table th button.metric-tooltip:focus-visible::after {
-  opacity: 1;
-  transform: translateY(0);
+.in-possession-metric-definition strong {
+  flex: none;
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.in-possession-metric-definition.is-active {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  color: var(--text);
 }
 
 .in-possession-table td {
@@ -3179,6 +3174,18 @@ html.dark .input, html.dark .select {
 .player-analysis-selector-card .input {
   min-width: 0;
   width: 100%;
+}
+
+html.dark .player-analysis-section select.select {
+  color-scheme: dark;
+  background: var(--panel);
+  color: var(--text);
+}
+
+html.dark .player-analysis-section select.select option,
+html.dark .player-analysis-section select.select optgroup {
+  background: var(--panel);
+  color: var(--text);
 }
 
 .player-analysis-selector-card label > span {
