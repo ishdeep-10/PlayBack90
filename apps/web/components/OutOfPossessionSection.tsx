@@ -185,41 +185,51 @@ export function OutOfPossessionSection({
             />
           </div>
         </div>
-        <div className="analysis-section-controls">
-          <div className="segmented-control" aria-label="Defensive visual mode">
-            <button type="button" className={visualMode === "zones" ? "is-active" : ""} onClick={() => setVisualMode("zones")}>
-              Zone %
-            </button>
-            <button type="button" className={visualMode === "actions" ? "is-active" : ""} onClick={() => setVisualMode("actions")}>
-              Actions
-            </button>
+        <div className="analysis-top-controls out-of-possession-top-controls">
+          <div className="analysis-team-strip">
+            <span>Team</span>
+            <div className="analysis-team-buttons">
+              {teams.map((team) => (
+                <button
+                  key={team}
+                  type="button"
+                  className={team === currentTeam ? "button" : "ghost-button"}
+                  onClick={() => loadView({ team, gameState: "all", timeRange: "all" })}
+                  disabled={isLoading}
+                >
+                  {team}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="row" style={{ gap: 8 }}>
-            {teams.map((team) => (
-              <button
-                key={team}
-                type="button"
-                className={team === currentTeam ? "button" : "ghost-button"}
-                onClick={() => loadView({ team, gameState: "all", timeRange: "all" })}
+          <div className="analysis-filter-strip-grid out-of-possession-filter-strip">
+            <div className="analysis-filter-control">
+              <span>View</span>
+              <div className="segmented-control" aria-label="Defensive visual mode">
+                <button type="button" className={visualMode === "zones" ? "is-active" : ""} onClick={() => setVisualMode("zones")}>
+                  Zone %
+                </button>
+                <button type="button" className={visualMode === "actions" ? "is-active" : ""} onClick={() => setVisualMode("actions")}>
+                  Actions
+                </button>
+              </div>
+            </div>
+            <label>
+              <span>Game state</span>
+              <select
+                className="select"
+                value={gameState}
+                onChange={(event) => loadView({ gameState: event.target.value, timeRange: "all" })}
                 disabled={isLoading}
               >
-                {team}
-              </button>
-            ))}
-          </div>
-          <select
-            className="select"
-            value={gameState}
-            onChange={(event) => loadView({ gameState: event.target.value, timeRange: "all" })}
-            disabled={isLoading}
-          >
-            {gameStateOptions.map((option) => (
-              <option key={String(option.value)} value={String(option.value)}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <div className="time-range-control">
+                {gameStateOptions.map((option) => (
+                  <option key={String(option.value)} value={String(option.value)}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="time-range-control">
             <div className="time-range-control-head">
               <span>Minute Range</span>
               <strong>{Math.round(draftRange[0])}'-{Math.round(draftRange[1])}'</strong>
@@ -273,6 +283,7 @@ export function OutOfPossessionSection({
             >
               Apply
             </button>
+            </div>
           </div>
         </div>
       </div>

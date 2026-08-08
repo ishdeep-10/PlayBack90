@@ -11,6 +11,7 @@ import { CountryFixturesMap } from "./CountryFixturesMap";
 
 type Props = {
   league: string;
+  season: string;
   fixtures: FixtureHubFixture[];
   roundLabel: string;
   roundStage: string;
@@ -32,8 +33,15 @@ function cleanScore(score: string) {
   return String(score || "").replace(/--/g, "-").replace(/_/g, "-");
 }
 
-function fixtureHref(fixture: FixtureHubFixture) {
-  return (fixture.post_match_href || fixture.opposition_href || "#") as Route;
+function fixtureHref(fixture: FixtureHubFixture, league: string, season: string) {
+  const href = fixture.post_match_href || fixture.opposition_href || "#";
+  if (!fixture.post_match_href || href === "#") return href as Route;
+
+  const [pathname, query = ""] = href.split("?", 2);
+  const params = new URLSearchParams(query);
+  if (!params.has("league")) params.set("league", league);
+  if (!params.has("season")) params.set("season", season);
+  return `${pathname}?${params.toString()}` as Route;
 }
 
 function fixtureActionLabel(fixture: FixtureHubFixture) {
@@ -57,7 +65,7 @@ function TeamCrest({ league, team, crest }: { league: string; team: string; cres
   return <span className="team-crest" aria-hidden="true">{teamCode(league, team)}</span>;
 }
 
-export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: Props) {
+export function MatchdayExplorer({ league, season, fixtures, roundLabel, roundStage }: Props) {
   const explorerRef = useRef<HTMLElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const [hoverFixtureId, setHoverFixtureId] = useState<string | null>(null);
@@ -162,7 +170,7 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
                   <strong>{selectedFixture.away_team}</strong>
                 </span>
               </div>
-              <Link className="matchday-map-preview-link" href={fixtureHref(selectedFixture)}>
+              <Link className="matchday-map-preview-link" href={fixtureHref(selectedFixture, league, season)}>
                 {fixtureActionLabel(selectedFixture)}
                 <ArrowUpRight aria-hidden="true" size={16} />
               </Link>
@@ -257,7 +265,7 @@ export function MatchdayExplorer({ league, fixtures, roundLabel, roundStage }: P
                 </button>
                 <Link
                   className="explorer-fixture-action"
-                  href={fixtureHref(fixture)}
+                  href={fixtureHref(fixture, league, season)}
                   aria-label={`${fixtureActionLabel(fixture)} for ${fixture.home_team} versus ${fixture.away_team}`}
                   title={fixtureActionLabel(fixture)}
                 >

@@ -227,6 +227,7 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
 
       <MatchdayExplorer
         league={league}
+        season={season}
         fixtures={fixtureHub.fixtures}
         roundLabel={
           selectedRound.metadata_source === "manifest"

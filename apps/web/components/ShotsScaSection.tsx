@@ -116,6 +116,7 @@ export function ShotsScaSection({
   const [sortKey, setSortKey] = useState<(typeof sortOptions)[number][0]>("Total xG");
   const [selectedGameState, setSelectedGameState] = useState(initialGameState);
   const [selectedTimeRange, setSelectedTimeRange] = useState(initialTimeRange);
+  const [mapOrientation, setMapOrientation] = useState<"stacked" | "side-by-side">("stacked");
 
   useSyncFiltersToUrl({
     team: selectedTeam,
@@ -210,7 +211,7 @@ export function ShotsScaSection({
                   return src ? [src] : [];
                 }}
                 scopeSelector="section.card"
-                maxCharts={1}
+                maxCharts={2}
                 chartGroupSelector=".shots-plotly-shell"
                 sideTable={() => {
                   const selectedShotTable = readSelectedShotTable();
@@ -321,11 +322,36 @@ export function ShotsScaSection({
 
         <div className="shot-hero shot-hero-single">
           <article className="card shot-panel">
-            <div className="row" style={{ justifyContent: "space-between" }}>
+            <div className="shot-map-toolbar">
               <strong>Shots and SCA map</strong>
-              {selectedPlayer && <button type="button" className="pill" onClick={() => setSelectedPlayer("")}>{selectedPlayer} x</button>}
+              <div className="shot-map-toolbar-actions">
+                {selectedPlayer && <button type="button" className="pill" onClick={() => setSelectedPlayer("")}>{selectedPlayer} x</button>}
+                <div className="segmented-control shot-map-orientation" aria-label="Shot map orientation">
+                  <button
+                    type="button"
+                    className={mapOrientation === "stacked" ? "is-active" : ""}
+                    aria-pressed={mapOrientation === "stacked"}
+                    onClick={() => setMapOrientation("stacked")}
+                  >
+                    Stacked
+                  </button>
+                  <button
+                    type="button"
+                    className={mapOrientation === "side-by-side" ? "is-active" : ""}
+                    aria-pressed={mapOrientation === "side-by-side"}
+                    onClick={() => setMapOrientation("side-by-side")}
+                  >
+                    Side by side
+                  </button>
+                </div>
+              </div>
             </div>
-            <ShotsPlotly shots={teamShots} team={selectedTeam} teamColor={selectedTeamColor} />
+            <ShotsPlotly
+              shots={teamShots}
+              team={selectedTeam}
+              teamColor={selectedTeamColor}
+              orientation={mapOrientation}
+            />
           </article>
         </div>
       </section>

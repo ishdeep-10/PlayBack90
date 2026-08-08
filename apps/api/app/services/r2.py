@@ -25,7 +25,7 @@ def make_fs():
     return s3fs.S3FileSystem(
         key=settings.r2_access_key,
         secret=settings.r2_secret_key,
-        client_kwargs={"endpoint_url": settings.r2_endpoint_url},
+        client_kwargs={"endpoint_url": settings.r2_endpoint_url, "region_name": "auto"},
         listings_expiry_time=120,
     )
 
@@ -36,7 +36,7 @@ def get_storage_options() -> dict[str, object]:
     return {
         "key": settings.r2_access_key,
         "secret": settings.r2_secret_key,
-        "client_kwargs": {"endpoint_url": settings.r2_endpoint_url},
+        "client_kwargs": {"endpoint_url": settings.r2_endpoint_url, "region_name": "auto"},
         "use_listings_cache": False,
     }
 

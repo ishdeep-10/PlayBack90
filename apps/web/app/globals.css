@@ -904,6 +904,18 @@ html.dark .metric-chip {
   min-width: 0;
 }
 
+.duels-transitions-filter-strip {
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 0.6fr) minmax(420px, 1.4fr);
+}
+
+.analysis-section-toolbar > .out-of-possession-top-controls {
+  width: 100%;
+}
+
+.out-of-possession-filter-strip {
+  grid-template-columns: minmax(180px, 0.6fr) minmax(180px, 0.6fr) minmax(420px, 1.4fr);
+}
+
 .in-possession-filter-strip > label,
 .in-possession-top-controls .time-range-control,
 .analysis-filter-strip-grid > label,
@@ -4139,6 +4151,7 @@ html.dark .input, html.dark .select {
 }
 
 .time-range-presets button {
+  min-width: 0;
   min-height: 26px;
   padding: 0 8px;
   border: 1px solid var(--line);
@@ -4148,6 +4161,8 @@ html.dark .input, html.dark .select {
   font: inherit;
   font-size: 0.68rem;
   font-weight: 850;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
 
@@ -4417,11 +4432,66 @@ html.dark .input, html.dark .select {
   align-items: start;
 }
 
+@media (min-width: 901px) {
+  .shots-plotly-shell.is-side-by-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .shots-plotly-shell.is-side-by-side .shot-click-chart {
+    min-height: 620px;
+  }
+
+  .shots-plotly-shell.is-side-by-side .shot-click-chart-goal {
+    display: flex;
+    align-items: center;
+  }
+
+  .shots-plotly-shell.is-side-by-side .shot-click-chart-goal .shot-click-layer {
+    top: calc(50% - 137px);
+    bottom: auto;
+    height: 264px;
+  }
+
+  .shots-plotly-shell.is-side-by-side > .embedded-shot-legend {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1280px) {
+  .shots-sca-layout.is-side-by-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shots-sca-layout.is-side-by-side .shot-detail-panel {
+    position: static;
+  }
+}
+
 .shots-plotly-header {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: baseline;
+}
+
+.shot-map-toolbar,
+.shot-map-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shot-map-toolbar-actions {
+  justify-content: flex-end;
+}
+
+.shot-map-orientation button {
+  min-height: 34px;
+  padding-inline: 12px;
+  white-space: nowrap;
 }
 
 .shots-plotly-header strong {
@@ -9135,8 +9205,12 @@ html.dark .strength-pill.negative { color: var(--danger); }
   .analysis-workspace { grid-template-columns: 1fr; }
   .analysis-workspace-rail { position: static; }
   .in-possession-filter-strip { grid-template-columns: 1fr; }
+  .analysis-filter-strip-grid,
+  .duels-transitions-filter-strip,
+  .out-of-possession-filter-strip { grid-template-columns: minmax(0, 1fr); }
   .in-possession-team-strip { align-items: flex-start; flex-direction: column; }
   .shot-hero, .split-grid, .shots-sca-layout { grid-template-columns: 1fr; }
+  .shot-map-orientation { display: none; }
   .defensive-actions-layout { grid-template-columns: 1fr; }
   .in-possession-actions-layout { grid-template-columns: 1fr; }
   .defensive-profile-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -11622,9 +11696,18 @@ html:not(.dark) .world-cup-kicker {
 }
 
 .tab-bar-row {
+  position: sticky;
+  z-index: 40;
+  top: calc(var(--nav-h, 69px) + 8px);
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  box-shadow: 0 8px 28px rgba(2, 8, 23, 0.1);
+  backdrop-filter: blur(14px);
 }
 
 .tab-bar-row .tab-bar {

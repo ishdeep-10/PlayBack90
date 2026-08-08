@@ -1,6 +1,5 @@
 import Image from "next/image";
 import type { Route } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 
 import {
@@ -11,6 +10,7 @@ import {
 import { getServerAuthToken } from "../../../lib/serverAuth";
 import { AiInsightCard } from "../../../components/AiInsightCard";
 import { AnalysisRouteProgress } from "../../../components/AnalysisRouteProgress";
+import { AnalysisViewNav } from "../../../components/AnalysisViewNav";
 import { GlossaryPopover } from "../../../components/GlossaryPopover";
 import { OrbLoader } from "../../../components/OrbLoader";
 import { DuelsTransitionsSection } from "../../../components/DuelsTransitionsSection";
@@ -332,19 +332,10 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
 
       {/* ── Tab bar ── */}
       <div className="tab-bar-row">
-      <nav className="tab-bar" aria-label="Analysis views">
-        {VIEWS.map((v) => (
-          <Link
-            key={v.id}
-            href={tabHref(v.id)}
-            prefetch={false}
-            aria-current={view === v.id ? "page" : undefined}
-            className={`tab-link${view === v.id ? " active" : ""}`}
-          >
-            {v.label}
-          </Link>
-        ))}
-      </nav>
+      <AnalysisViewNav
+        activeView={view}
+        links={VIEWS.map((item) => ({ ...item, href: tabHref(item.id) }))}
+      />
       <GlossaryPopover viewId={view} />
       </div>
 

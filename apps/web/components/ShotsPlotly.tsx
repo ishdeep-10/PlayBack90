@@ -31,6 +31,7 @@ type Props = {
   shots: ShotRow[];
   team: string;
   teamColor: string;
+  orientation?: "stacked" | "side-by-side";
 };
 
 const plotConfig = {
@@ -215,7 +216,7 @@ function pct(value: number, min: number, max: number) {
   return ((value - min) / (max - min)) * 100;
 }
 
-export function ShotsPlotly({ shots, team, teamColor }: Props) {
+export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
   const attackingShots = useMemo(
     () => shots.filter(hasValidPitchPoint).map((row, index) => ({ ...row, shotNumber: index + 1 }) as NumberedShot),
@@ -455,8 +456,8 @@ export function ShotsPlotly({ shots, team, teamColor }: Props) {
   ];
 
   return (
-    <div className="shots-sca-layout">
-      <div className="plotly-chart-shell shots-plotly-shell">
+    <div className={`shots-sca-layout is-${orientation}`}>
+      <div className={`plotly-chart-shell shots-plotly-shell is-${orientation}`}>
         <div className="shot-click-chart shot-click-chart-goal">
           <Plot
             data={goalChartData}

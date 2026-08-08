@@ -60,6 +60,11 @@ function lastName(full: string) {
   return parts.length > 1 ? parts.slice(1).join(" ") : full;
 }
 
+function formationLabel(player: LineupPlayer) {
+  const name = lastName(player.player);
+  return name.length > 14 ? `${name.slice(0, 13)}…` : name;
+}
+
 // Event data has y=0 on the attacking team's right touchline; SVG y grows
 // downward, so a team attacking left→right renders as svgY = 68 - y.
 function svgY(dataY: number, attackingRight: boolean) {
@@ -153,6 +158,7 @@ function PlayerMarker({
   clipId: string;
 }) {
   const r = 2.1;
+  const label = formationLabel(player);
   return (
     <g transform={`translate(${x}, ${y})`}>
       <circle r={r} fill={color} stroke={player.captain ? "#facc15" : "rgba(15,23,42,0.65)"} strokeWidth={0.35} />
@@ -174,8 +180,15 @@ function PlayerMarker({
       ) : (
         <text y={0.7} textAnchor="middle" className="lineup-player-jersey">{player.jersey}</text>
       )}
-      <text y={r + 2} textAnchor="middle" className="lineup-player-name">
-        {lastName(player.player)} ({player.jersey}){player.captain ? " (C)" : ""}
+      <text
+        y={r + 2}
+        textAnchor="middle"
+        className="lineup-player-name"
+        textLength={label.length > 10 ? 8.5 : undefined}
+        lengthAdjust={label.length > 10 ? "spacingAndGlyphs" : undefined}
+      >
+        <title>{`${player.player} · #${player.jersey}${player.captain ? " · Captain" : ""}`}</title>
+        {label}
       </text>
     </g>
   );
