@@ -28,6 +28,355 @@
   --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 }
 
+/* ─── Match analysis mobile compaction ─────────────────────────────────────── */
+.mobile-analysis-controls,
+.mobile-analysis-controls-body {
+  display: contents;
+}
+
+.mobile-analysis-controls-toggle,
+.player-analysis-mobile-pitch-tabs {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .mobile-analysis-controls {
+    display: grid;
+    width: 100%;
+  }
+
+  .mobile-analysis-controls-toggle {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--bg-subtle);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .mobile-analysis-controls-toggle > span {
+    display: grid;
+    min-width: 0;
+  }
+
+  .mobile-analysis-controls-toggle strong {
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  .mobile-analysis-controls-toggle small {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 0.7rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-analysis-controls-chevron {
+    transition: transform 160ms ease;
+  }
+
+  .mobile-analysis-controls.is-open .mobile-analysis-controls-chevron {
+    transform: rotate(180deg);
+  }
+
+  .mobile-analysis-controls-body {
+    display: none;
+    padding-top: 8px;
+  }
+
+  .mobile-analysis-controls.is-open .mobile-analysis-controls-body {
+    display: block;
+  }
+
+  .mobile-analysis-controls-body > :first-child {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .container:has(.analysis-page-workspace),
+  .page-shell:has(.analysis-page-workspace) {
+    padding-inline: 10px;
+  }
+
+  .analysis-page-workspace {
+    --analysis-mobile-card-padding: 12px;
+    gap: 12px !important;
+    margin-top: 12px !important;
+  }
+
+  .analysis-page-workspace > .hero {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .analysis-page-workspace .match-title-logo {
+    width: 38px;
+    height: 38px;
+  }
+
+  .analysis-page-workspace .match-title-row h1 {
+    font-size: clamp(1.35rem, 7vw, 1.9rem) !important;
+  }
+
+  .analysis-main {
+    gap: 12px;
+  }
+
+  .analysis-main > .card,
+  .analysis-main > section.card {
+    padding: var(--analysis-mobile-card-padding);
+    border-radius: 12px;
+  }
+
+  .analysis-main .card .card,
+  .analysis-main .plotly-chart-shell,
+  .analysis-main .embedded-chart-shell {
+    padding: 9px;
+    border-radius: 9px;
+  }
+
+  .analysis-section-heading h2,
+  .analysis-section-toolbar h2,
+  .chart-card-head h2 {
+    font-size: clamp(1.2rem, 5.5vw, 1.55rem) !important;
+    line-height: 1.15;
+  }
+
+  .chart-card-head {
+    align-items: center;
+  }
+
+  .tab-bar-row {
+    top: calc(var(--nav-h, 64px) + 4px);
+    gap: 6px;
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .tab-bar-row .tab-bar .tab-link {
+    min-height: 34px;
+    padding: 6px 11px;
+    font-size: 0.74rem;
+  }
+
+  .in-possession-top-controls,
+  .analysis-top-controls,
+  .player-analysis-selector-card {
+    padding: 10px;
+  }
+
+  .in-possession-team-buttons,
+  .analysis-team-buttons,
+  .segmented-control {
+    width: 100%;
+  }
+
+  .in-possession-team-buttons > *,
+  .analysis-team-buttons > *,
+  .analysis-filter-control .segmented-control > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .time-range-control {
+    min-width: 0;
+    padding: 9px;
+  }
+
+  .time-range-presets {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .shot-team-total-strip,
+  .player-analysis-stat-grid,
+  .defensive-profile-cards {
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-columns: minmax(108px, 42%);
+    grid-auto-flow: column;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+
+  .shot-team-total-strip > *,
+  .player-analysis-stat-grid > *,
+  .defensive-profile-cards > * {
+    min-height: 64px;
+    scroll-snap-align: start;
+  }
+
+  .pass-network-chart,
+  .pass-network-click-layer {
+    min-height: 440px;
+  }
+
+  .pass-network-tools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pass-network-tools button {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .in-possession-workspace .analysis-workspace-main {
+    order: 1;
+  }
+
+  .in-possession-workspace .analysis-workspace-rail {
+    order: 2;
+  }
+
+  .pass-network-player-panel {
+    max-height: 360px;
+  }
+
+  .shots-goalmap-chart {
+    min-height: 220px;
+  }
+
+  .shots-plotly-chart {
+    min-height: 420px;
+  }
+
+  .shots-section-heading {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+
+  .shots-top-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .shots-top-controls .select {
+    min-width: 0;
+  }
+
+  .shots-top-controls .select:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .shot-detail-panel:not([data-player]) {
+    display: none;
+  }
+
+  .shot-table-toolbar,
+  .shot-map-toolbar,
+  .player-analysis-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .shot-table-controls,
+  .shot-map-toolbar-actions,
+  .player-analysis-team-switch {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .shot-table-controls .select {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .lineups-pitch-svg {
+    min-height: 0;
+    border-radius: 8px;
+  }
+
+  .lineup-player-name {
+    font-size: 1.3px;
+  }
+
+  .player-analysis-mobile-pitch-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-subtle);
+  }
+
+  .player-analysis-mobile-pitch-tabs button {
+    min-width: 0;
+    min-height: 38px;
+    padding: 5px 7px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .player-analysis-mobile-pitch-tabs button.is-active {
+    background: var(--accent);
+    color: #07131f;
+  }
+
+  .player-analysis-action-pitch {
+    display: none;
+    min-height: 0;
+    grid-template-rows: 44px 48px 420px auto auto;
+  }
+
+  .player-analysis-action-pitch.is-mobile-active {
+    display: grid;
+  }
+
+  .player-analysis-pitch-viewport,
+  .player-analysis-action-pitch.is-shots .player-analysis-pitch-viewport {
+    height: 420px;
+    min-height: 420px;
+  }
+
+  .player-analysis-pitch-head .select {
+    max-width: none;
+    min-height: 40px;
+  }
+
+  .player-analysis-pitch-control-row {
+    min-height: 48px;
+  }
+
+  .player-analysis-stat-buttons {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+
+  .player-analysis-stat-buttons > * {
+    flex: 0 0 auto;
+  }
+
+  .in-possession-metric-definition {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .chart-footnote {
+    font-size: 0.72rem;
+  }
+}
+
 /* ─── Dark mode ────────────────────────────────────────────────────────────── */
 html.dark {
   --bg:           #07131f;
@@ -908,7 +1257,7 @@ html.dark .metric-chip {
   grid-template-columns: minmax(260px, 1fr) minmax(180px, 0.6fr) minmax(420px, 1.4fr);
 }
 
-.analysis-section-toolbar > .out-of-possession-top-controls {
+.analysis-section-toolbar .out-of-possession-top-controls {
   width: 100%;
 }
 
@@ -14779,4 +15128,782 @@ html:not(.dark) .coverage-logo-chip.is-hot {
   display: grid;
   place-items: center;
   padding: 48px 16px;
+}
+
+/* Keep mobile analysis overrides last so fixed desktop chart sizes cannot win
+   later in the cascade. */
+@media (max-width: 700px) {
+  .container:has(.analysis-page-workspace),
+  .page-shell:has(.analysis-page-workspace) {
+    padding-inline: 10px;
+  }
+
+  .analysis-page-workspace {
+    gap: 12px !important;
+    margin-top: 12px !important;
+  }
+
+  .analysis-main > .card,
+  .analysis-main > section.card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .analysis-main .card .card,
+  .analysis-main .plotly-chart-shell,
+  .analysis-main .embedded-chart-shell {
+    padding: 9px;
+    border-radius: 9px;
+  }
+
+  .shot-team-total-strip,
+  .player-analysis-stat-grid,
+  .defensive-profile-cards {
+    grid-template-columns: none;
+    grid-auto-columns: minmax(108px, 42%);
+    grid-auto-flow: column;
+    overflow-x: auto;
+  }
+
+  .pass-network-chart,
+  .pass-network-click-layer {
+    min-height: 440px;
+  }
+
+  .shots-goalmap-chart {
+    min-height: 220px;
+  }
+
+  .shots-plotly-chart {
+    min-height: 420px;
+  }
+
+  .lineups-pitch-svg {
+    min-height: 0;
+  }
+
+  .player-analysis-action-pitch {
+    display: none;
+    min-height: 0;
+    grid-template-rows: 44px 48px 420px auto auto;
+  }
+
+  .player-analysis-action-pitch.is-mobile-active {
+    display: grid;
+  }
+
+  .player-analysis-pitch-viewport,
+  .player-analysis-action-pitch.is-shots .player-analysis-pitch-viewport {
+    height: 420px;
+    min-height: 420px;
+  }
+
+  /* Prevent desktop flex children from defining a wider-than-phone canvas. */
+  .analysis-main,
+  .analysis-main > *,
+  .analysis-main .card,
+  .analysis-section-heading,
+  .analysis-section-heading > *,
+  .analysis-section-toolbar,
+  .analysis-section-toolbar > *,
+  .chart-card-head,
+  .chart-card-head > *,
+  .player-analysis-header,
+  .player-analysis-header > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .analysis-section-heading .chart-card-head,
+  .analysis-section-toolbar .chart-card-head,
+  .player-analysis-title-row {
+    flex-wrap: wrap;
+  }
+
+  .analysis-section-heading .chart-card-head h2,
+  .analysis-section-toolbar .chart-card-head h2 {
+    flex: 1 1 210px;
+    overflow-wrap: anywhere;
+  }
+
+  .player-analysis-title-row h2,
+  .ai-insight-list li {
+    overflow-wrap: anywhere;
+  }
+
+  .player-analysis-team-switch .button,
+  .player-analysis-team-switch .ghost-button {
+    flex: 1 1 110px;
+    min-width: 0;
+  }
+
+  .player-analysis-team-switch .png-download-button {
+    flex: 0 1 auto;
+  }
+
+  .pass-network-tools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .pass-network-tools button {
+    min-width: 0;
+    height: auto;
+    padding: 8px;
+    white-space: normal;
+  }
+
+  .player-analysis-mobile-pitch-tabs button {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Keep typography and data density proportional to the compact canvases. */
+  .analysis-main {
+    font-size: 0.875rem;
+  }
+
+  .analysis-main .eyebrow {
+    font-size: 0.66rem;
+    letter-spacing: 0.07em;
+  }
+
+  .analysis-main :is(.muted-copy, .pass-network-note, .analysis-footnote) {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .analysis-main :is(.button, .ghost-button, .select, .input) {
+    font-size: 0.75rem;
+  }
+
+  .analysis-main :is(.button, .ghost-button) {
+    min-height: 34px;
+    padding: 6px 10px;
+  }
+
+  .analysis-main :is(.select, .input) {
+    min-height: 36px;
+    padding-block: 7px;
+  }
+
+  .ai-insight-list {
+    gap: 5px;
+    padding-left: 17px;
+  }
+
+  .ai-insight-list li {
+    font-size: 0.78rem;
+    line-height: 1.42;
+  }
+
+  .analysis-main .table {
+    font-size: 0.72rem;
+  }
+
+  .analysis-main .table th,
+  .analysis-main .table td,
+  .shot-summary-table th,
+  .shot-summary-table td,
+  .in-possession-table th,
+  .in-possession-table td {
+    padding: 7px 8px;
+  }
+
+  .analysis-main .table th,
+  .shot-summary-table th,
+  .in-possession-table th button {
+    font-size: 0.62rem;
+    letter-spacing: 0.025em;
+  }
+
+  .in-possession-table td {
+    font-size: 0.7rem;
+  }
+
+  .in-possession-table .player-cell {
+    gap: 5px;
+  }
+
+  .in-possession-table .player-cell .player-avatar {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .in-possession-metric-definition {
+    min-height: 32px;
+    padding: 7px 9px;
+    font-size: 0.68rem;
+  }
+
+  .in-possession-metric-definition strong {
+    font-size: 0.64rem;
+  }
+
+  .duels-table-title {
+    padding: 8px 9px;
+  }
+
+  .duels-table-title span,
+  .duels-table-title strong {
+    font-size: 0.7rem;
+  }
+
+  .player-analysis-pitch-head,
+  .player-analysis-pitch-control-row {
+    padding-inline: 8px;
+  }
+
+  .player-analysis-pitch-head :is(span, .select),
+  .player-analysis-pitch-options,
+  .player-analysis-shot-legend,
+  .player-analysis-pass-legend,
+  .player-analysis-oop-legend,
+  .player-analysis-touch-legend {
+    font-size: 0.68rem;
+  }
+
+  .player-analysis-stat-buttons {
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .player-analysis-stat-buttons :is(button, .player-analysis-static-stat) {
+    min-height: 40px;
+    padding: 6px;
+  }
+
+  .player-analysis-stat-buttons span,
+  .player-analysis-static-stat span {
+    font-size: 0.6rem;
+  }
+
+  .player-analysis-stat-buttons strong,
+  .player-analysis-static-stat strong {
+    font-size: 0.76rem;
+  }
+
+  .player-analysis-breakdown {
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .player-analysis-breakdown strong,
+  .player-analysis-breakdown span,
+  .player-analysis-sca-breakdown th,
+  .player-analysis-sca-breakdown td {
+    font-size: 0.66rem;
+  }
+
+  .player-analysis-stats-table {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .player-analysis-stats-table strong {
+    font-size: 0.72rem;
+  }
+
+  .player-analysis-stats-table th,
+  .player-analysis-stats-table td {
+    padding: 5px 0;
+    font-size: 0.68rem;
+  }
+
+  .shot-team-total {
+    min-height: 56px;
+    padding: 8px;
+  }
+
+  .shot-team-total span,
+  .embedded-shot-legend,
+  .defensive-color-legend,
+  .duels-context-legend {
+    font-size: 0.66rem;
+  }
+
+  .shot-team-total strong {
+    font-size: 0.9rem;
+  }
+
+  /* Match Dynamics gets a deliberately denser mobile treatment than the
+     other tabs because it contains several consecutive time-series cards. */
+  .match-dynamics-tab,
+  .match-dynamics-tab .stack {
+    gap: 8px;
+  }
+
+  .match-dynamics-tab > .card,
+  .match-dynamics-tab > .grid > .card,
+  .match-dynamics-tab .match-dynamics-visuals > .card {
+    padding: 9px;
+    border-radius: 9px;
+  }
+
+  .match-dynamics-tab .grid {
+    gap: 8px;
+  }
+
+  .match-dynamics-tab .chart-card-head {
+    gap: 6px;
+  }
+
+  .match-dynamics-tab .chart-card-head h2,
+  .match-dynamics-tab > .card h2 {
+    font-size: 0.98rem !important;
+    line-height: 1.12;
+  }
+
+  .match-dynamics-tab .chart-card-head > .row {
+    gap: 4px !important;
+    flex-wrap: nowrap;
+  }
+
+  .match-dynamics-tab .png-download-button {
+    min-height: 29px;
+    padding: 4px 9px;
+    gap: 4px;
+    font-size: 0.62rem;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  .match-dynamics-tab .png-download-button svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .match-dynamics-tab .third-select {
+    min-height: 29px;
+    max-width: 116px;
+    padding: 4px 22px 4px 8px;
+    font-size: 0.62rem;
+    background-position: calc(100% - 12px) 55%, calc(100% - 7px) 55%;
+  }
+
+  .match-dynamics-tab .plotly-chart-shell {
+    padding: 5px;
+  }
+
+  .match-dynamics-tab .plotly-chart {
+    min-height: 0;
+  }
+
+  .match-dynamics-tab .xt-momentum-chart {
+    min-height: 270px;
+    height: 270px;
+  }
+
+  .match-dynamics-tab .chart-footnote {
+    margin-top: 0;
+    padding-top: 5px;
+    font-size: 0.61rem;
+    line-height: 1.3;
+  }
+
+  .match-dynamics-tab .xg-flow-summary-strip {
+    display: grid;
+    gap: 3px;
+    padding: 6px 8px;
+    font-size: 0.65rem;
+    line-height: 1.3;
+  }
+
+  .match-dynamics-tab .embedded-mini-pitches {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .match-dynamics-tab .embedded-mini-pitch {
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .match-dynamics-tab .embedded-mini-pitch strong {
+    overflow: hidden;
+    font-size: 0.68rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .match-dynamics-tab .embedded-pitch-text {
+    font-size: 4px;
+  }
+
+  .match-dynamics-tab .embedded-pitch-text-small {
+    font-size: 2.5px;
+  }
+
+  .match-dynamics-tab .team-summary-compare {
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .match-dynamics-tab .team-summary-compare-head,
+  .match-dynamics-tab .team-summary-compare-row {
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 0.7fr) minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .match-dynamics-tab .team-summary-compare-head {
+    padding: 0 4px 4px;
+    font-size: 0.6rem;
+  }
+
+  .match-dynamics-tab .team-summary-compare-row {
+    min-height: 32px;
+    padding: 5px 6px;
+    border-radius: 6px;
+  }
+
+  .match-dynamics-tab .team-summary-logo {
+    width: 20px;
+    height: 20px;
+  }
+
+  .match-dynamics-tab .team-summary-team {
+    gap: 5px;
+  }
+
+  .match-dynamics-tab .team-summary-value {
+    font-size: 0.76rem;
+  }
+
+  .match-dynamics-tab .team-summary-label {
+    font-size: 0.56rem;
+    letter-spacing: 0.025em;
+  }
+
+  .match-dynamics-tab .stat-breakdown-panel {
+    margin-inline: 2px;
+    padding: 7px 8px;
+  }
+
+  .match-dynamics-tab .stat-breakdown-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(64px, 0.6fr) minmax(0, 1fr);
+    font-size: 0.62rem;
+  }
+
+  .match-dynamics-tab .lineup-toggle-group button,
+  .match-dynamics-tab .lineup-phase-chip {
+    padding: 4px 8px;
+    font-size: 0.62rem;
+  }
+
+  .match-dynamics-tab .lineup-phase-row {
+    gap: 4px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .match-dynamics-tab .lineup-phase-team {
+    min-width: auto;
+    font-size: 0.64rem;
+  }
+
+  .match-dynamics-tab .lineup-formation-meta {
+    gap: 6px;
+    margin: 0 auto;
+  }
+
+  .match-dynamics-tab .lineup-formation-meta-team {
+    font-size: 0.68rem;
+  }
+
+  .match-dynamics-tab .lineup-formation-meta-detail {
+    font-size: 0.6rem;
+  }
+
+  .match-dynamics-tab .lineups-pitch-svg {
+    max-height: 260px;
+  }
+
+  .match-dynamics-tab .lineup-subs-list {
+    gap: 4px;
+  }
+
+  .match-dynamics-tab .lineup-subs-list li {
+    gap: 5px;
+    padding: 5px 7px;
+    font-size: 0.66rem;
+  }
+
+  /* Shared density baseline for every non-dynamics analysis tab. */
+  .analysis-dense-tab,
+  .analysis-dense-tab .stack {
+    gap: 8px;
+  }
+
+  .analysis-dense-tab > .card,
+  .analysis-dense-tab > section.card {
+    padding: 9px;
+    border-radius: 9px;
+  }
+
+  .analysis-dense-tab .card .card,
+  .analysis-dense-tab .plotly-chart-shell,
+  .analysis-dense-tab .embedded-chart-shell {
+    padding: 6px;
+    border-radius: 7px;
+  }
+
+  .analysis-dense-tab :is(.analysis-workspace, .analysis-workspace-main, .analysis-workspace-rail, .shots-sca-layout, .duels-transitions-section-block) {
+    gap: 8px;
+  }
+
+  .analysis-dense-tab :is(.analysis-section-heading, .analysis-section-toolbar, .chart-card-head) {
+    gap: 6px;
+  }
+
+  .analysis-dense-tab :is(.analysis-section-heading, .analysis-section-toolbar, .chart-card-head) h2,
+  .analysis-dense-tab .player-analysis-header h2 {
+    font-size: 0.98rem !important;
+    line-height: 1.12;
+  }
+
+  .analysis-dense-tab :is(.duels-section-title, h3) {
+    font-size: 0.82rem;
+  }
+
+  .analysis-dense-tab .png-download-button {
+    min-height: 29px;
+    padding: 4px 9px;
+    gap: 4px;
+    font-size: 0.62rem;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  .analysis-dense-tab .png-download-button svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .analysis-dense-tab .mobile-analysis-controls-toggle {
+    min-height: 40px;
+    padding: 6px 9px;
+  }
+
+  .analysis-dense-tab .mobile-analysis-controls-toggle strong {
+    font-size: 0.7rem;
+  }
+
+  .analysis-dense-tab .mobile-analysis-controls-toggle small {
+    font-size: 0.6rem;
+  }
+
+  .analysis-dense-tab :is(.in-possession-top-controls, .analysis-top-controls, .player-analysis-selector-card) {
+    gap: 7px;
+    padding: 7px;
+  }
+
+  .analysis-dense-tab :is(.analysis-filter-strip-grid, .duels-transitions-filter-strip, .out-of-possession-filter-strip) {
+    gap: 6px;
+  }
+
+  .analysis-dense-tab :is(.analysis-filter-control, .time-range-control) {
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .analysis-dense-tab :is(.analysis-filter-control, .time-range-control) > span,
+  .analysis-dense-tab label > span {
+    font-size: 0.6rem;
+  }
+
+  .analysis-dense-tab :is(.button, .ghost-button, .select, .input) {
+    font-size: 0.66rem;
+  }
+
+  .analysis-dense-tab :is(.button, .ghost-button) {
+    min-height: 30px;
+    padding: 4px 8px;
+  }
+
+  .analysis-dense-tab :is(.select, .input) {
+    min-height: 32px;
+    padding-block: 5px;
+  }
+
+  .analysis-dense-tab .chart-footnote {
+    margin-top: 0;
+    padding-top: 5px;
+    font-size: 0.61rem;
+    line-height: 1.3;
+  }
+
+  .analysis-dense-tab .pass-network-chart,
+  .analysis-dense-tab .pass-network-click-layer {
+    min-height: 300px;
+  }
+
+  .analysis-dense-tab .shots-goalmap-chart {
+    min-height: 170px;
+  }
+
+  .analysis-dense-tab .shots-plotly-chart {
+    min-height: 300px;
+  }
+
+  .analysis-dense-tab .duels-transitions-plot-grid .plotly-chart-shell,
+  .analysis-dense-tab .defensive-actions-layout .plotly-chart-shell {
+    min-height: 0;
+  }
+
+  .analysis-dense-tab .shot-team-total-strip,
+  .analysis-dense-tab .player-analysis-stat-grid,
+  .analysis-dense-tab .defensive-profile-cards {
+    gap: 6px;
+    grid-auto-columns: minmax(92px, 35%);
+  }
+
+  .analysis-dense-tab :is(.shot-team-total, .player-analysis-stat-grid > *, .defensive-profile-cards > *) {
+    min-height: 52px;
+    padding: 7px;
+  }
+
+  .analysis-dense-tab :is(.shot-team-total, .defensive-profile-card, .player-analysis-stat-card) span {
+    font-size: 0.58rem;
+  }
+
+  .analysis-dense-tab :is(.shot-team-total, .defensive-profile-card, .player-analysis-stat-card) strong {
+    font-size: 0.78rem;
+  }
+
+  .analysis-dense-tab .pass-network-tools {
+    gap: 4px;
+  }
+
+  .analysis-dense-tab .pass-network-tools button {
+    padding: 6px;
+    font-size: 0.62rem;
+  }
+
+  .analysis-dense-tab :is(.pass-network-meta, .pass-network-selected-stats, .defensive-transition-metrics) {
+    gap: 5px;
+  }
+
+  .analysis-dense-tab .pass-network-meta > div,
+  .analysis-dense-tab .pass-network-selected-stats > div,
+  .analysis-dense-tab .defensive-transition-metrics > div {
+    padding: 7px;
+  }
+
+  .analysis-dense-tab :is(.pass-network-meta, .pass-network-selected-stats, .defensive-transition-metrics) span {
+    font-size: 0.56rem;
+  }
+
+  .analysis-dense-tab :is(.pass-network-meta, .pass-network-selected-stats, .defensive-transition-metrics) strong {
+    font-size: 0.72rem;
+  }
+
+  .analysis-dense-tab .table,
+  .analysis-dense-tab :is(.shot-summary-table, .in-possession-table) {
+    font-size: 0.64rem;
+  }
+
+  .analysis-dense-tab .table th,
+  .analysis-dense-tab .table td,
+  .analysis-dense-tab .shot-summary-table th,
+  .analysis-dense-tab .shot-summary-table td,
+  .analysis-dense-tab .in-possession-table th,
+  .analysis-dense-tab .in-possession-table td {
+    padding: 5px 6px;
+  }
+
+  .analysis-dense-tab .in-possession-table td {
+    font-size: 0.62rem;
+  }
+
+  .analysis-dense-tab .in-possession-table th button,
+  .analysis-dense-tab .table th {
+    font-size: 0.56rem;
+  }
+
+  .analysis-dense-tab .in-possession-table .player-cell .player-avatar {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .analysis-dense-tab .in-possession-metric-definition {
+    min-height: 28px;
+    padding: 5px 7px;
+    font-size: 0.61rem;
+  }
+
+  .analysis-dense-tab .duels-table-title {
+    padding: 6px 7px;
+  }
+
+  .analysis-dense-tab .duels-table-title :is(span, strong) {
+    font-size: 0.62rem;
+  }
+
+  .analysis-dense-tab .player-analysis-action-pitch {
+    grid-template-rows: 36px 40px 280px auto auto;
+  }
+
+  .analysis-dense-tab .player-analysis-pitch-viewport,
+  .analysis-dense-tab .player-analysis-action-pitch.is-shots .player-analysis-pitch-viewport {
+    height: 280px;
+    min-height: 280px;
+  }
+
+  .analysis-dense-tab .season-context-panel {
+    padding: 9px;
+  }
+
+  .analysis-dense-tab .season-context-header,
+  .analysis-dense-tab .season-context-actions,
+  .analysis-dense-tab .season-context-tabs {
+    gap: 5px;
+  }
+
+  .analysis-dense-tab .season-radar-legend {
+    gap: 5px;
+  }
+
+  .analysis-dense-tab .season-radar-legend-item {
+    padding: 5px 7px;
+    font-size: 0.6rem;
+  }
+
+  .analysis-dense-tab .player-analysis-pitch-head,
+  .analysis-dense-tab .player-analysis-pitch-control-row {
+    min-height: 0;
+    padding-inline: 6px;
+  }
+
+  .analysis-dense-tab .player-analysis-mobile-pitch-tabs {
+    padding: 3px;
+  }
+
+  .analysis-dense-tab .player-analysis-mobile-pitch-tabs button {
+    min-height: 30px;
+    padding: 4px;
+    font-size: 0.6rem;
+  }
+
+  .analysis-dense-tab .player-analysis-stat-buttons {
+    padding: 4px;
+  }
+
+  .analysis-dense-tab .player-analysis-stat-buttons :is(button, .player-analysis-static-stat) {
+    min-height: 34px;
+    padding: 4px 5px;
+  }
+
+  .analysis-dense-tab .player-analysis-breakdown,
+  .analysis-dense-tab .player-analysis-stats-table {
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .analysis-dense-tab .player-analysis-stats-table th,
+  .analysis-dense-tab .player-analysis-stats-table td,
+  .analysis-dense-tab .player-analysis-breakdown :is(strong, span),
+  .analysis-dense-tab .player-analysis-sca-breakdown :is(th, td) {
+    font-size: 0.6rem;
+  }
 }

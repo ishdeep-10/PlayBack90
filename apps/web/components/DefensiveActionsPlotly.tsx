@@ -4,6 +4,7 @@ import { Plot } from "../lib/plotly";
 
 import { useEffect, useMemo, useState } from "react";
 import { CHART_FONT_FAMILY, num, readThemeColors } from "../lib/theme";
+import { useCompactAnalysis } from "../lib/useCompactAnalysis";
 import { horizontalPitchShapes, JUEGO_X as juegoX, JUEGO_Y as juegoY } from "../lib/pitch";
 
 
@@ -308,6 +309,7 @@ function buildDefensiveProfiles(rows: ActionRow[], label: string, scope: "team" 
 
 export function DefensiveActionsPlotly({ actions, team, teamColor, mode, contextFilter = "all" }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
+  const compactAnalysis = useCompactAnalysis();
   const [selectedPlayer, setSelectedPlayer] = useState("");
   const [selectedZone, setSelectedZone] = useState("");
   const [selectedActionKey, setSelectedActionKey] = useState("");
@@ -458,10 +460,10 @@ export function DefensiveActionsPlotly({ actions, team, teamColor, mode, context
   const zoneAnnotations = selectedZone ? [] : zoneCells.filter((cell) => cell.count > 0).map((cell) => ({
     x: cell.x,
     y: cell.y,
-    text: `${Math.round(cell.pct * 100)}%<br><span style="font-size:10px">${cell.count}</span>`,
+    text: `${Math.round(cell.pct * 100)}%<br><span style="font-size:${compactAnalysis ? 8 : 10}px">${cell.count}</span>`,
     showarrow: false,
     captureevents: false,
-    font: { color: themeColors.text, size: cell.pct >= 0.1 ? 15 : 12, family: CHART_FONT_FAMILY },
+    font: { color: themeColors.text, size: compactAnalysis ? (cell.pct >= 0.1 ? 11 : 9) : (cell.pct >= 0.1 ? 15 : 12), family: CHART_FONT_FAMILY },
   }));
   const maxZoneCount = Math.max(1, ...zoneCells.map((cell) => cell.count));
   const zoneGrid = juegoY.slice(0, -1).map((_, yBin) => (
@@ -658,8 +660,8 @@ export function DefensiveActionsPlotly({ actions, team, teamColor, mode, context
           data={plotData}
           layout={{
             autosize: true,
-            height: 620,
-            margin: { l: 18, r: 18, t: 8, b: 18 },
+            height: compactAnalysis ? 300 : 620,
+            margin: compactAnalysis ? { l: 8, r: 8, t: 6, b: 10 } : { l: 18, r: 18, t: 8, b: 18 },
             paper_bgcolor: "rgba(0,0,0,0)",
             plot_bgcolor: themeColors.surface,
             font: { color: themeColors.text, family: CHART_FONT_FAMILY },

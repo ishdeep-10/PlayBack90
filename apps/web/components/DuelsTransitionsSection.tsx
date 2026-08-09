@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getAnalysisView } from "../lib/api";
 import { num, parseRange } from "../lib/theme";
 import { DuelsTransitionsPlotly } from "./DuelsTransitionsPlotly";
+import { MobileAnalysisControls } from "./MobileAnalysisControls";
 import { PlayerAvatar, getCachedPlayerImage, prefetchPlayerImages } from "./PlayerAvatar";
 import { SeasonDeltaChip } from "./season/SeasonDeltaChip";
 import { metricByKey, type PlayerBaseline } from "./season/baselineTypes";
@@ -449,6 +450,7 @@ export function DuelsTransitionsSection({
         </div>
       </div>
 
+      <MobileAnalysisControls summary={`${teamFilterLabel(currentTeam)} · ${duelType}`}>
       <div className="analysis-top-controls">
         <div className="analysis-team-strip">
           <span>Team</span>
@@ -556,6 +558,7 @@ export function DuelsTransitionsSection({
           </div>
         </div>
       </div>
+      </MobileAnalysisControls>
 
       <section className="duels-transitions-section-block">
         <div className="analysis-section-toolbar">

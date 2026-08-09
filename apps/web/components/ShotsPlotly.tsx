@@ -5,6 +5,7 @@ import { Plot } from "../lib/plotly";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { CHART_FONT_FAMILY, num, readThemeColors } from "../lib/theme";
 import { PlayerAvatar } from "./PlayerAvatar";
+import { useCompactAnalysis } from "../lib/useCompactAnalysis";
 
 
 type LeadupEvent = {
@@ -218,6 +219,7 @@ function pct(value: number, min: number, max: number) {
 
 export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
+  const compactAnalysis = useCompactAnalysis();
   const attackingShots = useMemo(
     () => shots.filter(hasValidPitchPoint).map((row, index) => ({ ...row, shotNumber: index + 1 }) as NumberedShot),
     [shots],
@@ -314,7 +316,7 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
         },
         opacity: onGoalIndices.map((index) => markerOpacity[index]),
       },
-      textfont: { color: themeColors.text, size: 10, family: CHART_FONT_FAMILY },
+      textfont: { color: themeColors.text, size: compactAnalysis ? 8 : 10, family: CHART_FONT_FAMILY },
       hovertemplate: "%{hovertext}<extra></extra>",
     },
   ];
@@ -356,7 +358,7 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
         },
         opacity: markerOpacity,
       },
-      textfont: { color: themeColors.text, size: 10, family: CHART_FONT_FAMILY },
+      textfont: { color: themeColors.text, size: compactAnalysis ? 8 : 10, family: CHART_FONT_FAMILY },
       hovertemplate: "%{hovertext}<extra></extra>",
       showlegend: false,
     },
@@ -463,11 +465,11 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
             data={goalChartData}
             layout={{
               autosize: true,
-              height: 290,
+              height: compactAnalysis ? 170 : 290,
               margin: { l: 24, r: 24, t: 8, b: 18 },
               paper_bgcolor: "rgba(0,0,0,0)",
               plot_bgcolor: themeColors.surface,
-              font: { color: themeColors.text, family: CHART_FONT_FAMILY },
+              font: { color: themeColors.text, family: CHART_FONT_FAMILY, size: compactAnalysis ? 10 : 12 },
               showlegend: false,
               xaxis: { range: [0, 68], visible: false, fixedrange: true, constrain: "domain" },
               yaxis: { range: [-2, 34], visible: false, fixedrange: true, constrain: "domain" },
@@ -508,11 +510,11 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
             data={pitchChartData}
             layout={{
               autosize: true,
-              height: 560,
+              height: compactAnalysis ? 300 : 560,
               margin: { l: 18, r: 18, t: 8, b: 18 },
               paper_bgcolor: "rgba(0,0,0,0)",
               plot_bgcolor: themeColors.surface,
-              font: { color: themeColors.text, family: CHART_FONT_FAMILY },
+              font: { color: themeColors.text, family: CHART_FONT_FAMILY, size: compactAnalysis ? 10 : 12 },
               showlegend: false,
               xaxis: { range: [0, 68], visible: false, fixedrange: true, constrain: "domain" },
               yaxis: { range: [58, 105.8], visible: false, fixedrange: true, scaleanchor: "x", scaleratio: 1, constrain: "domain" },

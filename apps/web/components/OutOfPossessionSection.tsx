@@ -1,6 +1,7 @@
 "use client";
 
 import { DownloadPngButton, type SideTableRow } from "./DownloadPngButton";
+import { MobileAnalysisControls } from "./MobileAnalysisControls";
 
 import { useSyncFiltersToUrl } from "../lib/analysisUrl";
 
@@ -185,6 +186,7 @@ export function OutOfPossessionSection({
             />
           </div>
         </div>
+        <MobileAnalysisControls summary={`${currentTeam} · ${visualMode === "zones" ? "Zone %" : "Actions"}`}>
         <div className="analysis-top-controls out-of-possession-top-controls">
           <div className="analysis-team-strip">
             <span>Team</span>
@@ -286,6 +288,7 @@ export function OutOfPossessionSection({
             </div>
           </div>
         </div>
+        </MobileAnalysisControls>
       </div>
 
       <div className="shot-team-total-strip">

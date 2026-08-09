@@ -5,6 +5,7 @@ import { Plot } from "../lib/plotly";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { num, readThemeColors } from "../lib/theme";
 import { horizontalPitchShapes } from "../lib/pitch";
+import { useCompactAnalysis } from "../lib/useCompactAnalysis";
 
 
 type Row = Record<string, string | number | boolean | null | undefined>;
@@ -289,6 +290,7 @@ export function DuelsTransitionsPlotly({
   selectedDuelProfile = "",
 }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
+  const compactAnalysis = useCompactAnalysis();
   const [selectedZone, setSelectedZone] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState("");
   const [selectedDuelId, setSelectedDuelId] = useState("");
@@ -422,7 +424,7 @@ export function DuelsTransitionsPlotly({
             y: y0 + binH / 2,
             text: `${teamACount}/${teamBCount}`,
             showarrow: false,
-            font: { color: labelTextColor, size: 14, family: themeColors.font },
+            font: { color: labelTextColor, size: compactAnalysis ? 11 : 14, family: themeColors.font },
             bgcolor: colorWithAlpha(themeColors.mode === "dark" ? "#020617" : "#ffffff", labelBgAlpha),
             bordercolor: colorWithAlpha(themeColors.text, isDimmedZone ? 0.06 : 0.18),
             borderpad: 3,
@@ -461,7 +463,7 @@ export function DuelsTransitionsPlotly({
               y: y0 + binH / 2,
               text: `${outcome.won}/${outcome.lost}`,
               showarrow: false,
-              font: { color: labelTextColor, size: 14, family: themeColors.font },
+              font: { color: labelTextColor, size: compactAnalysis ? 11 : 14, family: themeColors.font },
               bgcolor: colorWithAlpha(themeColors.mode === "dark" ? "#020617" : "#ffffff", labelBgAlpha),
               bordercolor: colorWithAlpha(themeColors.text, isDimmedZone ? 0.06 : 0.18),
               borderpad: 3,
@@ -685,9 +687,9 @@ export function DuelsTransitionsPlotly({
         annotations.push({
           x: x0 + binW / 2,
           y: y0 + binH / 2,
-          text: count ? `${pctValue}%<br><span style="font-size:10px">${count}</span>` : "",
+          text: count ? `${pctValue}%<br><span style="font-size:${compactAnalysis ? 8 : 10}px">${count}</span>` : "",
           showarrow: false,
-          font: { color: colorWithAlpha(themeColors.text, isDimmedTransitionZone || isSelectedTransitionZone ? 0.34 : 1), size: 15, family: themeColors.font },
+          font: { color: colorWithAlpha(themeColors.text, isDimmedTransitionZone || isSelectedTransitionZone ? 0.34 : 1), size: compactAnalysis ? 11 : 15, family: themeColors.font },
           bgcolor: count ? colorWithAlpha(themeColors.mode === "dark" ? "#020617" : "#ffffff", isDimmedTransitionZone || isSelectedTransitionZone ? 0.16 : 0.7) : "rgba(0,0,0,0)",
           bordercolor: count ? colorWithAlpha(themeColors.text, isDimmedTransitionZone ? 0.06 : 0.16) : "rgba(0,0,0,0)",
           borderpad: 3,
@@ -756,7 +758,7 @@ export function DuelsTransitionsPlotly({
               {duelVisualMode === "zones" ? (
                 <Plot
                   data={[...combinedDuelMap.data, ...((selectedZone || selectedPlayer || selectedContext || selectedDuelProfile) ? duelData : [])] as never}
-                  layout={{ ...combinedDuelMap.layout, showlegend: false } as never}
+                  layout={{ ...combinedDuelMap.layout, height: compactAnalysis ? 240 : 640, showlegend: false } as never}
                   config={plotConfig}
                   style={{ width: "100%", height: "100%" }}
                   useResizeHandler
@@ -775,7 +777,7 @@ export function DuelsTransitionsPlotly({
               ) : (
                 <Plot
                   data={duelData as never}
-                  layout={duelActionLayout(themeColors) as never}
+                  layout={{ ...duelActionLayout(themeColors), height: compactAnalysis ? 240 : 640 } as never}
                   config={plotConfig}
                   style={{ width: "100%", height: "100%" }}
                   useResizeHandler
@@ -914,7 +916,7 @@ export function DuelsTransitionsPlotly({
             <div className="plotly-chart-shell duels-combined-map-shell">
               <Plot
                 data={(transitionVisualMode === "zones" ? [...transitionZoneMap.data, ...(selectedTransitionZone ? transitionData : [])] : transitionData) as never}
-                layout={(transitionVisualMode === "zones" ? transitionZoneMap.layout : transitionActionLayout(themeColors)) as never}
+                layout={{ ...(transitionVisualMode === "zones" ? transitionZoneMap.layout : transitionActionLayout(themeColors)), height: compactAnalysis ? 240 : 640 } as never}
                 config={plotConfig}
                 style={{ width: "100%", height: "100%" }}
                 useResizeHandler

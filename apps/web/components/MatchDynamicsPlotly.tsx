@@ -6,6 +6,7 @@ import { PUBLIC_API_BASE, getAuthHeaders } from "../lib/api";
 import { CARD_ICON_RED, CARD_ICON_SECOND_YELLOW, CARD_ICON_YELLOW, SUB_ICON, circularImageDataUrl } from "../lib/images";
 import { Plot } from "../lib/plotly";
 import { CHART_FONT_FAMILY, readThemeColors } from "../lib/theme";
+import { useCompactAnalysis } from "../lib/useCompactAnalysis";
 
 import { DownloadPngButton } from "./DownloadPngButton";
 import { metricByKey, type TeamBaseline as TeamBaselineData } from "./season/baselineTypes";
@@ -116,6 +117,7 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
   seasonBaselines,
 }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
+  const compactAnalysis = useCompactAnalysis();
   const [possessionThird, setPossessionThird] = useState<ThirdKey>("all");
   const [passThird, setPassThird] = useState<ThirdKey>("all");
   const [ppdaThird, setPpdaThird] = useState<ThirdKey>("all");
@@ -183,8 +185,9 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
       zeroline: false,
       gridcolor: "rgba(148,163,184,0.22)",
       linecolor: "rgba(148,163,184,0.36)",
-      tickfont: { color: chartMuted, size: 11 },
-      titlefont: { color: chartMuted, size: 12 },
+      tickfont: { color: chartMuted, size: compactAnalysis ? 8 : 11 },
+      titlefont: { color: chartMuted, size: compactAnalysis ? 9 : 12 },
+      automargin: false,
     };
   }
 
@@ -192,16 +195,16 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
     return {
       autosize: true,
       height,
-      margin: { l: 52, r: 24, t: 18, b: 48 },
+      margin: compactAnalysis ? { l: 38, r: 10, t: 8, b: 34 } : { l: 52, r: 24, t: 18, b: 48 },
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(148,163,184,0.08)",
-      font: { color: chartText, family: CHART_FONT_FAMILY },
+      font: { color: chartText, family: CHART_FONT_FAMILY, size: compactAnalysis ? 9 : 12 },
       hovermode: "x unified",
       legend: {
         orientation: "h",
-        y: -0.22,
+        y: compactAnalysis ? -0.2 : -0.22,
         x: 0,
-        font: { color: chartMuted, size: 12 },
+        font: { color: chartMuted, size: compactAnalysis ? 8 : 12 },
       },
     };
   }
@@ -226,7 +229,7 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
       cliponaxis: false,
       marker: {
         symbol: "star",
-        size: 11,
+        size: compactAnalysis ? 8 : 11,
         color: goals.map((row) => String(row.team ?? "")),
         line: { color: markerLine, width: 1 },
       },
@@ -327,8 +330,8 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
       name,
       type: "scatter",
       mode: "lines+markers",
-      line: { color, width: 3 },
-      marker: { color, size: 6 },
+      line: { color, width: compactAnalysis ? 2 : 3 },
+      marker: { color, size: compactAnalysis ? 4 : 6 },
       cliponaxis: false,
       hovertemplate: "%{x}'<br>%{y:.2f}<extra></extra>",
       ...extra,
@@ -452,7 +455,7 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
                 textposition: "top center",
                 textfont: {
                   color: chartText,
-                  size: 11,
+                  size: compactAnalysis ? 8 : 11,
                   family: CHART_FONT_FAMILY,
                 },
                 hoverinfo: "skip",
@@ -470,7 +473,7 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
               },
             ]}
             layout={{
-              ...baseLayout(390),
+              ...baseLayout(compactAnalysis ? 260 : 390),
               xaxis: axisStyle("Minute", minuteRange),
               yaxis: axisStyle("Cumulative xG", [0, xgYMax]),
               shapes: [{ type: "line", x0: 45, x1: 45, y0: 0, y1: xgYMax, line: { color: "rgba(148,163,184,0.55)", width: 1, dash: "dash" } }],
@@ -494,7 +497,7 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
           </div>
           <Plot
             data={[lineTrace(teamA, possessionA, colorA), lineTrace(teamB, possessionB, colorB), metricGoalTrace(2)]}
-            layout={{ ...baseLayout(), xaxis: axisStyle("Minute", minuteRange), yaxis: axisStyle("Possession %", [0, 100]), ...seasonRefLayer("possession_pct", possessionThird) }}
+            layout={{ ...baseLayout(compactAnalysis ? 230 : 330), xaxis: axisStyle("Minute", minuteRange), yaxis: axisStyle("Possession %", [0, 100]), ...seasonRefLayer("possession_pct", possessionThird) }}
             config={plotConfig}
             className="plotly-chart"
           />
@@ -510,7 +513,7 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
           </div>
           <Plot
             data={[lineTrace(teamA, passA, colorA), lineTrace(teamB, passB, colorB), metricGoalTrace(2)]}
-            layout={{ ...baseLayout(), xaxis: axisStyle("Minute", minuteRange), yaxis: axisStyle("Pass Accuracy %", [0, 100]) }}
+            layout={{ ...baseLayout(compactAnalysis ? 230 : 330), xaxis: axisStyle("Minute", minuteRange), yaxis: axisStyle("Pass Accuracy %", [0, 100]) }}
             config={plotConfig}
             className="plotly-chart"
           />
@@ -562,7 +565,7 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
           </div>
           <Plot
             data={[lineTrace(teamA, ppdaA, colorA), lineTrace(teamB, ppdaB, colorB), metricGoalTrace(0)]}
-            layout={{ ...baseLayout(), xaxis: axisStyle("Minute", minuteRange), yaxis: axisStyle("PPDA", [0, Math.ceil(ppdaSpanMax * 1.15)]), ...seasonRefLayer("ppda", ppdaThird) }}
+            layout={{ ...baseLayout(compactAnalysis ? 230 : 330), xaxis: axisStyle("Minute", minuteRange), yaxis: axisStyle("PPDA", [0, Math.ceil(ppdaSpanMax * 1.15)]), ...seasonRefLayer("ppda", ppdaThird) }}
             config={plotConfig}
             className="plotly-chart"
           />
@@ -578,7 +581,7 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
           </div>
           <Plot
             data={[lineTrace(teamA, toA, colorA), lineTrace(teamB, toB, colorB), metricGoalTrace(0)]}
-            layout={{ ...baseLayout(), xaxis: axisStyle("Minute", minuteRange), yaxis: axisStyle("Turnovers", [0, Math.ceil(toMax * 1.15)]) }}
+            layout={{ ...baseLayout(compactAnalysis ? 230 : 330), xaxis: axisStyle("Minute", minuteRange), yaxis: axisStyle("Turnovers", [0, Math.ceil(toMax * 1.15)]) }}
             config={plotConfig}
             className="plotly-chart"
           />
@@ -672,13 +675,13 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
             },
           ]}
           layout={{
-            ...baseLayout(440),
-            margin: { l: 52, r: 24, t: 18, b: 34 },
+            ...baseLayout(compactAnalysis ? 270 : 440),
+            margin: compactAnalysis ? { l: 38, r: 10, t: 8, b: 28 } : { l: 52, r: 24, t: 18, b: 34 },
             legend: {
               orientation: "h",
               y: -0.13,
               x: 0,
-              font: { color: chartMuted, size: 12 },
+              font: { color: chartMuted, size: compactAnalysis ? 8 : 12 },
             },
             xaxis: axisStyle("Minute", minuteRange),
             yaxis: axisStyle(momentumLabel, [-selectedMomentumMax * 1.15, selectedMomentumMax * 1.15]),

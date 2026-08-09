@@ -1,6 +1,7 @@
 "use client";
 
 import { Plot } from "../lib/plotly";
+import { useCompactAnalysis } from "../lib/useCompactAnalysis";
 
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { actionEndpointSymbol, actionOutcomeColor, actionStartSymbol, unsuccessfulActionColor } from "../lib/actionOutcome";
@@ -492,6 +493,7 @@ export function PassNetworkPlotly({
   highlightThird,
 }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
+  const compactAnalysis = useCompactAnalysis();
   const unsuccessfulColor = unsuccessfulActionColor(themeColors.mode);
   const [locationModes, setLocationModes] = useState<Record<string, LocationMode>>({});
   const [showProgressive, setShowProgressive] = useState(false);
@@ -805,8 +807,8 @@ export function PassNetworkPlotly({
         [0.82, colorWithAlpha(teamColor, themeColors.mode === "dark" ? 0.68 : 0.54)],
         [1, colorWithAlpha(teamColor, themeColors.mode === "dark" ? 0.94 : 0.8)],
       ],
-      contours: { coloring: "heatmap", showlines: true },
-      line: { width: 0.7, color: colorWithAlpha(teamColor, themeColors.mode === "dark" ? 0.42 : 0.3) },
+      contours: { coloring: "heatmap", showlines: false },
+      line: { width: 0, color: "rgba(0,0,0,0)" },
       showscale: false,
       opacity: 0.94,
       hoverinfo: "skip",
@@ -1080,7 +1082,7 @@ export function PassNetworkPlotly({
       type: "scatter",
       mode: "text",
       text: ["No matching actions for this selection"],
-      textfont: { color: themeColors.muted, size: 15, family: CHART_FONT_FAMILY },
+      textfont: { color: themeColors.muted, size: compactAnalysis ? 12 : 15, family: CHART_FONT_FAMILY },
       hoverinfo: "skip",
       showlegend: false,
     } : null;
@@ -1101,7 +1103,7 @@ export function PassNetworkPlotly({
           if (selectedNetwork.connectedIds.has(row.id)) return themeColors.text;
           return themeColors.mode === "dark" ? "rgba(148,163,184,0.38)" : "rgba(71,85,105,0.42)";
         }),
-        size: 12,
+        size: compactAnalysis ? 9 : 12,
         family: CHART_FONT_FAMILY,
       },
       marker: {
@@ -1339,8 +1341,8 @@ export function PassNetworkPlotly({
             data={traces}
             layout={{
               autosize: true,
-              height: 680,
-              margin: { l: 16, r: 16, t: 10, b: 16 },
+              height: compactAnalysis ? 300 : 680,
+              margin: compactAnalysis ? { l: 8, r: 8, t: 6, b: 10 } : { l: 16, r: 16, t: 10, b: 16 },
               paper_bgcolor: "rgba(0,0,0,0)",
               plot_bgcolor: themeColors.surface,
               font: { color: themeColors.text, family: CHART_FONT_FAMILY },

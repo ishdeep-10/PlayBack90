@@ -4,6 +4,7 @@ import { useSyncFiltersToUrl } from "../lib/analysisUrl";
 import { PlayerAvatar, getCachedPlayerImage } from "./PlayerAvatar";
 import { ActionOutcomeLegend } from "./ActionOutcomeLegend";
 import { DownloadPngButton } from "./DownloadPngButton";
+import { MobileAnalysisControls } from "./MobileAnalysisControls";
 import { SeasonContextPanel } from "./season/SeasonContextPanel";
 import type { SeasonBaselinePayload } from "./season/baselineTypes";
 
@@ -15,6 +16,7 @@ import { getAnalysisView } from "../lib/api";
 import { actionEndpointSymbol, actionOutcomeColor, actionStartSymbol, unsuccessfulActionColor } from "../lib/actionOutcome";
 import { CHART_FONT_FAMILY, colorWithAlpha, num, readThemeColors } from "../lib/theme";
 import { verticalPitchShapes } from "../lib/pitch";
+import { useCompactAnalysis } from "../lib/useCompactAnalysis";
 
 
 type Row = Record<string, string | number | boolean | null | undefined | Row[]>;
@@ -623,6 +625,8 @@ export function PlayerAnalysisSection({
   const [showOpponentActionsInDefensiveArea, setShowOpponentActionsInDefensiveArea] = useState(false);
   const [showProgressiveReceives, setShowProgressiveReceives] = useState(false);
   const [positionFilter, setPositionFilter] = useState<string | null>(null);
+  const [mobilePitchIndex, setMobilePitchIndex] = useState(0);
+  const compactAnalysis = useCompactAnalysis();
 
   const visibleTeams = compareTeams ? teams : [currentTeam];
   const players = useMemo(
@@ -812,7 +816,7 @@ export function PlayerAnalysisSection({
     margin: { l: 8, r: 8, t: 8, b: 8 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: theme.surface,
-    font: { family: CHART_FONT_FAMILY, color: theme.text },
+    font: { family: CHART_FONT_FAMILY, color: theme.text, size: compactAnalysis ? 10 : 12 },
     shapes: verticalPitchShapes(theme.pitchLine),
     xaxis: { range: [0, 68], visible: false, fixedrange: true, constrain: "domain" },
     yaxis: { range: [0, 105], visible: false, fixedrange: true, scaleanchor: "x", scaleratio: 1, constrain: "domain" },
@@ -894,7 +898,7 @@ export function PlayerAnalysisSection({
       margin: { l: 8, r: 8, t: 8, b: 8 },
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: theme.surface,
-      font: { family: CHART_FONT_FAMILY, color: theme.text },
+      font: { family: CHART_FONT_FAMILY, color: theme.text, size: compactAnalysis ? 10 : 12 },
       xaxis: { range: [0, 68], visible: false, fixedrange: true, constrain: "domain" },
       yaxis: { range: [-2, 34], visible: false, fixedrange: true, constrain: "domain" },
       hoverlabel: { bgcolor: theme.hoverBg, bordercolor: colorWithAlpha(activeTeamColor, 0.6), font: { color: theme.hoverText } },
@@ -1563,18 +1567,19 @@ export function PlayerAnalysisSection({
         </label>
       </div>
     ) : null;
+    const pitchHeight = compactAnalysis ? 280 : 500;
     const plotContent = kind === "heatmap" ? (
-      <Plot data={heatmapTraceFor(rows)} layout={pitchLayout(500)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+      <Plot data={heatmapTraceFor(rows)} layout={pitchLayout(pitchHeight)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
     ) : kind === "shots" ? (
       <div className="player-analysis-shot-split">
-        <Plot data={goalTrace(rows, createdShotKeys, showSca)} layout={goalLayout(160)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
-        <Plot data={[...scaTraces(rows, panelPlayers, showSca), ...shotTrace(rows, createdShotKeys, showSca)]} layout={shotHalfPitchLayout(356)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+        <Plot data={goalTrace(rows, createdShotKeys, showSca)} layout={goalLayout(compactAnalysis ? 105 : 160)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+        <Plot data={[...scaTraces(rows, panelPlayers, showSca), ...shotTrace(rows, createdShotKeys, showSca)]} layout={shotHalfPitchLayout(compactAnalysis ? 225 : 356)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
       </div>
     ) : (
-      <Plot data={movementTraces(rows, kind, activeStat, kind === "in_possession" && highlightProgressiveActions, kind === "in_possession" && activeStat === "Passes" ? activePassSubtype : null, defensiveArea, opponentAreaActions, rawRows)} layout={pitchLayout(500)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+      <Plot data={movementTraces(rows, kind, activeStat, kind === "in_possession" && highlightProgressiveActions, kind === "in_possession" && activeStat === "Passes" ? activePassSubtype : null, defensiveArea, opponentAreaActions, rawRows)} layout={pitchLayout(pitchHeight)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
     );
     return (
-      <div key={index} className={`plotly-chart-shell player-analysis-action-pitch${kind === "shots" ? " is-shots" : ""}`}>
+      <div key={index} className={`plotly-chart-shell player-analysis-action-pitch${kind === "shots" ? " is-shots" : ""}${mobilePitchIndex === index ? " is-mobile-active" : ""}`}>
         <div className="player-analysis-pitch-head">
           <select className="select" value={kind} onChange={(event) => setKind(event.target.value as PitchKind)}>
             {pitchOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -1749,6 +1754,23 @@ export function PlayerAnalysisSection({
           </div>
         </div>
       )}
+      <div className="player-analysis-mobile-pitch-tabs" role="tablist" aria-label="Player visual">
+        {[0, 1, 2].map((index) => {
+          const option = pitchOptions.find((item) => item.value === pitchKinds[index]);
+          return (
+            <button
+              key={index}
+              type="button"
+              role="tab"
+              aria-selected={mobilePitchIndex === index}
+              className={mobilePitchIndex === index ? "is-active" : ""}
+              onClick={() => setMobilePitchIndex(index)}
+            >
+              {option?.label ?? `Visual ${index + 1}`}
+            </button>
+          );
+        })}
+      </div>
       <div className="player-analysis-action-grid">
         {[0, 1, 2].map((index) => renderPitchCard(index, panelRows, panelPlayers))}
       </div>
@@ -2136,6 +2158,7 @@ export function PlayerAnalysisSection({
         </div>
       </div>
 
+      <MobileAnalysisControls label="Player & filters" summary={`${selectedPlayers.length} player${selectedPlayers.length === 1 ? "" : "s"} selected`}>
       <div className="player-analysis-selector-card">
         <label>
           <span>Game state</span>
@@ -2221,6 +2244,7 @@ export function PlayerAnalysisSection({
           </div>
         )}
       </div>
+      </MobileAnalysisControls>
 
       <div className="player-analysis-main">
         {isPrimaryGoalkeeper

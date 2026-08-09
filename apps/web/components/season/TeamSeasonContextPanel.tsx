@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Plot } from "../../lib/plotly";
 import { CHART_FONT_FAMILY, readThemeColors } from "../../lib/theme";
+import { useCompactAnalysis } from "../../lib/useCompactAnalysis";
 import { DownloadPngButton } from "../DownloadPngButton";
 import { metricByKey, type TeamBaseline, type TeamSeasonMatch } from "./baselineTypes";
 
@@ -45,6 +46,7 @@ function rolling(values: number[], window: number): number[] {
 
 export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, baselines, fullTime }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
+  const compactAnalysis = useCompactAnalysis();
   useEffect(() => {
     setThemeColors(readThemeColors());
     const observer = new MutationObserver(() => setThemeColors(readThemeColors()));
@@ -65,17 +67,17 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
     zeroline: false,
     gridcolor: "rgba(148,163,184,0.22)",
     linecolor: "rgba(148,163,184,0.36)",
-    tickfont: { color: chartMuted, size: 11 },
-    titlefont: { color: chartMuted, size: 12 },
+    tickfont: { color: chartMuted, size: compactAnalysis ? 8 : 11 },
+    titlefont: { color: chartMuted, size: compactAnalysis ? 9 : 12 },
   });
   const baseLayout = (height: number) => ({
     autosize: true,
     height,
-    margin: { l: 52, r: 24, t: 18, b: 48 },
+    margin: compactAnalysis ? { l: 38, r: 10, t: 8, b: 32 } : { l: 52, r: 24, t: 18, b: 48 },
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(148,163,184,0.08)",
-    font: { color: themeColors.text, family: CHART_FONT_FAMILY },
-    legend: { orientation: "h" as const, y: -0.2, x: 0, font: { color: chartMuted, size: 12 } },
+    font: { color: themeColors.text, family: CHART_FONT_FAMILY, size: compactAnalysis ? 9 : 12 },
+    legend: { orientation: "h" as const, y: -0.2, x: 0, font: { color: chartMuted, size: compactAnalysis ? 8 : 12 } },
   });
 
   // ── #1 match vs season bars (volume metrics normalized to per-90) ─────────
@@ -92,7 +94,7 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
     });
     return [{ key, label, entries, tonight, pcts }];
   });
-  const barHeight = Math.max(340, barRows.length * 52 + 110);
+  const barHeight = compactAnalysis ? Math.max(260, barRows.length * 30 + 70) : Math.max(340, barRows.length * 52 + 110);
 
   // ── #2 scatter + #3 rolling form data ─────────────────────────────────────
   const tonight = sides.map((side) => ({
@@ -148,8 +150,8 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
               text: barRows.map((row) => ` ${fmt(row.tonight[sideIndex])} `),
               textposition: "auto",
               textangle: 0,
-              textfont: { size: 11, family: CHART_FONT_FAMILY },
-              outsidetextfont: { color: themeColors.text, size: 11, family: CHART_FONT_FAMILY },
+              textfont: { size: compactAnalysis ? 8 : 11, family: CHART_FONT_FAMILY },
+              outsidetextfont: { color: themeColors.text, size: compactAnalysis ? 8 : 11, family: CHART_FONT_FAMILY },
               constraintext: "none",
               cliponaxis: false,
               customdata: barRows.map((row) => [fmt(row.tonight[sideIndex]), fmt(row.entries[sideIndex]!.seasonAvg ?? 0), Math.round(row.pcts[sideIndex])]),
@@ -160,14 +162,14 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
               barmode: "group",
               bargap: 0.3,
               bargroupgap: 0.12,
-              margin: { l: 130, r: 60, t: 8, b: 48 },
+              margin: compactAnalysis ? { l: 82, r: 28, t: 4, b: 32 } : { l: 130, r: 60, t: 8, b: 48 },
               hovermode: "closest",
               xaxis: {
                 ...axisStyle("% vs own season average", [-118, 118]),
                 tickvals: [-100, -50, 0, 50, 100],
                 ticktext: ["−100%", "−50%", "season", "+50%", "+100%"],
               },
-              yaxis: { autorange: "reversed", gridcolor: "rgba(148,163,184,0.12)", tickfont: { color: themeColors.text, size: 12 } },
+              yaxis: { autorange: "reversed", gridcolor: "rgba(148,163,184,0.12)", tickfont: { color: themeColors.text, size: compactAnalysis ? 8 : 12 } },
               shapes: [{ type: "line", xref: "x", yref: "paper", x0: 0, x1: 0, y0: 0, y1: 1, line: { color: "rgba(148,163,184,0.6)", width: 1.5, dash: "dot" } }],
             } as never}
             config={plotConfig}
@@ -220,7 +222,7 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
               })),
             ] as never}
             layout={{
-              ...baseLayout(360),
+              ...baseLayout(compactAnalysis ? 240 : 360),
               hovermode: "closest",
               xaxis: axisStyle("xG created", [0, scatterMax]),
               yaxis: axisStyle("xG conceded", [0, scatterMax]),
@@ -269,7 +271,7 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
               hovertemplate: "%{customdata}: rolling xG diff %{y:.2f}<extra></extra>",
             })) as never}
             layout={{
-              ...baseLayout(360),
+              ...baseLayout(compactAnalysis ? 240 : 360),
               hovermode: "x unified",
               xaxis: axisStyle("Match number"),
               yaxis: axisStyle("Rolling 5-match xG difference"),

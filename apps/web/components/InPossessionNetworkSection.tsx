@@ -1,6 +1,7 @@
 "use client";
 
 import { DownloadPngButton, type ProfileCard, type SideTable } from "./DownloadPngButton";
+import { MobileAnalysisControls } from "./MobileAnalysisControls";
 import { PlayerAvatar, getCachedPlayerImage } from "./PlayerAvatar";
 
 import { useSyncFiltersToUrl } from "../lib/analysisUrl";
@@ -497,6 +498,7 @@ export function InPossessionNetworkSection({
           </div>
         </div>
       </div>
+      <MobileAnalysisControls summary={`${currentTeam} · ${currentGameState === "all" ? "All states" : currentGameState}`}>
       <div className="in-possession-top-controls">
         <div className="in-possession-team-strip">
           <span>Team</span>
@@ -607,6 +609,7 @@ export function InPossessionNetworkSection({
           </div>
         </div>
       </div>
+      </MobileAnalysisControls>
       <div className="analysis-workspace in-possession-workspace">
         <aside className="analysis-workspace-rail in-possession-filter-rail">
           <section className="pass-network-selected-panel is-in-rail">

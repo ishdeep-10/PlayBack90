@@ -191,7 +191,7 @@ export function ShotsScaSection({
   return (
     <>
       <section className="card stack">
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <div className="row shots-section-heading" style={{ justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <span className="eyebrow">Shots and SCA</span>
             <div className="chart-card-head">
@@ -248,7 +248,7 @@ export function ShotsScaSection({
               />
             </div>
           </div>
-          <div className="row">
+          <div className="row shots-top-controls">
             {teams.filter(Boolean).map((team) => (
               <button
                 key={team}

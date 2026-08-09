@@ -531,7 +531,7 @@ async function AnalysisContent({
 
           {/* ══════════════ TAB 1 — MATCH DYNAMICS ══════════════ */}
           {view === "match-dynamics" && (
-            <>
+            <div className="match-dynamics-tab stack">
               <LineupsPanel
                 teams={[teamA, teamB]}
                 teamColors={{ [teamA]: teamAColor, [teamB]: teamBColor }}
@@ -578,30 +578,32 @@ async function AnalysisContent({
                 baselines={seasonTeamBaselines}
                 fullTime={fullTime}
               />
-            </>
+            </div>
           )}
 
           {/* ══════════════ TAB 2 — SHOTS ══════════════ */}
           {view === "shots" && (
-            <ShotsScaSection
-              teams={[homeTeam, awayTeam].filter(Boolean)}
-              initialTeam={selectedTeam}
-              initialPlayer={player}
-              shotRows={shotDetailRows}
-              playerRows={shotPlayerRows}
-              teamTotals={shotTeamTotals}
-              teamColors={matchTeamColors}
-              initialGameState={gameState}
-              initialTimeRange={timeRange}
-              gameStateOptions={shotGameStateOptions}
-              timeRangeOptions={shotTimeRangeOptions}
-              teamStateControls={shotTeamStateControls}
-            />
+            <div className="analysis-dense-tab shots-dense-tab stack">
+              <ShotsScaSection
+                teams={[homeTeam, awayTeam].filter(Boolean)}
+                initialTeam={selectedTeam}
+                initialPlayer={player}
+                shotRows={shotDetailRows}
+                playerRows={shotPlayerRows}
+                teamTotals={shotTeamTotals}
+                teamColors={matchTeamColors}
+                initialGameState={gameState}
+                initialTimeRange={timeRange}
+                gameStateOptions={shotGameStateOptions}
+                timeRangeOptions={shotTimeRangeOptions}
+                teamStateControls={shotTeamStateControls}
+              />
+            </div>
           )}
 
           {/* ══════════════ TAB 3 — IN POSSESSION ══════════════ */}
           {view === "in-possession" && (
-            <>
+            <div className="analysis-dense-tab in-possession-dense-tab stack">
               <InPossessionNetworkSection
                 matchId={matchId}
                 source={source}
@@ -624,58 +626,64 @@ async function AnalysisContent({
                 teamColors={matchTeamColors}
                 playerBaselines={seasonPlayerBaselines}
               />
-            </>
+            </div>
           )}
 
           {/* ══════════════ TAB 4 — OUT OF POSSESSION ══════════════ */}
           {view === "out-of-possession" && (
-            <OutOfPossessionSection
-              matchId={matchId}
-              source={source}
-              league={league}
-        season={season}
-              jobId={jobId}
-              teams={[homeTeam, awayTeam].filter(Boolean)}
-              selectedTeam={selectedTeam}
-              payload={defensiveActionsPayload}
-              teamColors={matchTeamColors}
-              playerBaselines={seasonPlayerBaselines}
-            />
+            <div className="analysis-dense-tab out-of-possession-dense-tab stack">
+              <OutOfPossessionSection
+                matchId={matchId}
+                source={source}
+                league={league}
+                season={season}
+                jobId={jobId}
+                teams={[homeTeam, awayTeam].filter(Boolean)}
+                selectedTeam={selectedTeam}
+                payload={defensiveActionsPayload}
+                teamColors={matchTeamColors}
+                playerBaselines={seasonPlayerBaselines}
+              />
+            </div>
           )}
 
           {/* ══════════════ TAB 5 — DUELS & TRANSITIONS ══════════════ */}
           {view === "duels-transitions" && (
-            <DuelsTransitionsSection
-              matchId={matchId}
-              source={source}
-              league={league}
-        season={season}
-              jobId={jobId}
-              teams={[teamA, teamB].filter(Boolean)}
-              selectedTeam="__both__"
-              selectedDuelType={duelType}
-              selectedTransitionType={transitionType}
-              payload={duelsTransitionsPayload}
-              teamColors={matchTeamColors}
-              playerBaselines={seasonPlayerBaselines}
-            />
+            <div className="analysis-dense-tab duels-dense-tab stack">
+              <DuelsTransitionsSection
+                matchId={matchId}
+                source={source}
+                league={league}
+                season={season}
+                jobId={jobId}
+                teams={[teamA, teamB].filter(Boolean)}
+                selectedTeam="__both__"
+                selectedDuelType={duelType}
+                selectedTransitionType={transitionType}
+                payload={duelsTransitionsPayload}
+                teamColors={matchTeamColors}
+                playerBaselines={seasonPlayerBaselines}
+              />
+            </div>
           )}
 
           {/* ══════════════ TAB 6 — PLAYER ANALYSIS ══════════════ */}
           {view === "player-analysis" && (
-            <PlayerAnalysisSection
-              matchId={matchId}
-              source={source}
-              league={league}
-        season={season}
-              jobId={jobId}
-              teams={[homeTeam, awayTeam].filter(Boolean)}
-              selectedTeam={selectedTeam}
-              payload={playerAnalysisPayload}
-              teamColors={matchTeamColors}
-              initialPlayer={player}
-              seasonBaseline={seasonBaseline}
-            />
+            <div className="analysis-dense-tab player-analysis-dense-tab stack">
+              <PlayerAnalysisSection
+                matchId={matchId}
+                source={source}
+                league={league}
+                season={season}
+                jobId={jobId}
+                teams={[homeTeam, awayTeam].filter(Boolean)}
+                selectedTeam={selectedTeam}
+                payload={playerAnalysisPayload}
+                teamColors={matchTeamColors}
+                initialPlayer={player}
+                seasonBaseline={seasonBaseline}
+              />
+            </div>
           )}
 
     </main>

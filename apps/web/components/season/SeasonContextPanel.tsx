@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Plot } from "../../lib/plotly";
 import { CHART_FONT_FAMILY, readThemeColors } from "../../lib/theme";
+import { useCompactAnalysis } from "../../lib/useCompactAnalysis";
 import { DownloadPngButton } from "../DownloadPngButton";
 import { metricByKey, type MetricGroup, type PlayerBaseline } from "./baselineTypes";
 
@@ -44,6 +45,7 @@ function ordinal(n: number): string {
 
 export function SeasonContextPanel({ players, groups }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
+  const compactAnalysis = useCompactAnalysis();
   const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
 
   useEffect(() => {
@@ -107,7 +109,9 @@ export function SeasonContextPanel({ players, groups }: Props) {
   const radarLabels = radarKeys.map((key) =>
     metricsByPlayer.flatMap((entry) => entry.metrics).find((metric) => metric.key === key)?.label ?? key
   );
-  const chartHeight = Math.max(330, deltaMetricKeys.length * Math.max(48, eligiblePlayers.length * 25) + 100);
+  const chartHeight = compactAnalysis
+    ? Math.max(250, deltaMetricKeys.length * Math.max(28, eligiblePlayers.length * 18) + 64)
+    : Math.max(330, deltaMetricKeys.length * Math.max(48, eligiblePlayers.length * 25) + 100);
 
   const standouts = metricsByPlayer.flatMap((entry) =>
     entry.metrics
@@ -195,8 +199,8 @@ export function SeasonContextPanel({ players, groups }: Props) {
     zeroline: false,
     gridcolor: "rgba(148,163,184,0.22)",
     linecolor: "rgba(148,163,184,0.36)",
-    tickfont: { color: chartMuted, size: 11 },
-    titlefont: { color: chartMuted, size: 12 },
+    tickfont: { color: chartMuted, size: compactAnalysis ? 8 : 11 },
+    titlefont: { color: chartMuted, size: compactAnalysis ? 9 : 12 },
   });
 
   return (
@@ -238,10 +242,10 @@ export function SeasonContextPanel({ players, groups }: Props) {
               layout={{
                 autosize: true,
                 height: chartHeight,
-                margin: { l: 150, r: 34, t: 12, b: 50 },
+                margin: compactAnalysis ? { l: 88, r: 14, t: 6, b: 34 } : { l: 150, r: 34, t: 12, b: 50 },
                 paper_bgcolor: "rgba(0,0,0,0)",
                 plot_bgcolor: "rgba(148,163,184,0.08)",
-                font: { color: themeColors.text, family: CHART_FONT_FAMILY },
+                font: { color: themeColors.text, family: CHART_FONT_FAMILY, size: compactAnalysis ? 9 : 12 },
                 hovermode: "closest",
                 showlegend: false,
                 barmode: "group",
@@ -255,7 +259,7 @@ export function SeasonContextPanel({ players, groups }: Props) {
                 yaxis: {
                   autorange: "reversed",
                   gridcolor: "rgba(148,163,184,0.12)",
-                  tickfont: { color: themeColors.text, size: 12 },
+                  tickfont: { color: themeColors.text, size: compactAnalysis ? 8 : 12 },
                 },
                 shapes: [{
                   type: "line",
@@ -307,23 +311,23 @@ export function SeasonContextPanel({ players, groups }: Props) {
               layout={{
                 autosize: true,
                 height: chartHeight,
-                margin: { l: 100, r: 100, t: 28, b: 40 },
+                margin: compactAnalysis ? { l: 44, r: 44, t: 18, b: 24 } : { l: 100, r: 100, t: 28, b: 40 },
                 paper_bgcolor: "rgba(0,0,0,0)",
-                font: { color: chartMuted, family: CHART_FONT_FAMILY, size: 11 },
+                font: { color: chartMuted, family: CHART_FONT_FAMILY, size: compactAnalysis ? 8 : 11 },
                 showlegend: false,
                 polar: {
                   bgcolor: "rgba(148,163,184,0.08)",
                   radialaxis: {
                     range: [0, 100],
                     tickvals: [25, 50, 75],
-                    tickfont: { size: 9, color: chartMuted },
+                    tickfont: { size: compactAnalysis ? 7 : 9, color: chartMuted },
                     gridcolor: "rgba(148,163,184,0.22)",
                     linecolor: "transparent",
                     angle: 90,
                     tickangle: 90,
                   },
                   angularaxis: {
-                    tickfont: { size: 10, color: themeColors.text },
+                    tickfont: { size: compactAnalysis ? 8 : 10, color: themeColors.text },
                     gridcolor: "rgba(148,163,184,0.22)",
                     linecolor: "rgba(148,163,184,0.36)",
                     rotation: 90,
