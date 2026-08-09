@@ -316,7 +316,7 @@ class LiveScrapeJobResponse(BaseModel):
 
 class ImportJobResponse(BaseModel):
     job_id: str
-    provider: Literal["wyscout", "statsbomb"]
+    provider: Literal["whoscored", "wyscout", "statsbomb"]
     status: Literal["queued", "running", "completed", "failed"]
     source: Literal["import"] = "import"
     message: str | None = None

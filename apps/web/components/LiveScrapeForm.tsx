@@ -1,12 +1,12 @@
 "use client";
 
-import { type ChangeEvent, type FormEvent, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
-  createLiveScrapeJob,
   createStatsBombImportJob,
   createStatsBombSampleImportJob,
+  createWhoScoredHtmlImportJob,
   createWyscoutImportJob,
   type StatsBombSampleMatch,
 } from "../lib/api";
@@ -14,6 +14,7 @@ import { capture } from "../lib/posthog";
 
 const MAX_WYSCOUT_FILE_BYTES = 75 * 1024 * 1024;
 const MAX_STATSBOMB_FILE_BYTES = 75 * 1024 * 1024;
+const MAX_WHOSCORED_HTML_BYTES = 20 * 1024 * 1024;
 type ImportMode = "whoscored" | "wyscout" | "statsbomb";
 
 const STATSBOMB_SAMPLE_MATCHES: StatsBombSampleMatch[] = [
@@ -279,8 +280,7 @@ async function buildStatsBombPayloadFromFiles(files: File[]) {
 
 export function LiveScrapeForm() {
   const router = useRouter();
-  const [mode, setMode] = useState<ImportMode>("wyscout");
-  const [url, setUrl] = useState("");
+  const [mode, setMode] = useState<ImportMode>("whoscored");
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
   const [fileMeta, setFileMeta] = useState("");
@@ -292,23 +292,56 @@ export function LiveScrapeForm() {
     setMode(nextMode);
     setError(null);
     setStatus(null);
+    setFileName("");
+    setFileMeta("");
   }
 
-  async function handleWhoScoredSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
+  async function handleWhoScoredUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
     setError(null);
-    setStatus("Queuing scrape...");
+    setStatus(null);
+    setFileName(file.name);
+    setFileMeta(`${formatFileSize(file.size)} HTML`);
+
+    if (file.size > MAX_WHOSCORED_HTML_BYTES) {
+      setError(`This file is ${formatFileSize(file.size)}. Upload an HTML file under ${formatFileSize(MAX_WHOSCORED_HTML_BYTES)}.`);
+      event.target.value = "";
+      return;
+    }
+
+    const lowerName = file.name.toLowerCase();
+    const looksLikeHtml = lowerName.endsWith(".html") || lowerName.endsWith(".htm") || file.type === "text/html" || file.type === "";
+    if (!looksLikeHtml) {
+      setError("Upload the saved WhoScored page as a .html or .htm file. MHTML and Safari Web Archive files are not supported.");
+      event.target.value = "";
+      return;
+    }
+
+    setLoading(true);
+    setStatus("Reading saved page...");
+    capture("import_started", { provider: "whoscored_html" });
 
     try {
-      const job = await createLiveScrapeJob(url);
+      const html = await file.text();
+      if (!html.trim()) throw new Error("That HTML file is empty.");
+      setStatus("Extracting WhoScored match data...");
+      const job = await createWhoScoredHtmlImportJob(html);
+      if (job.status === "failed") {
+        throw new Error(job.error ?? "Unable to import the WhoScored HTML file.");
+      }
+      const matchId = job.context?.match_id ?? job.match_id;
+      if (!matchId) throw new Error("WhoScored import completed without a match id.");
       setStatus("Opening analysis...");
-      router.push(`/analysis/live/${job.job_id}`);
+      capture("import_completed", { provider: "whoscored_html" });
+      router.push(`/analysis/${matchId}?source=import&jobId=${encodeURIComponent(job.job_id)}&provider=whoscored`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create scrape job.");
+      setError(err instanceof Error ? err.message : "Unable to import the WhoScored HTML file.");
       setStatus(null);
+      capture("import_failed", { provider: "whoscored_html" });
     } finally {
       setLoading(false);
+      event.target.value = "";
     }
   }
 
@@ -453,11 +486,9 @@ export function LiveScrapeForm() {
         <button
           type="button"
           className={mode === "whoscored" ? "active" : ""}
-          onClick={undefined}
-          disabled
-          title="Live WhoScored scraping is temporarily unavailable in this beta."
+          onClick={() => selectMode("whoscored")}
         >
-          WhoScored URL (unavailable)
+          WhoScored HTML
         </button>
         <button
           type="button"
@@ -476,22 +507,31 @@ export function LiveScrapeForm() {
       </div>
 
       {mode === "whoscored" ? (
-        <form className="stack" onSubmit={handleWhoScoredSubmit}>
-          <input
-            className="input"
-            type="url"
-            placeholder="https://www.whoscored.com/Matches/..."
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            required
-          />
-          <div className="row">
-            <button className="button" disabled={loading} type="submit">
-              {loading ? status ?? "Queuing scrape..." : "Start Live Scrape"}
-            </button>
-            <span className="muted">Live match scraping runs asynchronously through the worker service.</span>
+        <div className="stack">
+          <div className="whoscored-import-guide">
+            <h3>Save the Match Centre page</h3>
+            <ol>
+              <li>Open the match on WhoScored and select its <strong>Match Centre</strong> or <strong>Live</strong> page.</li>
+              <li>Wait until the event timeline has loaded. For a completed match, make sure the full-time score and events are visible.</li>
+              <li>Press <strong>Ctrl+S</strong> on Windows/Linux or <strong>Command+S</strong> on Mac.</li>
+              <li>In Chrome, Edge, or Firefox choose <strong>Webpage, HTML Only</strong>, then save and upload the resulting <strong>.html</strong> file below.</li>
+            </ol>
+            <p className="muted">Safari Web Archive (.webarchive) and MHTML files are not supported. Use Chrome, Edge, or Firefox to save an HTML file.</p>
           </div>
-        </form>
+          <label className={`input file-input ${loading ? "is-loading" : ""}`}>
+            <input
+              type="file"
+              accept="text/html,.html,.htm"
+              disabled={loading}
+              onChange={handleWhoScoredUpload}
+            />
+            <span>{loading ? status ?? "Importing WhoScored match..." : fileName || "Choose saved WhoScored HTML"}</span>
+          </label>
+          <div className="import-meta-row">
+            <span className="muted">Saved WhoScored Match Centre · Maximum 20 MB</span>
+            <span className="muted">Expires after 60 minutes</span>
+          </div>
+        </div>
       ) : mode === "wyscout" ? (
         <div className="stack">
           <label className={`input file-input ${loading ? "is-loading" : ""}`}>

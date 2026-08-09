@@ -33,6 +33,7 @@ from app.services.rate_limit import enforce_rate_limit
 from app.services.import_jobs import import_job_store
 from app.services.live_jobs import job_store
 from app.services.providers.statsbomb import StatsBombImportError, normalize_statsbomb_match
+from app.services.providers.whoscored_html import WhoScoredHtmlImportError, normalize_whoscored_html
 from app.services.providers.statsbomb_samples import (
     StatsBombSampleError,
     fetch_statsbomb_open_data_sample,
@@ -1017,6 +1018,55 @@ def get_live_scrape_job(job_id: str):
         return job_store.to_response(job_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Job not found.") from exc
+
+
+MAX_WHOSCORED_HTML_BYTES = 20 * 1024 * 1024
+
+
+@app.post(f"{settings.api_prefix}/import-jobs/whoscored-html", response_model=ImportJobResponse)
+async def create_whoscored_html_import_job(http_request: Request):
+    enforce_rate_limit(http_request, bucket="import", limit=10, window_seconds=60)
+    body = await http_request.body()
+    job = import_job_store.create("whoscored")
+    import_job_store.update(job.job_id, status="running", message="Reading saved WhoScored match data")
+
+    if len(body) > MAX_WHOSCORED_HTML_BYTES:
+        import_job_store.update(
+            job.job_id,
+            status="failed",
+            error="The WhoScored HTML file must be 20 MB or smaller.",
+        )
+        return import_job_store.to_response(job.job_id)
+
+    try:
+        html = body.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        import_job_store.update(
+            job.job_id,
+            status="failed",
+            error="The uploaded file is not readable UTF-8 HTML.",
+        )
+        return import_job_store.to_response(job.job_id)
+
+    try:
+        df = normalize_whoscored_html(html)
+        if df.empty:
+            raise WhoScoredHtmlImportError("No events were returned from the WhoScored HTML import.")
+        match_id = str(df["matchId"].dropna().iloc[0]) if "matchId" in df.columns and not df["matchId"].dropna().empty else None
+        import_job_store.update(
+            job.job_id,
+            status="completed",
+            message="WhoScored HTML import completed",
+            match_id=match_id,
+            data=df,
+        )
+        return import_job_store.to_response(job.job_id)
+    except WhoScoredHtmlImportError as exc:
+        import_job_store.update(job.job_id, status="failed", error=str(exc))
+        return import_job_store.to_response(job.job_id)
+    except Exception as exc:
+        import_job_store.update(job.job_id, status="failed", error="Unable to process the WhoScored HTML file.")
+        raise HTTPException(status_code=400, detail="Unable to process the WhoScored HTML file.") from exc
 
 
 @app.post(f"{settings.api_prefix}/import-jobs/wyscout", response_model=ImportJobResponse)

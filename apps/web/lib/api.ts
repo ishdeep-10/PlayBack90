@@ -284,6 +284,23 @@ export async function getLiveScrapeJob(jobId: string) {
   }>(`/live-scrape-jobs/${jobId}`);
 }
 
+export async function createWhoScoredHtmlImportJob(html: string) {
+  return request<{
+    job_id: string;
+    provider: "whoscored";
+    source: "import";
+    status: string;
+    message?: string;
+    match_id?: string | null;
+    context?: { match_id: string; home_team: string; away_team: string; available_views: string[] };
+    error?: string;
+  }>(`/import-jobs/whoscored-html`, {
+    method: "POST",
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+    body: html
+  });
+}
+
 export async function createWyscoutImportJob(payload: unknown) {
   return request<{
     job_id: string;
@@ -354,7 +371,7 @@ export async function createStatsBombSampleImportJob(sampleId: string) {
 export async function getImportJob(jobId: string) {
   return request<{
     job_id: string;
-    provider: "wyscout" | "statsbomb";
+    provider: "whoscored" | "wyscout" | "statsbomb";
     source: "import";
     status: string;
     message?: string;

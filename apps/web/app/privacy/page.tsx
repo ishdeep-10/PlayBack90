@@ -35,7 +35,7 @@ export default function PrivacyPage() {
             error and the page you were on to help us fix it.
           </li>
           <li>
-            <strong>Files you upload</strong> — if you import a Wyscout or StatsBomb JSON
+            <strong>Files you upload</strong> — if you import a WhoScored HTML, Wyscout JSON, or StatsBomb JSON
             file, it&apos;s processed in memory to generate your analysis and is not kept
             beyond your session.
           </li>
