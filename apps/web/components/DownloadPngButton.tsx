@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Share2 } from "lucide-react";
 
 import { toProxiedDataUrl as toDataUrl } from "../lib/images";
 import { getPlotly } from "../lib/plotly";
@@ -1223,7 +1224,8 @@ export function DownloadPngButton({
         title="Share as image"
       >
         <span className="png-download-button-glow" aria-hidden="true" />
-        {busy ? "Preparing…" : "✦ Share"}
+        <Share2 aria-hidden="true" size={15} strokeWidth={2.4} />
+        <span>{busy ? "Preparing…" : "Share"}</span>
       </button>
       {preview && typeof document !== "undefined"
         ? createPortal(

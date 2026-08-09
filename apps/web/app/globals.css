@@ -1064,6 +1064,22 @@ html.dark .pill {
   letter-spacing: 0.1em;
 }
 
+.analysis-main .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  font-weight: 850;
+}
+
+html.dark .analysis-main .eyebrow {
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: #bef264;
+}
+
 /* ─── Button (legacy analysis pages) ─────────────────────────────────────────────── */
 .button, .ghost-button {
   display: inline-flex;
@@ -11659,42 +11675,42 @@ html:not(.dark) .world-cup-kicker {
 .png-download-button {
   position: relative;
   overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   flex: none;
-  padding: 6px 14px;
-  border: 1px solid transparent;
+  min-height: 36px;
+  padding: 6px 15px;
+  border: 1px solid var(--accent-hover);
   border-radius: 999px;
-  background:
-    linear-gradient(var(--card), var(--card)) padding-box,
-    linear-gradient(120deg, var(--accent), #38bdf8, #a855f7, var(--accent)) border-box;
-  background-size: 100% 100%, 300% 300%;
-  color: var(--text);
+  background: var(--accent);
+  color: #fff;
   font-family: var(--font-display);
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.035em;
   cursor: pointer;
-  animation: png-border-flow 5s linear infinite;
-  transition: color 150ms ease, transform 120ms ease, box-shadow 150ms ease;
-}
-
-@keyframes png-border-flow {
-  0% { background-position: 0 0, 0% 50%; }
-  100% { background-position: 0 0, 300% 50%; }
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent);
+  transition: background 150ms ease, transform 120ms ease, box-shadow 150ms ease;
 }
 
 .png-download-button-glow {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(110deg, transparent 30%, rgba(148,240,180,0.16) 50%, transparent 70%);
-  background-size: 220% 100%;
-  animation: ai-shimmer-slide 2.8s linear infinite;
-  pointer-events: none;
+  display: none;
+}
+
+html.dark .png-download-button {
+  color: #07131f;
 }
 
 .png-download-button:hover {
-  color: var(--accent);
+  background: var(--accent-hover);
+  color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(34,197,94,0.22);
+  box-shadow: 0 7px 20px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+html.dark .png-download-button:hover {
+  color: #07131f;
 }
 
 .png-download-button:disabled {
