@@ -173,9 +173,11 @@ Env files (`~ubuntu/api.env.production`, `~ubuntu/web.env.production` on the ser
 
 | Feature | State | Why |
 |---|---|---|
-| Auth (Clerk) | **Enabled**, open sign-up | `AUTH_REQUIRED=true`, `AUTH_ALLOWED_EMAILS` empty on purpose. Users still need an account; anyone can create one. Clerk dashboard restricted mode must also be **off** (Protect → Restrictions) — both sides had to change together. |
+| Auth (Clerk) | **Enabled**, open sign-up, **Production instance** (migrated 2026-08-12) | `AUTH_REQUIRED=true`, `AUTH_ALLOWED_EMAILS` empty on purpose. Users still need an account; anyone can create one. Clerk dashboard restricted mode must also be **off** (Protect → Restrictions). Moved off the Development instance (`meet-fish-22.clerk.accounts.dev`, 100-user hard cap) to Production on custom domain `clerk.playback90.com`. DNS: 5 CNAME records in Cloudflare (`clerk`, `accounts`, `clkmail`, `clk._domainkey`, `clk2._domainkey`) pointing at `*.clerk.services`, all set **DNS only** (grey cloud) — Clerk terminates TLS on those subdomains itself, same reasoning as our own origin cert. `CLERK_JWKS_URL`/`CLERK_ISSUER` on the API now point at `https://clerk.playback90.com`; web build now uses the `pk_live_...`/`sk_live_...` keys (previously `_PROD`-suffixed in `.env`, now the primary values). All 100 existing Development-instance users were carried over via CSV export (Dashboard → Settings → Export all users, includes bcrypt `password_digest`) + Clerk's `CreateUser` Backend API (`scripts/migrate_clerk_users.py`, one-off, not part of the deploy runbook) — they keep their existing password, no re-registration needed. |
 | Opposition Analysis | **Disabled** | Feature still under development. Gated via `OPPOSITION_ANALYSIS_ENABLED=false` (backend, returns 404) and `NEXT_PUBLIC_OPPOSITION_ANALYSIS_ENABLED=false` (frontend build arg, shows "coming soon"). Flip both to re-enable — no code changes needed. |
-| Live WhoScored scraping | **Disabled** | `LIVE_SCRAPE_ENABLED=false` (backend 404s the endpoint) + the "WhoScored URL" tab is disabled in the Import Match UI. **Root cause: Cloudflare actively blocks scrape requests from the AWS Lightsail IP** (confirmed via direct test — got a literal Cloudflare "Attention Required! Sorry, you have been blocked" page). This is not a bug to fix in this codebase; it needs either a residential/mobile proxy or anti-bot-bypass API (ScraperAPI/ZenRows/etc.), or running the scrape step from a non-cloud IP. Wyscout/StatsBomb JSON import still work fine (no WhoScored involved). |
+| Live WhoScored scraping (server-side, via `/live-scrape-jobs`) | **Still disabled** | `LIVE_SCRAPE_ENABLED=false` (backend 404s the endpoint), unrelated to the row below. **Root cause: Cloudflare actively blocks scrape requests from the AWS Lightsail IP** (confirmed via direct test — got a literal Cloudflare "Attention Required! Sorry, you have been blocked" page). Not a bug to fix in this codebase; needs a residential/mobile proxy, anti-bot-bypass API, or running the scrape step from a non-cloud IP. |
+| WhoScored **HTML** import (`/import-jobs/whoscored-html`) | **Enabled**, added 2026-08-09 | Sidesteps the Cloudflare block entirely: the user saves the WhoScored Match Centre page from their own browser (real residential IP, never blocked) and uploads the `.html` file; the server parses the same embedded `matchCentreData` JSON payload the old live-scraper extracted, via `apps/api/app/services/providers/whoscored_html.py`. Reuses the existing `Data/main.py`/`Data/data_utils.py` normalization pipeline for consistent output. 20MB upload cap, rate-limited under the shared `import` bucket (10/min), detects and rejects Cloudflare block-page HTML with a helpful error. This is now the primary "WhoScored" tab in the Import Match UI — Wyscout/StatsBomb JSON import work the same as before. |
+| Upcoming-season scraping + R2 upload pipeline | **Local only, not deployed** | The recurring scrape/enrichment/upload workflow for upcoming-season data still runs from the dev laptop/local environment, not from AWS. This is intentional for now because cloud-hosted WhoScored scraping is blocked from the Lightsail IP, and the full `Data` database remains local. Hosted production only reads already-uploaded R2 parquet/metadata files; it does not scrape, enrich, or upload new season data itself. |
 | AI insights (Claude) | **Disabled (by omission)** | `ANTHROPIC_API_KEY` is unset in production. The app already has a deterministic-insights fallback (`ai_analyst.insights_available()` gates it) so this costs nothing and isn't user-visible as broken — "AI deep dive" button just doesn't appear. |
 | Postgres / Redis | **Not deployed** | Job stores (live scrape, imports, reports) are in-memory. Fine for current traffic. `/ready` reports these as `false` — expected, not a bug. |
 | Product analytics (PostHog) | **Enabled once `NEXT_PUBLIC_POSTHOG_KEY` is set** | Wired via `lib/posthog.ts` + `components/PostHogProvider.tsx` (autocapture + pageviews on every route change, including analysis tab switches since those are URL changes) and `components/PostHogIdentify.tsx` (identifies by Clerk user id once signed in, `posthog.reset()` on sign-out). Custom events beyond autocapture: `share_export_opened`/`share_export_downloaded` (`DownloadPngButton.tsx`), `import_started`/`import_completed`/`import_failed` with a `provider` property (`LiveScrapeForm.tsx`), `ai_insight_requested` (`AiInsightCard.tsx`). Entirely a no-op with zero runtime cost if the key is unset — same gating pattern as Clerk. Needs `NEXT_PUBLIC_POSTHOG_KEY`/`NEXT_PUBLIC_POSTHOG_HOST` as **build args** (baked in at build time, not read from the server's env file) — see the deploy runbook below. |
@@ -194,6 +196,7 @@ scp -i ~/.lightsail/playback90-key.pem /tmp/api.tar.gz ubuntu@35.154.255.109:~/
 ssh -i ~/.lightsail/playback90-key.pem ubuntu@35.154.255.109 '
   sudo docker load -i ~/api.tar.gz
   sudo docker compose up -d --force-recreate api
+  sudo docker image prune -a -f --filter "until=1h"
 '
 ```
 
@@ -223,8 +226,19 @@ scp -i ~/.lightsail/playback90-key.pem /tmp/web.tar.gz ubuntu@35.154.255.109:~/
 ssh -i ~/.lightsail/playback90-key.pem ubuntu@35.154.255.109 '
   sudo docker load -i ~/web.tar.gz
   sudo docker compose up -d --force-recreate web
+  sudo docker image prune -a -f --filter "until=1h"
 '
 ```
+
+**Always run the prune step after `--force-recreate`.** The Micro instance's 40GB disk fills up
+fast — each `docker load` leaves the previous image's layers behind as dangling/untagged once
+the new one takes over the `latest` tag, and repeated same-day redeploys accumulate quickly. Hit
+this for real on 2026-08-09: disk filled to 98% (37GB used) after ~10 redeploys in one session,
+which made a `docker load` fail mid-extraction with "no space left on device" — the site itself
+stayed up throughout (the running container keeps working even if its image tag becomes
+orphaned), but the new deploy silently didn't take effect until the disk was cleared. Recovery
+was `sudo docker image prune -a -f --filter "until=1h"` (reclaimed 16.65GB) followed by re-running
+`docker compose up -d --force-recreate` for the affected service.
 
 ### Updating the Caddyfile or compose file itself
 
@@ -304,3 +318,11 @@ curl -s -I https://playback90.com/   # sign-in redirect should point at playback
    (no custom image, no API token in Caddy config, no xcaddy build step) and purpose-built
    for exactly this always-behind-Cloudflare scenario. 15-year cert, so no renewal
    automation needed for a long time.
+9. **Clerk Development → Production migration**: forced by a real user hitting the
+   Development instance's hard 100-user cap. Considered removing Clerk auth entirely
+   (app has no per-user data, so it was a live option) but the login wall itself was a
+   deliberate earlier choice and Production has no user cap on the free tier, so migrating
+   was the smaller change. Existing users were **not** lost — Clerk's Backend API supports
+   creating users with a pre-existing bcrypt `password_digest`, so all 100 accounts were
+   carried over intact (`scripts/migrate_clerk_users.py`) rather than forcing a mass
+   re-registration.
