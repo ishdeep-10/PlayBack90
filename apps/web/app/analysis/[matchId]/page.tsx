@@ -312,11 +312,11 @@ export default async function AnalysisPage({ params, searchParams }: PageProps) 
           <div className="stack" style={{ gap: 6 }}>
             <span className="eyebrow">{source === "live" ? "Live Analysis" : source === "import" ? "Imported Analysis" : "Post Match Analysis"}</span>
             <div className="match-title-row">
-              {teamALogoUrl && <Image unoptimized className="match-title-logo" src={teamALogoUrl} alt={`${teamA} logo`} width={52} height={52} />}
+              {teamALogoUrl && <Image className="match-title-logo" src={teamALogoUrl} alt={`${teamA} logo`} width={52} height={52} />}
               <h1 style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)", margin: 0 }}>
                 {teamA} <span className="muted" style={{ fontSize: "0.6em" }}>vs</span> {teamB}
               </h1>
-              {teamBLogoUrl && <Image unoptimized className="match-title-logo" src={teamBLogoUrl} alt={`${teamB} logo`} width={52} height={52} />}
+              {teamBLogoUrl && <Image className="match-title-logo" src={teamBLogoUrl} alt={`${teamB} logo`} width={52} height={52} />}
             </div>
             {displayScore && (
               <p style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>{displayScore}</p>

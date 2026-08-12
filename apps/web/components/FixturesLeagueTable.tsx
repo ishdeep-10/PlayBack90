@@ -53,7 +53,6 @@ export function FixturesLeagueTable({ standings }: Props) {
                         width={28}
                         height={28}
                         className="fixtures-standings-crest"
-                        unoptimized
                       />
                     ) : (
                       <span className="fixtures-standings-crest-fallback" aria-hidden="true">

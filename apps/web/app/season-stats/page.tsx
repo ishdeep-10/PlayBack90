@@ -236,7 +236,6 @@ export default async function SeasonStatsPage({ searchParams }: PageProps) {
                                 width={24}
                                 height={24}
                                 className="standings-crest"
-                                unoptimized
                               />
                             )}
                             <strong>{row.team}</strong>

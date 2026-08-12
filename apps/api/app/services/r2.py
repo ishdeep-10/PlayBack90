@@ -5,6 +5,7 @@ import os
 import re
 from datetime import datetime
 from functools import lru_cache
+from time import monotonic
 from typing import Any
 
 import pandas as pd
@@ -90,13 +91,38 @@ def list_all_fixtures(league: str, season: str) -> list[dict[str, object]]:
     return fixtures
 
 
+_FILE_PATH_CACHE: dict[tuple[str, str, str], tuple[float, str | None]] = {}
+_FILE_PATH_CACHE_TTL_SECONDS = 15 * 60
+_FILE_PATH_CACHE_MAX_ITEMS = 256
+
+
 def find_file_path(league: str, season: str, match_id: str) -> str | None:
     """Resolve a match's R2 object path server-side so clients only need league+season+match_id,
-    never the internal storage path itself."""
+    never the internal storage path itself.
+
+    A single analysis tab load fans out into several concurrent view requests (see
+    AnalysisContent in the web app), each of which resolves the same league/season/match_id
+    independently. Without this cache every one of those requests re-globs and re-parses the
+    whole season's fixture list. TTL matches _MATCH_DF_CACHE in matches.py since a resolved
+    file_path is exactly as stable as the dataframe it points to.
+    """
+    key = (league, season, str(match_id))
+    now = monotonic()
+    cached = _FILE_PATH_CACHE.get(key)
+    if cached is not None and (now - cached[0]) < _FILE_PATH_CACHE_TTL_SECONDS:
+        return cached[1]
+
+    file_path: str | None = None
     for fixture in list_all_fixtures(league, season):
         if str(fixture.get("match_id")) == str(match_id):
-            return str(fixture["file_path"])
-    return None
+            file_path = str(fixture["file_path"])
+            break
+
+    if len(_FILE_PATH_CACHE) >= _FILE_PATH_CACHE_MAX_ITEMS:
+        oldest_key = min(_FILE_PATH_CACHE, key=lambda k: _FILE_PATH_CACHE[k][0])
+        _FILE_PATH_CACHE.pop(oldest_key, None)
+    _FILE_PATH_CACHE[key] = (now, file_path)
+    return file_path
 
 
 def list_fixtures(league: str, season: str, limit: int, offset: int) -> list[dict[str, object]]:
