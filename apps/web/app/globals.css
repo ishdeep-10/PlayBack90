@@ -1333,8 +1333,31 @@ html.dark .metric-chip {
 
 .analysis-main {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   min-width: 0;
+}
+
+/* The In Possession tab contains wide intrinsic content (the metrics table,
+   Plotly canvas, and nested workspace grids). Keep those children from sizing
+   the parent grid track beyond the viewport; the table retains its own scroll. */
+.in-possession-dense-tab,
+.in-possession-dense-tab > *,
+.in-possession-dense-tab .analysis-workspace,
+.in-possession-dense-tab .analysis-workspace-main,
+.in-possession-dense-tab .pass-network-shell,
+.in-possession-dense-tab .pass-network-stage {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.in-possession-dense-tab {
+  width: 100%;
+}
+
+.in-possession-dense-tab .in-possession-table-wrap {
+  width: 100%;
+  contain: inline-size;
 }
 
 .sticky-panel {
