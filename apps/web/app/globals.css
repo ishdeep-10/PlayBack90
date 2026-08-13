@@ -423,6 +423,36 @@ body {
 a { color: inherit; text-decoration: none; }
 h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
 button, input, select { font: inherit; }
+
+/* Keep native form controls consistent across macOS and Windows. Windows
+   otherwise renders an opened select menu using the system light palette even
+   when the surrounding application is dark. */
+select {
+  color-scheme: light;
+}
+
+html.dark select {
+  color-scheme: dark;
+}
+
+html:not(.dark) select option,
+html:not(.dark) select optgroup {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+html.dark select option,
+html.dark select optgroup {
+  background-color: #0f2236;
+  color: #f4f7fb;
+}
+
+/* Analysis buttons are fully custom controls; suppress native Windows bevels
+   so their declared border, background and typography render consistently. */
+.analysis-main button {
+  appearance: none;
+  -webkit-appearance: none;
+}
 img { display: block; max-width: 100%; }
 
 /* ─── Nav ───────────────────────────────────────────────────────────────────── */
@@ -8059,6 +8089,7 @@ html.dark .player-analysis-section select.select optgroup {
 /* ── Third filter select ── */
 .third-select {
   appearance: none;
+  color-scheme: light;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bg-subtle);
@@ -8072,6 +8103,18 @@ html.dark .player-analysis-section select.select optgroup {
   background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%;
   background-size: 5px 5px;
   background-repeat: no-repeat;
+}
+
+html.dark .third-select {
+  color-scheme: dark;
+  background-color: var(--bg-subtle);
+  color: var(--text);
+}
+
+html.dark .third-select option,
+html.dark .third-select optgroup {
+  background-color: var(--panel);
+  color: var(--text);
 }
 
 /* ── PNG export preview modal ── */
