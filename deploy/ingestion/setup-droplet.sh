@@ -51,8 +51,8 @@ tar -xzf "${gecko_tmp}/geckodriver.tar.gz" -C "${gecko_tmp}"
 install -m 0755 "${gecko_tmp}/geckodriver" /usr/local/bin/geckodriver
 
 python3 -m venv "${repo_dir}/.venv-ingestion"
-"${repo_dir}/.venv-ingestion/bin/pip" install --upgrade pip
-"${repo_dir}/.venv-ingestion/bin/pip" install -r "${repo_dir}/deploy/ingestion/requirements.txt"
+"${repo_dir}/.venv-ingestion/bin/pip" install --no-cache-dir --upgrade pip
+"${repo_dir}/.venv-ingestion/bin/pip" install --no-cache-dir -r "${repo_dir}/deploy/ingestion/requirements.txt"
 
 chown -R "${worker_user}:${worker_user}" "${repo_dir}/.venv-ingestion"
 chmod 0755 "${repo_dir}/deploy/ingestion/run-worker.sh"
