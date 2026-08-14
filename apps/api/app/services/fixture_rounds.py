@@ -12,6 +12,7 @@ from app.services import r2
 
 
 MAX_INFERRED_ROUND_SPAN_DAYS = 4
+MAX_ORPHAN_ROUND_MERGE_GAP_DAYS = 7
 ROUND_INDEX_CACHE_SECONDS = 60
 ROUND_MANIFEST_ROOT = Path(__file__).resolve().parents[1] / "data" / "fixture_rounds"
 SAFE_MANIFEST_PATH_PART = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -109,7 +110,11 @@ def _manifest_rounds(
     return sorted(rounds, key=lambda item: (item["order"], item["start_date"]), reverse=True)
 
 
-def infer_fixture_rounds(fixtures: list[dict[str, object]]) -> list[dict[str, Any]]:
+def infer_fixture_rounds(
+    fixtures: list[dict[str, object]],
+    *,
+    merge_orphan_rounds: bool = False,
+) -> list[dict[str, Any]]:
     """Build stable legacy rounds from chronology and unique team participation."""
     chronological = sorted(fixtures, key=lambda item: (_fixture_date(item), str(item.get("match_id", ""))))
     grouped: list[list[dict[str, object]]] = []
@@ -135,6 +140,20 @@ def infer_fixture_rounds(fixtures: list[dict[str, object]]) -> list[dict[str, An
     if current:
         grouped.append(current)
 
+    if merge_orphan_rounds:
+        compacted: list[list[dict[str, object]]] = []
+        for round_fixtures in grouped:
+            if len(round_fixtures) == 1 and compacted:
+                previous = compacted[-1]
+                previous_end = max(_fixture_date(item) for item in previous)
+                orphan_start = _fixture_date(round_fixtures[0])
+                gap_days = (orphan_start - previous_end).days
+                if 0 <= gap_days <= MAX_ORPHAN_ROUND_MERGE_GAP_DAYS:
+                    previous.extend(round_fixtures)
+                    continue
+            compacted.append(round_fixtures)
+        grouped = compacted
+
     rounds = [
         _round_payload(
             round_id=f"round-{index}",
@@ -152,12 +171,14 @@ def infer_fixture_rounds(fixtures: list[dict[str, object]]) -> list[dict[str, An
 def build_fixture_rounds(
     fixtures: list[dict[str, object]],
     manifest: dict[str, Any] | None = None,
+    *,
+    merge_orphan_rounds: bool = False,
 ) -> list[dict[str, Any]]:
     if manifest:
         rounds = _manifest_rounds(fixtures, manifest)
         if rounds:
             return rounds
-    return infer_fixture_rounds(fixtures)
+    return infer_fixture_rounds(fixtures, merge_orphan_rounds=merge_orphan_rounds)
 
 
 def load_bundled_round_manifest(league: str, season: str) -> dict[str, Any] | None:
@@ -183,7 +204,7 @@ def list_fixture_rounds(league: str, season: str) -> list[dict[str, Any]]:
     manifest = load_bundled_round_manifest(league, season)
     if manifest is None:
         manifest = r2.load_round_manifest(league, season)
-    rounds = build_fixture_rounds(fixtures, manifest)
+    rounds = build_fixture_rounds(fixtures, manifest, merge_orphan_rounds=league == "mls")
     with _ROUND_INDEX_CACHE_LOCK:
         _ROUND_INDEX_CACHE[cache_key] = (now, rounds)
     return rounds

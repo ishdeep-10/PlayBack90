@@ -17,7 +17,11 @@ def test_list_leagues():
     response = client.get("/api/leagues")
     assert response.status_code == 200
     leagues = response.json()
-    assert any(item["key"] == "premier-league" for item in leagues)
+    keys = {item["key"] for item in leagues}
+    assert "premier-league" in keys
+    assert "mls" in keys
+    assert "champions-league" not in keys
+    assert "fifa-world-cup" not in keys
 
 
 def test_list_seasons_merges_provider_schedule_seasons(monkeypatch):

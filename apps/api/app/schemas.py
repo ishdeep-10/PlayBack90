@@ -18,7 +18,7 @@ class StandingRow(BaseModel):
     rank: int
     team: str
     provider_team_name: str | None = None
-    provider_team_id: int | None = None
+    provider_team_id: int | str | None = None
     team_short_name: str | None = None
     team_code: str | None = None
     crest: str | None = None
@@ -34,18 +34,26 @@ class StandingRow(BaseModel):
     xg: float | None = None
     xga: float | None = None
     xgd: float | None = None
+    conference: str | None = None
+
+
+class StandingsGroup(BaseModel):
+    id: str
+    label: str
+    rows: list[StandingRow]
 
 
 class StandingsResponse(BaseModel):
     league: str
     season: str
-    source: Literal["football-data", "calculated"]
+    source: Literal["football-data", "official-mls", "calculated"]
     updated_at: datetime
     is_official: bool
     is_stale: bool = False
     is_complete: bool
     warning: str | None = None
     rows: list[StandingRow]
+    groups: list[StandingsGroup] = Field(default_factory=list)
 
 
 class FixtureSummary(BaseModel):
@@ -59,15 +67,19 @@ class FixtureSummary(BaseModel):
     score: str
     fixture_id: str | None = None
     state: Literal["completed", "upcoming", "postponed", "cancelled", "live", "unknown"] | None = None
-    source: Literal["r2", "football-data"] | None = None
+    source: Literal["r2", "football-data", "official-mls"] | None = None
     round: str | None = None
     matchday: int | None = None
     post_match_href: str | None = None
     opposition_href: str | None = None
-    provider_fixture_id: int | None = None
+    provider_fixture_id: int | str | None = None
     provider_status: str | None = None
     home_crest: str | None = None
     away_crest: str | None = None
+    venue_id: str | None = None
+    venue: str | None = None
+    venue_city: str | None = None
+    venue_country: str | None = None
 
 
 class FixtureListResponse(BaseModel):
@@ -107,7 +119,7 @@ class FixtureHubFixture(BaseModel):
     fixture_id: str
     match_id: str
     state: Literal["completed", "upcoming", "postponed", "cancelled", "live", "unknown"]
-    source: Literal["r2", "football-data"]
+    source: Literal["r2", "football-data", "official-mls"]
     league: str
     season: str
     round: str | None = None
@@ -119,12 +131,16 @@ class FixtureHubFixture(BaseModel):
     score: str = ""
     post_match_href: str | None = None
     opposition_href: str | None = None
-    provider_fixture_id: int | None = None
+    provider_fixture_id: int | str | None = None
     provider_status: str | None = None
     provider_home_team: str | None = None
     provider_away_team: str | None = None
     home_crest: str | None = None
     away_crest: str | None = None
+    venue_id: str | None = None
+    venue: str | None = None
+    venue_city: str | None = None
+    venue_country: str | None = None
 
 
 class FixtureHubCounts(BaseModel):
@@ -143,7 +159,7 @@ class FixtureHubResponse(BaseModel):
     state: Literal["all", "completed", "upcoming", "postponed", "cancelled", "live", "unknown"]
     round_id: str | None = None
     selected_round_id: str | None = None
-    source: Literal["r2", "football-data", "hybrid"]
+    source: Literal["r2", "football-data", "official-mls", "hybrid"]
     updated_at: datetime | None = None
     is_stale: bool = False
     warning: str | None = None

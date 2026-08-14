@@ -6,6 +6,7 @@ import { MatchdayExplorer } from "../../../../components/MatchdayExplorer";
 import { FixturesLeagueTable } from "../../../../components/FixturesLeagueTable";
 import { RoundNavigator } from "../../../../components/RoundNavigator";
 import { getFixtureHub, getLeagueTable, getSeasons } from "../../../../lib/api";
+import { leaguePresentation } from "../../../../lib/leagues";
 import { getServerAuthToken } from "../../../../lib/serverAuth";
 
 type PageProps = {
@@ -13,28 +14,9 @@ type PageProps = {
   searchParams: Promise<{ round?: string; state?: string }>;
 };
 
-const LEAGUE_NAMES: Record<string, string> = {
-  "premier-league": "Premier League",
-  laliga: "La Liga",
-  bundesliga: "Bundesliga",
-  "serie-a": "Serie A",
-  "ligue-1": "Ligue 1",
-  "champions-league": "Champions League",
-  "fifa-world-cup": "FIFA World Cup",
-};
-
-const LEAGUE_LOGOS: Record<string, string> = {
-  "premier-league": "/logos/premier-league.png",
-  laliga: "/logos/laliga.png",
-  bundesliga: "/logos/bundesliga.png",
-  "serie-a": "/logos/serie-a.png",
-  "ligue-1": "/logos/ligue-1.png",
-  "champions-league": "/logos/ucl.png",
-};
-
 function formatLeagueName(league: string) {
   return (
-    LEAGUE_NAMES[league] ??
+    leaguePresentation(league)?.name ??
     league
       .split("-")
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -154,7 +136,7 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
   const standingsResult = await Promise.allSettled([getLeagueTable(league, season, authToken)]);
   const standings = standingsResult[0].status === "fulfilled" ? standingsResult[0].value : null;
 
-  const logo = LEAGUE_LOGOS[league];
+  const logo = leaguePresentation(league)?.logo;
   const roundDateRange = formatRoundDateRange(
     selectedRound.start_date,
     selectedRound.end_date,

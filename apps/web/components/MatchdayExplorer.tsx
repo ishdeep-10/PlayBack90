@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { FixtureHubFixture } from "../lib/api";
-import { findStadium, teamCode, teamLogo } from "../lib/stadiums";
+import { findStadium, LEAGUE_MAPS, teamCode, teamLogo } from "../lib/stadiums";
 import { CountryFixturesMap } from "./CountryFixturesMap";
 
 type Props = {
@@ -123,6 +123,7 @@ export function MatchdayExplorer({ league, season, fixtures, roundLabel, roundSt
 
   const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Open fullscreen";
   const FullscreenIcon = isFullscreen ? Minimize2 : Maximize2;
+  const hasFixtureMap = Boolean(LEAGUE_MAPS[league]);
   const selectFixture = useCallback((fixtureId: string) => {
     setSelectedFixtureId(fixtureId);
     setHoverFixtureId(null);
@@ -133,7 +134,7 @@ export function MatchdayExplorer({ league, season, fixtures, roundLabel, roundSt
   return (
     <section
       ref={explorerRef}
-      className={isFullscreen ? "matchday-explorer is-fullscreen" : "matchday-explorer"}
+      className={`${isFullscreen ? "matchday-explorer is-fullscreen" : "matchday-explorer"}${hasFixtureMap ? "" : " is-list-only"}`}
       aria-label={`${roundLabel} matchday explorer`}
     >
       <CountryFixturesMap

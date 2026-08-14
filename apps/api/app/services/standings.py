@@ -24,6 +24,8 @@ TOP_FIVE_COMPETITION_CODES = {
     "serie-a": "SA",
     "ligue-1": "FL1",
 }
+MLS_COMPETITION_ID = "MLS-COM-000001"
+OFFICIAL_STANDINGS_LEAGUES = {*TOP_FIVE_COMPETITION_CODES, "mls"}
 
 _TEAM_ALIASES = {
     "athletic club": "atletic club",
@@ -35,6 +37,7 @@ _TEAM_ALIASES = {
     "manchester city": "man city",
     "manchester united": "man utd",
     "newcastle united": "newcastle",
+    "new york city football club": "new york city",
     "paris saint germain": "psg",
     "rcd espanyol de barcelona": "espanyol",
     "espanyol de barcelona": "espanyol",
@@ -171,6 +174,128 @@ class FootballDataStandingsProvider:
         return rows
 
 
+class OfficialMlsStandingsProvider:
+    def __init__(
+        self,
+        *,
+        base_url: str = "https://stats-api.mlssoccer.com",
+        timeout_seconds: float = 15.0,
+        session: requests.Session | None = None,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.timeout_seconds = timeout_seconds
+        self.session = session or requests.Session()
+        self._season_ids: dict[int, str] = {}
+
+    def _season_id(self, season_year: int) -> str:
+        cached = self._season_ids.get(season_year)
+        if cached:
+            return cached
+        try:
+            response = self.session.get(
+                f"{self.base_url}/competitions/{MLS_COMPETITION_ID}/seasons",
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise StandingsProviderError("The official MLS seasons request failed.") from exc
+
+        seasons = payload.get("seasons", []) if isinstance(payload, dict) else []
+        match = next(
+            (
+                item for item in seasons
+                if isinstance(item, dict)
+                and item.get("season") == season_year
+                and item.get("season_id")
+            ),
+            None,
+        )
+        if not match:
+            raise StandingsProviderError(
+                f"The official MLS feed has no season metadata for {season_year}."
+            )
+        season_id = str(match["season_id"])
+        self._season_ids[season_year] = season_id
+        return season_id
+
+    def fetch(self, league: str, season: str) -> list[dict[str, Any]]:
+        if league != "mls":
+            raise StandingsProviderError("The official MLS standings provider only supports MLS.")
+        season_id = self._season_id(provider_season_year(season))
+        try:
+            response = self.session.get(
+                (
+                    f"{self.base_url}/competitions/{MLS_COMPETITION_ID}"
+                    f"/seasons/{season_id}/standings"
+                ),
+                params={"category": "conference"},
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise StandingsProviderError("The official MLS standings request failed.") from exc
+
+        tables = payload.get("tables", []) if isinstance(payload, dict) else []
+        rows: list[dict[str, Any]] = []
+        for table in tables:
+            if not isinstance(table, dict) or table.get("category") != "conference":
+                continue
+            conference = str(table.get("group", "")).strip().title()
+            entries = table.get("entries", [])
+            if not conference or not isinstance(entries, list):
+                continue
+            for item in entries:
+                if not isinstance(item, dict):
+                    continue
+                team_name = str(item.get("team") or item.get("club") or "Unknown")
+                rows.append(
+                    {
+                        "rank": int(item.get("position", 0)),
+                        "team": team_name,
+                        "provider_team_name": team_name,
+                        "provider_team_id": item.get("team_id") or item.get("club_id"),
+                        "team_short_name": item.get("team_short_name"),
+                        "team_code": item.get("team_three_letter_code"),
+                        "crest": None,
+                        "played": int(item.get("games_played", 0)),
+                        "won": int(item.get("wins", 0)),
+                        "drawn": int(item.get("draws", 0)),
+                        "lost": int(item.get("losses", 0)),
+                        "gf": int(item.get("goals_scored", 0)),
+                        "ga": int(item.get("goals_against", 0)),
+                        "gd": int(item.get("goals_difference", 0)),
+                        "pts": int(item.get("points", 0)),
+                        "form": None,
+                        "xg": None,
+                        "xga": None,
+                        "xgd": None,
+                        "conference": conference,
+                    }
+                )
+        if not rows:
+            raise StandingsProviderError("The official MLS standings feed returned no conference tables.")
+        return rows
+
+
+class StandingsProviderRouter:
+    def __init__(
+        self,
+        football_data: FootballDataStandingsProvider | None,
+        official_mls: OfficialMlsStandingsProvider,
+    ) -> None:
+        self.football_data = football_data
+        self.official_mls = official_mls
+
+    def fetch(self, league: str, season: str) -> list[dict[str, Any]]:
+        if league == "mls":
+            return self.official_mls.fetch(league, season)
+        if self.football_data is None:
+            raise StandingsProviderError("The official standings provider is not configured.")
+        return self.football_data.fetch(league, season)
+
+
 @dataclass
 class _CacheEntry:
     rows: list[dict[str, Any]]
@@ -181,7 +306,7 @@ class _CacheEntry:
 class StandingsService:
     def __init__(
         self,
-        provider: FootballDataStandingsProvider | None,
+        provider: Any | None,
         *,
         cache_ttl_seconds: int = 600,
         stale_ttl_seconds: int = 86_400,
@@ -224,14 +349,28 @@ class StandingsService:
         local_rows: list[dict[str, Any]],
     ) -> dict[str, Any]:
         provider_error: StandingsProviderError | None = None
-        if league in TOP_FIVE_COMPETITION_CODES:
+        if league in OFFICIAL_STANDINGS_LEAGUES:
             try:
                 rows, updated_at, is_stale = self._official_rows(league, season)
                 rows = merge_local_analytics(rows, local_rows)
+                groups = []
+                if league == "mls":
+                    for conference in ("Eastern Conference", "Western Conference"):
+                        conference_rows = [
+                            row for row in rows if row.get("conference") == conference
+                        ]
+                        if conference_rows:
+                            groups.append(
+                                {
+                                    "id": conference.lower().replace(" ", "-"),
+                                    "label": conference,
+                                    "rows": conference_rows,
+                                }
+                            )
                 return {
                     "league": league,
                     "season": season,
-                    "source": "football-data",
+                    "source": "official-mls" if league == "mls" else "football-data",
                     "updated_at": updated_at,
                     "is_official": True,
                     "is_stale": is_stale,
@@ -241,6 +380,7 @@ class StandingsService:
                         if is_stale else None
                     ),
                     "rows": rows,
+                    "groups": groups,
                 }
             except StandingsProviderError as exc:
                 provider_error = exc
@@ -252,8 +392,11 @@ class StandingsService:
 
         warning = (
             "Official standings are temporarily unavailable. Showing a table calculated from available match data, which may be incomplete."
-            if league in TOP_FIVE_COMPETITION_CODES
-            else "Official standings are currently available only for the top five European leagues."
+            if league in OFFICIAL_STANDINGS_LEAGUES
+            else (
+                "Showing a table calculated only from completed PlayBack90 matches; "
+                "official league standings and conference qualification are not yet integrated."
+            )
         )
         return {
             "league": league,
@@ -265,6 +408,7 @@ class StandingsService:
             "is_complete": False,
             "warning": warning,
             "rows": local_rows,
+            "groups": [],
         }
 
 
@@ -287,7 +431,7 @@ def merge_local_analytics(
     return merged
 
 
-_provider = (
+_football_data_provider = (
     FootballDataStandingsProvider(
         settings.football_data_api_key,
         base_url=settings.football_data_base_url,
@@ -296,6 +440,13 @@ _provider = (
     )
     if settings.football_data_api_key
     else None
+)
+_provider = StandingsProviderRouter(
+    _football_data_provider,
+    OfficialMlsStandingsProvider(
+        base_url=settings.official_mls_schedule_base_url,
+        timeout_seconds=settings.official_mls_schedule_timeout_seconds,
+    ),
 )
 standings_service = StandingsService(
     _provider,

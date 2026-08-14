@@ -11,6 +11,7 @@ import {
   type StandingsResponse,
 } from "../../lib/api";
 import { getServerAuthToken } from "../../lib/serverAuth";
+import { teamLogo } from "../../lib/stadiums";
 
 
 type PageProps = {
@@ -196,11 +197,11 @@ export default async function SeasonStatsPage({ searchParams }: PageProps) {
             <h2 style={{ margin: 0 }}>{leagues.find((l) => l.key === league)?.name} — {activeSeason.replace("_", "/")} Standings</h2>
             {standingsMeta && (
               <span className={`standings-source${standingsMeta.is_official ? " is-official" : ""}`}>
-                {standingsMeta.is_stale
-                  ? "Official · cached"
-                  : standingsMeta.is_official
-                    ? "Official"
-                    : "Calculated"}
+                {standingsMeta.is_official
+                  ? standingsMeta.is_stale
+                    ? "Official · cached"
+                    : "Official"
+                  : "Calculated · completed matches"}
               </span>
             )}
           </div>
@@ -224,14 +225,15 @@ export default async function SeasonStatsPage({ searchParams }: PageProps) {
                 <tbody>
                   {tableRows.map((row) => {
                     const xgd = Number(row.xgd ?? 0);
+                    const crest = row.crest || teamLogo(String(row.team));
                     return (
                       <tr key={String(row.team)}>
                         <td style={{ color: "var(--muted)" }}>{row.rank}</td>
                         <td>
                           <span className="standings-team">
-                            {row.crest && (
+                            {crest && (
                               <Image
-                                src={row.crest}
+                                src={crest}
                                 alt=""
                                 width={24}
                                 height={24}

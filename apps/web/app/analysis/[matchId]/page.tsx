@@ -25,6 +25,7 @@ import { ShareExportProvider } from "../../../components/ShareExportContext";
 import { TeamFormStrip } from "../../../components/TeamFormStrip";
 import { TeamSeasonContextPanel } from "../../../components/season/TeamSeasonContextPanel";
 import type { SeasonBaselinePayload } from "../../../components/season/baselineTypes";
+import { teamLogo } from "../../../lib/stadiums";
 
 
 type PageProps = {
@@ -160,7 +161,8 @@ function normalizeLeagueKey(league?: string | null) {
 function teamLogoUrl(league: string | null | undefined, teamName: string) {
   const leagueKey = normalizeLeagueKey(league);
   const folder = LOGO_LEAGUE_FOLDERS[leagueKey];
-  if (!folder || !teamName) return null;
+  if (!teamName) return null;
+  if (!folder) return teamLogo(teamName);
 
   const logoTeamName = TEAM_LOGO_NAMES[leagueKey]?.[teamName] ?? teamName;
   return `https://raw.githubusercontent.com/luukhopman/football-logos/master/logos/${encodeURIComponent(folder)}/${encodeURIComponent(logoTeamName)}.png`;

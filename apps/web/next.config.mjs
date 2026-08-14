@@ -26,6 +26,16 @@ const nextConfig = {
         hostname: "crests.football-data.org",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "media.api-sports.io",
+        pathname: "/football/teams/**",
+      },
+      {
+        protocol: "https",
+        hostname: "a.espncdn.com",
+        pathname: "/i/teamlogos/soccer/**",
+      },
     ],
   },
 };

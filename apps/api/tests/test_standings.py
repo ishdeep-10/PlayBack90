@@ -6,6 +6,7 @@ import app.main as main_module
 from app.main import app
 from app.services.standings import (
     FootballDataStandingsProvider,
+    OfficialMlsStandingsProvider,
     StandingsProviderError,
     StandingsService,
     merge_local_analytics,
@@ -90,6 +91,103 @@ def test_provider_converts_app_season_and_normalizes_total_table():
     assert rows[0]["team"] == "Manchester City FC"
     assert rows[0]["drawn"] == 1
     assert rows[0]["pts"] == 10
+
+
+def test_mls_provider_returns_separate_official_conference_rows():
+    class JsonResponse:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self.payload
+
+    class MlsSession:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            if url.endswith("/seasons"):
+                return JsonResponse(
+                    {"seasons": [{"season": 2026, "season_id": "MLS-SEA-2026"}]}
+                )
+            return JsonResponse(
+                {
+                    "tables": [
+                        {
+                            "category": "conference",
+                            "group": "EASTERN CONFERENCE",
+                            "entries": [
+                                {
+                                    "position": 1,
+                                    "team": "Nashville SC",
+                                    "team_id": "MLS-CLU-NSH",
+                                    "team_three_letter_code": "NSH",
+                                    "games_played": 18,
+                                    "wins": 12,
+                                    "draws": 4,
+                                    "losses": 2,
+                                    "goals_scored": 35,
+                                    "goals_against": 14,
+                                    "goals_difference": 21,
+                                    "points": 40,
+                                }
+                            ],
+                        },
+                        {
+                            "category": "conference",
+                            "group": "WESTERN CONFERENCE",
+                            "entries": [
+                                {
+                                    "position": 1,
+                                    "team": "Vancouver Whitecaps FC",
+                                    "team_id": "MLS-CLU-VAN",
+                                    "team_three_letter_code": "VAN",
+                                    "games_played": 17,
+                                    "wins": 10,
+                                    "draws": 4,
+                                    "losses": 3,
+                                    "goals_scored": 38,
+                                    "goals_against": 17,
+                                    "goals_difference": 21,
+                                    "points": 34,
+                                }
+                            ],
+                        },
+                    ]
+                }
+            )
+
+    session = MlsSession()
+    rows = OfficialMlsStandingsProvider(session=session).fetch("mls", "2026")
+
+    assert [row["conference"] for row in rows] == [
+        "Eastern Conference",
+        "Western Conference",
+    ]
+    assert rows[0]["provider_team_id"] == "MLS-CLU-NSH"
+    assert session.calls[1][1]["params"] == {"category": "conference"}
+
+
+def test_mls_service_builds_two_conference_groups():
+    provider = FakeProvider(
+        [
+            {"rank": 1, "team": "Nashville SC", "provider_team_name": "Nashville SC", "conference": "Eastern Conference"},
+            {"rank": 1, "team": "Vancouver Whitecaps FC", "provider_team_name": "Vancouver Whitecaps FC", "conference": "Western Conference"},
+        ]
+    )
+
+    payload = StandingsService(provider).build_payload("mls", "2026", [])
+
+    assert payload["source"] == "official-mls"
+    assert [group["label"] for group in payload["groups"]] == [
+        "Eastern Conference",
+        "Western Conference",
+    ]
+    assert payload["groups"][0]["rows"][0]["rank"] == 1
 
 
 def test_local_team_name_and_analytics_are_merged_into_official_rows():

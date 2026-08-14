@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     standings_cache_ttl_seconds: int = 600
     standings_stale_ttl_seconds: int = 86_400
 
+    official_mls_schedule_base_url: str = "https://stats-api.mlssoccer.com"
+    official_mls_schedule_timeout_seconds: float = 15.0
+
     api_sports_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("X_APISPORTS_KEY", "API_SPORTS_KEY", "x-apisports-key"),

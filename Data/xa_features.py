@@ -343,6 +343,20 @@ def build_pass_feature_table(events: pd.DataFrame) -> pd.DataFrame:
     if passes.empty:
         return pd.DataFrame()
 
+    # Backfilled parquet files may already contain these derived audit fields.
+    # They are recomputed below; retaining them would make the shot-link merge
+    # create _x/_y columns and break resumable/idempotent backfills.
+    passes = passes.drop(
+        columns=[
+            "xa_target_event_id",
+            "xa_target_xg",
+            "xa_target_is_goal",
+            "xa_target_type",
+            "xa_link_method",
+        ],
+        errors="ignore",
+    )
+
     passes["_xa_qualifier_text"] = passes.apply(_qualifier_text, axis=1)
 
     for column in ("x", "y", "endX", "endY", "minute", "second", "expandedMinute"):

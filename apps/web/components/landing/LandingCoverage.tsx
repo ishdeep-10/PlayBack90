@@ -20,9 +20,9 @@ export function LandingCoverage({
   return (
     <div id="league-coverage" className="landing-coverage-band">
       <header className="coverage-heading">
-        <span className="coverage-heading-kicker">Pick your league</span>
-        <h2>Five leagues. Every match, analysed.</h2>
-        <p>Select a country or a league crest to open its latest matches.</p>
+        <span className="coverage-heading-kicker">Explore coverage</span>
+        <h2>From the world to the match.</h2>
+        <p>Spin the globe, choose a continent, then open a league.</p>
       </header>
       <LeagueCoverageMap leagues={leagues} />
     </div>

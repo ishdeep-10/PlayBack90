@@ -6,6 +6,7 @@ import { OppositionLineupVisual } from "../../components/OppositionLineupVisual"
 import { OppositionBuildUpTemperamentPitch, OppositionInPossessionPitchPlotly, OppositionRecentFormPlotly, OppositionStyleRadarPlotly } from "../../components/OppositionOverviewCharts";
 import { getOppositionDossier, type OppositionDossier, type OppositionMetricRow } from "../../lib/api";
 import { getServerAuthToken } from "../../lib/serverAuth";
+import { teamLogo } from "../../lib/stadiums";
 
 type PageProps = {
   searchParams: Promise<{
@@ -108,7 +109,8 @@ function normalizeLeagueKey(league?: string | null) {
 function teamLogoUrl(league: string | null | undefined, teamName?: string | null) {
   const leagueKey = normalizeLeagueKey(league);
   const folder = LOGO_LEAGUE_FOLDERS[leagueKey];
-  if (!folder || !teamName) return null;
+  if (!teamName) return null;
+  if (!folder) return teamLogo(teamName);
 
   const logoTeamName = TEAM_LOGO_NAMES[leagueKey]?.[teamName] ?? teamName;
   return `https://raw.githubusercontent.com/luukhopman/football-logos/master/logos/${encodeURIComponent(folder)}/${encodeURIComponent(logoTeamName)}.png`;

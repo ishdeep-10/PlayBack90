@@ -150,7 +150,14 @@ def _compare_file(key: str, version: str) -> tuple[pd.DataFrame, dict]:
             "xgot_zero_value",
             "xgot_training_eligible",
         ]
-    ].rename(columns={"xGOT": "new_xGOT"})
+    ].drop_duplicates(subset=key_cols, keep="first").rename(columns={"xGOT": "new_xGOT"})
+    # Backfilled files already contain xGOT debug columns. Drop those old
+    # copies so the comparison always reports freshly predicted flags without
+    # pandas adding ambiguous _x/_y suffixes.
+    old = old.drop(
+        columns=[column for column in prediction_cols.columns if column in old.columns and column not in key_cols],
+        errors="ignore",
+    )
     merged = old.merge(
         prediction_cols,
         on=key_cols,

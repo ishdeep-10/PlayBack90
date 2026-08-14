@@ -38,6 +38,17 @@ def test_parse_fixture_filename_extracts_metadata():
     assert result["score"] == "2-2"
 
 
+def test_parse_mls_fixture_filename_resolves_pilot_team_ids():
+    result = parse_fixture_filename(
+        "bucket/event_data/mls/2026/2026-02-21_1952608_24949_vs_26666_2___0.parquet"
+    )
+
+    assert result is not None
+    assert result["home_team"] == "FC Cincinnati"
+    assert result["away_team"] == "Atlanta United"
+    assert result["score"] == "2-0"
+
+
 def test_infer_fixture_rounds_keeps_each_team_to_one_match_per_round():
     fixtures = [
         _fixture("1", "2025-08-09", "Alpha", "Bravo"),
@@ -51,6 +62,22 @@ def test_infer_fixture_rounds_keeps_each_team_to_one_match_per_round():
     assert [item["id"] for item in rounds] == ["round-2", "round-1"]
     assert [item["match_count"] for item in rounds] == [2, 2]
     assert all(item["metadata_source"] == "inferred" for item in rounds)
+
+
+def test_mls_round_inference_merges_a_nearby_single_match_orphan():
+    fixtures = [
+        _fixture(str(index), "2026-08-01", f"Home {index}", f"Away {index}")
+        for index in range(1, 16)
+    ]
+    fixtures.append(_fixture("16", "2026-08-08", "Home 1", "Away 2"))
+
+    default_rounds = fixture_rounds.build_fixture_rounds(fixtures)
+    mls_rounds = fixture_rounds.build_fixture_rounds(fixtures, merge_orphan_rounds=True)
+
+    assert [item["match_count"] for item in default_rounds] == [1, 15]
+    assert [item["match_count"] for item in mls_rounds] == [16]
+    assert mls_rounds[0]["start_date"].isoformat() == "2026-08-01"
+    assert mls_rounds[0]["end_date"].isoformat() == "2026-08-08"
 
 
 def test_complete_manifest_provides_authoritative_round_labels():

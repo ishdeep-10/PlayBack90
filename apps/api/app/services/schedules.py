@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from threading import Lock
 from time import monotonic
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 import certifi
 import requests
@@ -35,9 +35,28 @@ _PROVIDER_STATUS_TO_STATE: dict[str, FixtureState] = {
     "PAUSED": "live",
 }
 
+_MLS_STATUS_TO_PROVIDER_STATUS = {
+    "finalwhistle": "FINISHED",
+    "scheduled": "SCHEDULED",
+    "postponed": "POSTPONED",
+    "cancelled": "CANCELLED",
+    "canceled": "CANCELLED",
+    "suspended": "SUSPENDED",
+    "inprogress": "IN_PLAY",
+    "firsthalf": "IN_PLAY",
+    "halftime": "PAUSED",
+    "secondhalf": "IN_PLAY",
+}
+
+MLS_COMPETITION_ID = "MLS-COM-000001"
+
 
 class ScheduleProviderError(RuntimeError):
     pass
+
+
+class ScheduleProvider(Protocol):
+    def fetch(self, league: str, season: str) -> list[dict[str, Any]]: ...
 
 
 def current_provider_season_key(now: datetime | None = None) -> str:
@@ -47,6 +66,8 @@ def current_provider_season_key(now: datetime | None = None) -> str:
 
 
 def provider_season_keys(league: str) -> list[str]:
+    if league == "mls":
+        return [str(datetime.now(timezone.utc).year)]
     if league not in TOP_FIVE_COMPETITION_CODES or not settings.football_data_api_key:
         return []
     return [current_provider_season_key()]
@@ -127,7 +148,15 @@ def _has_team_conflict(fixtures: list[dict[str, Any]]) -> bool:
     return False
 
 
-def _build_hub_rounds(fixtures: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _build_hub_rounds(fixtures: list[dict[str, Any]], *, league: str | None = None) -> list[dict[str, Any]]:
+    if league == "mls":
+        completed = [fixture for fixture in fixtures if fixture.get("state") == "completed"]
+        remaining = [fixture for fixture in fixtures if fixture.get("state") != "completed"]
+        completed_rounds = build_fixture_rounds(completed, merge_orphan_rounds=True) if completed else []
+        remaining_rounds = _build_hub_rounds(remaining) if remaining else []
+        remaining_rounds.sort(key=lambda item: (item["start_date"], item["end_date"]), reverse=True)
+        return remaining_rounds + completed_rounds
+
     matchday_groups: dict[int, list[dict[str, Any]]] = {}
     for fixture in fixtures:
         matchday = fixture.get("matchday")
@@ -148,7 +177,7 @@ def _build_hub_rounds(fixtures: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 part = part_count - index + 1
                 rounds.append(_round_summary_from_fixtures(matchday, split_round["fixtures"], part=part))
         return rounds
-    return build_fixture_rounds(fixtures)
+    return build_fixture_rounds(fixtures, merge_orphan_rounds=league == "mls")
 
 
 def _opposition_href(
@@ -216,6 +245,110 @@ class FootballDataScheduleProvider:
         return matches
 
 
+class OfficialMlsScheduleProvider:
+    def __init__(
+        self,
+        *,
+        base_url: str = "https://stats-api.mlssoccer.com",
+        timeout_seconds: float = 15.0,
+        session: requests.Session | None = None,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.timeout_seconds = timeout_seconds
+        self.session = session or requests.Session()
+        self._season_ids: dict[int, str] = {}
+
+    def _season_id(self, season_year: int) -> str:
+        cached = self._season_ids.get(season_year)
+        if cached:
+            return cached
+        try:
+            response = self.session.get(
+                f"{self.base_url}/competitions/{MLS_COMPETITION_ID}/seasons",
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise ScheduleProviderError("The official MLS seasons request failed.") from exc
+        seasons = payload.get("seasons", []) if isinstance(payload, dict) else []
+        match = next(
+            (
+                item for item in seasons
+                if isinstance(item, dict) and item.get("season") == season_year and item.get("season_id")
+            ),
+            None,
+        )
+        if not match:
+            raise ScheduleProviderError(f"The official MLS feed has no season metadata for {season_year}.")
+        season_id = str(match["season_id"])
+        self._season_ids[season_year] = season_id
+        return season_id
+
+    def fetch(self, league: str, season: str) -> list[dict[str, Any]]:
+        if league != "mls":
+            raise ScheduleProviderError("The official MLS schedule provider only supports MLS.")
+        season_year = provider_season_year(season)
+        season_id = self._season_id(season_year)
+        base_params: dict[str, Any] = {
+            "match_date[gte]": f"{season_year}-01-01",
+            "match_date[lte]": f"{season_year}-12-31",
+            "competition_id": MLS_COMPETITION_ID,
+            "per_page": 1000,
+            "sort": "planned_kickoff_time:asc,home_team_name:asc",
+        }
+        matches: list[dict[str, Any]] = []
+        page_token: str | None = None
+        seen_tokens: set[str] = set()
+        for _ in range(10):
+            params = dict(base_params)
+            if page_token:
+                params["page_token"] = page_token
+            try:
+                response = self.session.get(
+                    f"{self.base_url}/matches/seasons/{season_id}",
+                    params=params,
+                    timeout=self.timeout_seconds,
+                )
+                response.raise_for_status()
+                payload = response.json()
+            except (requests.RequestException, ValueError) as exc:
+                raise ScheduleProviderError("The official MLS schedule request failed.") from exc
+            rows = payload.get("schedule", []) if isinstance(payload, dict) else []
+            if not isinstance(rows, list):
+                raise ScheduleProviderError("The official MLS schedule returned an invalid payload.")
+            matches.extend({**row, "_provider": "official-mls"} for row in rows if isinstance(row, dict))
+            next_token = payload.get("next_page_token") if isinstance(payload, dict) else None
+            if not next_token:
+                break
+            page_token = str(next_token)
+            if page_token in seen_tokens:
+                raise ScheduleProviderError("The official MLS schedule pagination repeated a page token.")
+            seen_tokens.add(page_token)
+        else:
+            raise ScheduleProviderError("The official MLS schedule exceeded the pagination limit.")
+        if not matches:
+            raise ScheduleProviderError("The official MLS schedule returned no matches.")
+        return matches
+
+
+class ScheduleProviderRouter:
+    def __init__(
+        self,
+        football_data: FootballDataScheduleProvider | None,
+        official_mls: OfficialMlsScheduleProvider,
+    ) -> None:
+        self.football_data = football_data
+        self.official_mls = official_mls
+
+    def fetch(self, league: str, season: str) -> list[dict[str, Any]]:
+        if league == "mls":
+            return self.official_mls.fetch(league, season)
+        if self.football_data is None:
+            raise ScheduleProviderError("The official schedule provider is not configured.")
+        return self.football_data.fetch(league, season)
+
+
 @dataclass
 class _ScheduleCacheEntry:
     fixtures: list[dict[str, Any]]
@@ -226,7 +359,7 @@ class _ScheduleCacheEntry:
 class ScheduleService:
     def __init__(
         self,
-        provider: FootballDataScheduleProvider | None,
+        provider: ScheduleProvider | None,
         *,
         cache_ttl_seconds: int = 21_600,
         stale_ttl_seconds: int = 86_400,
@@ -324,30 +457,47 @@ class ScheduleService:
         season: str,
         local_names: list[str],
     ) -> dict[str, Any]:
-        utc_date_raw = str(match.get("utcDate") or "")
+        is_official_mls = match.get("_provider") == "official-mls"
+        utc_date_raw = str(match.get("planned_kickoff_time") if is_official_mls else match.get("utcDate") or "")
         try:
             start_date = datetime.fromisoformat(utc_date_raw.replace("Z", "+00:00"))
         except ValueError:
             start_date = datetime.now(timezone.utc)
 
-        provider_home = _provider_team_name(match.get("homeTeam") or {})
-        provider_away = _provider_team_name(match.get("awayTeam") or {})
-        home_team_raw = match.get("homeTeam") or {}
-        away_team_raw = match.get("awayTeam") or {}
+        home_team_raw = (
+            {"name": match.get("home_team_name"), "tla": match.get("home_team_three_letter_code")}
+            if is_official_mls else match.get("homeTeam") or {}
+        )
+        away_team_raw = (
+            {"name": match.get("away_team_name"), "tla": match.get("away_team_three_letter_code")}
+            if is_official_mls else match.get("awayTeam") or {}
+        )
+        provider_home = _provider_team_name(home_team_raw)
+        provider_away = _provider_team_name(away_team_raw)
         home_team = _match_local_team(provider_home, local_names) or provider_home
         away_team = _match_local_team(provider_away, local_names) or provider_away
-        status = str(match.get("status") or "UNKNOWN").upper()
+        status = (
+            _MLS_STATUS_TO_PROVIDER_STATUS.get(str(match.get("match_status") or "").replace("_", "").casefold(), "UNKNOWN")
+            if is_official_mls else str(match.get("status") or "UNKNOWN").upper()
+        )
         state = _PROVIDER_STATUS_TO_STATE.get(status, "unknown")
-        fixture_id = f"fd-{match.get('id')}"
+        provider_fixture_id = match.get("match_id") if is_official_mls else match.get("id")
+        fixture_source = "official-mls" if is_official_mls else "football-data"
+        fixture_id = f"mls-{provider_fixture_id}" if is_official_mls else f"fd-{provider_fixture_id}"
+        score = (
+            str(match.get("result") or "").replace(":", "-") if state == "completed" and is_official_mls
+            else _score_label(match)
+        )
+        matchday = match.get("match_day") if is_official_mls else match.get("matchday")
         return {
             "fixture_id": fixture_id,
             "match_id": fixture_id,
             "state": state,
-            "source": "football-data",
+            "source": fixture_source,
             "league": league,
             "season": season,
-            "round": f"matchday-{match.get('matchday')}" if match.get("matchday") else None,
-            "matchday": match.get("matchday"),
+            "round": f"matchday-{matchday}" if matchday else None,
+            "matchday": matchday,
             "start_date": start_date,
             "start_date_label": _date_label(start_date),
             "home_team": home_team,
@@ -356,9 +506,13 @@ class ScheduleService:
             "provider_away_team": provider_away,
             "home_crest": home_team_raw.get("crest"),
             "away_crest": away_team_raw.get("crest"),
-            "provider_fixture_id": match.get("id"),
+            "provider_fixture_id": provider_fixture_id,
             "provider_status": status,
-            "score": _score_label(match),
+            "score": score,
+            "venue_id": match.get("stadium_id") if is_official_mls else None,
+            "venue": match.get("stadium_name") if is_official_mls else None,
+            "venue_city": match.get("stadium_city") if is_official_mls else None,
+            "venue_country": match.get("stadium_country") if is_official_mls else None,
             "post_match_href": None,
             "opposition_href": _opposition_href(
                 league=league,
@@ -375,8 +529,12 @@ class ScheduleService:
         season: str,
         completed: list[dict[str, Any]],
     ) -> tuple[list[dict[str, Any]], datetime | None, bool, str | None]:
-        if self.provider is None or league not in TOP_FIVE_COMPETITION_CODES:
-            return [], None, False, "Official schedules are available only for configured top-five leagues."
+        if self.provider is None:
+            return [], None, False, "The official schedule provider is not configured."
+        if league not in TOP_FIVE_COMPETITION_CODES and league != "mls":
+            return [], None, False, (
+                "Official future fixtures are not configured for this league."
+            )
 
         key = (league, season)
         now = monotonic()
@@ -464,11 +622,27 @@ class ScheduleService:
     ) -> list[dict[str, Any]]:
         completed_normalized = [self._completed_fixture(fixture, league=league, season=season) for fixture in completed]
         completed_by_identity = {_fixture_identity(fixture): fixture for fixture in completed_normalized}
+        completed_by_teams: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for fixture in completed_normalized:
+            teams = (str(fixture.get("home_team") or "").casefold(), str(fixture.get("away_team") or "").casefold())
+            completed_by_teams.setdefault(teams, []).append(fixture)
         merged = list(completed_normalized)
         for fixture in provider:
             identity = _fixture_identity(fixture)
-            if identity in completed_by_identity:
-                completed_by_identity[identity].update(
+            completed_match = completed_by_identity.get(identity)
+            if completed_match is None and league == "mls":
+                teams = (str(fixture.get("home_team") or "").casefold(), str(fixture.get("away_team") or "").casefold())
+                nearby = [
+                    candidate for candidate in completed_by_teams.get(teams, [])
+                    if abs((_fixture_date(candidate) - _fixture_date(fixture)).days) <= 1
+                ]
+                if nearby:
+                    completed_match = min(
+                        nearby,
+                        key=lambda candidate: abs((_fixture_date(candidate) - _fixture_date(fixture)).days),
+                    )
+            if completed_match is not None:
+                completed_match.update(
                     {
                         "round": fixture.get("round"),
                         "matchday": fixture.get("matchday"),
@@ -478,6 +652,10 @@ class ScheduleService:
                         "away_crest": fixture.get("away_crest"),
                         "provider_fixture_id": fixture.get("provider_fixture_id"),
                         "provider_status": fixture.get("provider_status"),
+                        "venue_id": fixture.get("venue_id"),
+                        "venue": fixture.get("venue"),
+                        "venue_city": fixture.get("venue_city"),
+                        "venue_country": fixture.get("venue_country"),
                     }
                 )
                 continue
@@ -488,13 +666,17 @@ class ScheduleService:
         completed = r2.list_all_fixtures(league, season)
         provider, updated_at, is_stale, warning = self._provider_fixtures(league, season, completed)
         fixtures = self._merge_fixtures(completed, provider, league=league, season=season)
-        rounds = _build_hub_rounds(fixtures)
+        rounds = _build_hub_rounds(fixtures, league=league)
         if round_id:
             selected_round = next((round_item for round_item in rounds if round_item["id"] == round_id), None)
             if selected_round is None:
                 selected_round = next((round_item for round_item in reversed(rounds) if str(round_item["id"]).startswith(f"{round_id}-")), None)
         else:
-            selected_round = next((round_item for round_item in reversed(rounds) if any(f.get("state") == "upcoming" for f in round_item["fixtures"])), None)
+            upcoming_rounds = [
+                round_item for round_item in rounds
+                if any(f.get("state") == "upcoming" for f in round_item["fixtures"])
+            ]
+            selected_round = min(upcoming_rounds, key=lambda item: item["start_date"]) if upcoming_rounds else None
             if selected_round is None and rounds:
                 selected_round = rounds[0]
 
@@ -503,13 +685,14 @@ class ScheduleService:
             visible = [fixture for fixture in visible if fixture.get("state") == state]
 
         summaries = [{key: value for key, value in item.items() if key != "fixtures"} for item in rounds]
+        provider_source = str(provider[0].get("source") or "football-data") if provider else "r2"
         return {
             "league": league,
             "season": season,
             "state": state,
             "round_id": round_id,
             "selected_round_id": str(selected_round["id"]) if selected_round else None,
-            "source": "hybrid" if provider and completed else ("football-data" if provider else "r2"),
+            "source": "hybrid" if provider and completed else provider_source,
             "updated_at": updated_at,
             "is_stale": is_stale,
             "warning": warning,
@@ -527,7 +710,7 @@ class ScheduleService:
         }
 
 
-schedule_provider = (
+football_data_schedule_provider = (
     FootballDataScheduleProvider(
         settings.football_data_api_key,
         base_url=settings.football_data_base_url,
@@ -536,6 +719,13 @@ schedule_provider = (
     )
     if settings.football_data_api_key
     else None
+)
+schedule_provider = ScheduleProviderRouter(
+    football_data_schedule_provider,
+    OfficialMlsScheduleProvider(
+        base_url=settings.official_mls_schedule_base_url,
+        timeout_seconds=settings.official_mls_schedule_timeout_seconds,
+    ),
 )
 schedule_service = ScheduleService(
     schedule_provider,

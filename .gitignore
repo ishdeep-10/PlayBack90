@@ -26,6 +26,10 @@ deploy/*.env.production
 geckodriver
 geckodriver.tar.gz
 Data/season_stats/
+Data/cleanup_reports/
+Data/database_backups/
+models/*/*/backfills/
+models/*/*/dry_runs/
 certs/
 *.pem
 *.key

@@ -22,8 +22,9 @@ from main import main_url
 import json
 import os
 import sqlite3
+from league_sources import resolve_league_source
 
-def extract_opta_data(country, league, season, refresh_urls=None):
+def extract_opta_data(country, league, season, refresh_urls=None, limit=None, discover_only=False):
     # refresh_urls: "never" | "auto" | "always"
     refresh_mode = (refresh_urls or os.getenv("REFRESH_MATCH_URLS", "auto")).lower()
     if (refresh_mode not in {"never", "auto", "always"}):
@@ -34,6 +35,10 @@ def extract_opta_data(country, league, season, refresh_urls=None):
     processed_table = "processed_matches"
     known_table = "known_matches"
     table_name = "event_data"
+    source = resolve_league_source(country, league)
+    provider_competition = source.provider_competition
+    if limit is not None and limit <= 0:
+        raise ValueError("limit must be greater than zero")
 
     def save_to_json(data, filename):
         with open(filename, 'w') as f:
@@ -127,8 +132,8 @@ def extract_opta_data(country, league, season, refresh_urls=None):
 
     # Strategy to get match URLs with caching
     def fetch_and_cache_all():
-        print(f"[match_urls] Refreshing from source for {country}-{league} {season}...")
-        all_urls = getMatchUrls(comp_urls=league_urls, competition=f'{country}-{league}', season=season)
+        print(f"[match_urls] Refreshing {provider_competition} for {league} {season}...")
+        all_urls = getMatchUrls(comp_urls=league_urls, competition=provider_competition, season=season)
 
         # Enrich with matchId/startDate if missing
         enriched = []
@@ -162,7 +167,6 @@ def extract_opta_data(country, league, season, refresh_urls=None):
     if refresh_mode == "always":
         match_urls = fetch_and_cache_all()
     elif refresh_mode == "never":
-        match_urls = fetch_and_cache_all()
         if known_urls:
             match_urls = known_urls
             print(f"[match_urls] Loaded {len(match_urls)} from cache (never refresh).")
@@ -186,8 +190,15 @@ def extract_opta_data(country, league, season, refresh_urls=None):
         else:
             match_urls = fetch_and_cache_all()
 
+    if discover_only:
+        print(f"[match_urls] Discovery complete with {len(match_urls)} cached completed matches.")
+        return
+
     # Now proceed as before, leveraging processed_ids to skip known matches
     matches_to_fetch = [m for m in match_urls if m.get('matchId') not in processed_ids]
+    if limit is not None:
+        matches_to_fetch = matches_to_fetch[:limit]
+        print(f"[pilot] Limited this run to {len(matches_to_fetch)} unprocessed matches.")
     matches_data = getMatchesData(match_urls=matches_to_fetch) 
 
     matches_to_process = []
@@ -220,6 +231,13 @@ def extract_opta_data(country, league, season, refresh_urls=None):
     # Preprocess
     processed_dfs = []
     for match_id, match_df in events_dfs.groupby('matchId'):
+        # Model feature builders consume canonical competition metadata. Add it
+        # before preprocessing so a newly configured league is scored rather
+        # than falling back to zero-valued xA/xPass columns.
+        match_df = match_df.copy()
+        match_df['league'] = league
+        match_df['country'] = country
+        match_df['season'] = season
         processed_df = data_preprocessing(match_df)
         processed_df['league'] = league
         processed_df['country'] = country
@@ -515,9 +533,21 @@ def extract_single_match_data(url, raise_errors=False):
 
 # At the bottom of extract_opta_data.py
 if __name__ == "__main__":
-    import sys
-    # Usage: python extract_opta_data.py country league season [refresh_mode]
-    # refresh_mode in {"never","auto","always"} (default: auto)
-    country, league, season = sys.argv[1:4]
-    refresh_mode = sys.argv[4] if len(sys.argv) > 4 else None
-    extract_opta_data(country, league, season, refresh_mode)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Ingest completed WhoScored match event data.")
+    parser.add_argument("country", help="Canonical country key, e.g. usa")
+    parser.add_argument("league", help="Canonical league key, e.g. mls")
+    parser.add_argument("season", help="Provider season label, e.g. 2026")
+    parser.add_argument("refresh_mode", nargs="?", choices=("never", "auto", "always"), default="auto")
+    parser.add_argument("--limit", type=int, help="Maximum unprocessed matches to scrape in this run")
+    parser.add_argument("--discover-only", action="store_true", help="Refresh/cache fixture URLs without scraping matches")
+    args = parser.parse_args()
+    extract_opta_data(
+        args.country,
+        args.league,
+        args.season,
+        args.refresh_mode,
+        args.limit,
+        args.discover_only,
+    )

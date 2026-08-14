@@ -236,23 +236,6 @@ def getMatchUrls(comp_urls, competition, season, maximize_window=True):
                         else:
                             continue
                     
-                    elif competition == 'Major League Soccer':
-                        if 'Grp. ' not in driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').text: 
-                            driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').click()
-                            time.sleep(5)
-                        
-                            driver.execute_script("window.scrollTo(0, 400)")
-                            
-                            match_urls = fetch_fixture_data_with_retry(driver)
-                            
-                            match_urls = getSortedData(match_urls)
-                            
-                            match_urls2 = [url for url in match_urls if '?' not in url['date'] and '\n' not in url['date']]
-                            
-                            all_urls += match_urls2
-                        else:
-                            continue
-                        
                     else:
                         driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').click()
                         time.sleep(5)
@@ -745,8 +728,6 @@ def addEpvToDataFrame(data):
     data.rename(columns={'EPV_difference': 'EPV'}, inplace=True)
     
     return data
-
-
 
 
 

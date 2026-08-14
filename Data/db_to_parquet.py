@@ -1,132 +1,165 @@
+"""Upload selected, not-yet-uploaded SQLite matches to Cloudflare R2.
+
+This command never applies retention or deletes objects. Retention is an
+explicit, separately reviewed operation handled by cleanup tooling.
+"""
+
+from __future__ import annotations
+
+import argparse
+import io
 import os
 import re
 import sqlite3
-import pandas as pd
+from pathlib import Path
+
 import boto3
-import io
-from datetime import datetime, timedelta
+import pandas as pd
 from dotenv import load_dotenv
 
-# Load env variables
-load_dotenv()
 
-R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID")
-R2_ACCESS_KEY = os.getenv("R2_ACCESS_KEY")
-R2_SECRET_KEY = os.getenv("R2_SECRET_KEY")
-R2_BUCKET = os.getenv("R2_BUCKET")
-KEEP_WEEKS = int(os.getenv("KEEP_WEEKS", 8))  # default to 8 weeks
+DATA_DIR = Path(__file__).resolve().parent
+ROOT_DIR = DATA_DIR.parent
+DB_PATH = DATA_DIR / "playback90.db"
 
-# ===== STEP 1: Connect to SQLite =====
-conn = sqlite3.connect("playback90.db")
-matchIds_df = pd.read_sql_query("SELECT matchId FROM processed_matches WHERE uploaded == False", conn)
-if matchIds_df.empty:
-    print("No matches to process.")
-    conn.close()
-    exit()
 
-matchIds = tuple(matchIds_df["matchId"].tolist())
-# Prepare SQL for IN clause
-if len(matchIds) == 1:
-    matchIds_query = f"('{matchIds[0]}')"  # single element tuple needs trailing comma
-else:
-    matchIds_query = str(matchIds)
+def _clean(value: object) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]", "_", str(value))
 
-df = pd.read_sql_query(f"SELECT * FROM event_data WHERE matchId IN {matchIds_query}", conn)
-conn.close()
 
-# Parse dates
-df["startDate"] = pd.to_datetime(df["startDate"], errors="coerce")
-
-# ===== STEP 2: Enforce fixed schema to prevent PyArrow merge errors =====
-string_cols = ["league", "season", "matchId", "teamName", "h_a", "ftScore", "teamId"]
-for col in string_cols:
-    if col in df.columns:
-        df[col] = df[col].astype(str).fillna("")
-
-# ===== STEP 3: Create R2 client =====
-ENDPOINT_URL = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-s3 = boto3.client(
-    "s3",
-    endpoint_url=ENDPOINT_URL,
-    aws_access_key_id=R2_ACCESS_KEY,
-    aws_secret_access_key=R2_SECRET_KEY
-)
-
-# ===== STEP 4: Upload Parquet files partitioned by league/season/startDate_matchId =====
-for (league, season, matchId), sub_df in df.groupby(["league", "season", "matchId"]):
-    # --- Skip if matchId or startDate is missing ---
-    if pd.isna(matchId) or str(matchId).lower() == "nan":
-        continue
-    if sub_df["startDate"].isna().all():
-        continue
-
-    # Use first non-null startDate
-    start_date_val = sub_df["startDate"].dropna().iloc[0]
-    start_date_str = start_date_val.strftime("%Y-%m-%d")
-
-    # Force string types
-    for col in string_cols:
-        if col in sub_df.columns:
-            sub_df[col] = sub_df[col].astype(str).fillna("")
-
-    # Identify home and away teams
-    #home_team = sub_df.loc[sub_df["h_a"] == "h", "teamName"].iloc[0] if not sub_df.loc[sub_df["h_a"] == "h", "teamName"].empty else "Unknown"
-    #away_team = sub_df.loc[sub_df["h_a"] == "a", "teamName"].iloc[0] if not sub_df.loc[sub_df["h_a"] == "a", "teamName"].empty else "Unknown"
-    home_team_id = sub_df.loc[sub_df["h_a"] == "h", "teamId"].dropna().iloc[0] if not sub_df.loc[sub_df["h_a"] == "h", "teamId"].dropna().empty else "Unknown"
-    away_team_id = sub_df.loc[sub_df["h_a"] == "a", "teamId"].dropna().iloc[0] if not sub_df.loc[sub_df["h_a"] == "a", "teamId"].dropna().empty else "Unknown"
-    ft_score = sub_df["ftScore"].dropna().iloc[0] if not sub_df["ftScore"].dropna().empty else "NA"
-
-    # Clean values for S3 keys
-    def clean(val):
-        return re.sub(r"[^A-Za-z0-9_-]", "_", str(val))
-
+def _match_id_text(value: object) -> str:
     try:
-        matchId_val = float(matchId)
-        if matchId_val.is_integer():
-            matchId_str = str(int(matchId_val))
-        else:
-            matchId_str = str(matchId)
+        numeric = float(value)
+        return str(int(numeric)) if numeric.is_integer() else str(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _load_config() -> tuple[object, str]:
+    load_dotenv(ROOT_DIR / ".env")
+    load_dotenv(DATA_DIR / ".env")
+    required = ("R2_ACCOUNT_ID", "R2_ACCESS_KEY", "R2_SECRET_KEY", "R2_BUCKET")
+    missing = [name for name in required if not os.getenv(name)]
+    if missing:
+        raise RuntimeError(f"Missing R2 configuration: {', '.join(missing)}")
+    endpoint = f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com"
+    client = boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        region_name="auto",
+        aws_access_key_id=os.environ["R2_ACCESS_KEY"],
+        aws_secret_access_key=os.environ["R2_SECRET_KEY"],
+    )
+    return client, os.environ["R2_BUCKET"]
+
+
+def _selected_match_ids(
+    conn: sqlite3.Connection,
+    league: str | None,
+    season: str | None,
+    limit: int | None,
+) -> list[str]:
+    where = ["uploaded = 0"]
+    params: list[object] = []
+    if league:
+        where.append("league = ?")
+        params.append(league)
+    if season:
+        where.append("season = ?")
+        params.append(season)
+    query = "SELECT matchId FROM processed_matches WHERE " + " AND ".join(where)
+    query += " ORDER BY startDate, matchId"
+    if limit is not None:
+        query += " LIMIT ?"
+        params.append(limit)
+    return [str(row[0]) for row in conn.execute(query, params)]
+
+
+def _read_match(conn: sqlite3.Connection, match_id: str) -> pd.DataFrame:
+    # event_data historically stores matchId as REAL while processed_matches
+    # stores TEXT. Numeric comparison handles both representations safely.
+    try:
+        lookup: object = float(match_id)
     except ValueError:
-        matchId_str = str(matchId)
-
-    matchId_str = clean(matchId_str)
-    league_str = clean(league)
-    season_str = clean(season)
-    home_team_str = home_team_id
-    away_team_str = away_team_id
-    ft_score_str = clean(ft_score)
-
-    # Include startDate, matchId, home, away, ftScore in filename
-    key = f"event_data/{league_str}/{season_str}/{start_date_str}_{matchId_str}_{home_team_str}_vs_{away_team_str}_{ft_score_str}.parquet"
-
-    # Write parquet to memory and upload
-    buffer = io.BytesIO()
-    sub_df.to_parquet(buffer, index=False)
-    buffer.seek(0)
-
-    s3.upload_fileobj(buffer, R2_BUCKET, key)
-    print(f"Uploaded {key} to R2")
+        lookup = match_id
+    return pd.read_sql_query("SELECT * FROM event_data WHERE matchId = ?", conn, params=(lookup,))
 
 
-with sqlite3.connect("playback90.db") as conn:
-    if len(matchIds) == 1:
-        conn.execute(
-            "UPDATE processed_matches SET uploaded = 1 WHERE matchId = ?",
-            (matchIds[0],)
+def _object_key(df: pd.DataFrame, league: str, season: str, match_id: str) -> str:
+    dates = pd.to_datetime(df["startDate"], errors="coerce").dropna()
+    if dates.empty:
+        raise ValueError("match has no valid startDate")
+    home_ids = df.loc[df["h_a"].astype(str) == "h", "teamId"].dropna()
+    away_ids = df.loc[df["h_a"].astype(str) == "a", "teamId"].dropna()
+    if home_ids.empty or away_ids.empty:
+        raise ValueError("match has no resolvable home/away team IDs")
+    scores = df["ftScore"].dropna()
+    score = scores.iloc[0] if not scores.empty else "NA"
+    filename = "_".join(
+        (
+            dates.iloc[0].strftime("%Y-%m-%d"),
+            _clean(_match_id_text(match_id)),
+            _clean(home_ids.iloc[0]),
+            "vs",
+            _clean(away_ids.iloc[0]),
+            _clean(score),
         )
-    else:
-        conn.execute(
-            f"UPDATE processed_matches SET uploaded = 1 WHERE matchId IN {matchIds_query}"
-        )
-    conn.commit()
+    )
+    return f"event_data/{_clean(league)}/{_clean(season)}/{filename}.parquet"
 
-# ===== STEP 5: Cleanup old files =====
-cutoff_date = datetime.utcnow() - timedelta(weeks=KEEP_WEEKS)
-objects = s3.list_objects_v2(Bucket=R2_BUCKET, Prefix="event_data/")
-files = objects.get("Contents", [])
 
-for obj in files:
-    last_modified = obj["LastModified"].replace(tzinfo=None)
-    if last_modified < cutoff_date:
-        print(f"Deleting {obj['Key']} (Last modified: {last_modified})")
-        s3.delete_object(Bucket=R2_BUCKET, Key=obj["Key"])
+def upload_pending(
+    *,
+    league: str | None = None,
+    season: str | None = None,
+    limit: int | None = None,
+    dry_run: bool = False,
+) -> list[str]:
+    if limit is not None and limit <= 0:
+        raise ValueError("limit must be greater than zero")
+    client, bucket = _load_config()
+    uploaded: list[str] = []
+    with sqlite3.connect(DB_PATH) as conn:
+        match_ids = _selected_match_ids(conn, league, season, limit)
+        if not match_ids:
+            print("No matches to process.")
+            return []
+        print(f"Selected {len(match_ids)} pending matches.")
+        for match_id in match_ids:
+            df = _read_match(conn, match_id)
+            if df.empty:
+                raise RuntimeError(f"No event rows found for pending match {match_id}")
+            match_league = str(df["league"].iloc[0])
+            match_season = str(df["season"].iloc[0])
+            key = _object_key(df, match_league, match_season, match_id)
+            if dry_run:
+                print(f"Would upload {key}")
+                continue
+
+            string_cols = ("league", "season", "matchId", "teamName", "h_a", "ftScore", "teamId")
+            for column in string_cols:
+                if column in df.columns:
+                    df[column] = df[column].fillna("").astype(str)
+            buffer = io.BytesIO()
+            df.to_parquet(buffer, index=False)
+            buffer.seek(0)
+            client.upload_fileobj(buffer, bucket, key)
+            conn.execute("UPDATE processed_matches SET uploaded = 1 WHERE matchId = ?", (match_id,))
+            conn.commit()
+            uploaded.append(key)
+            print(f"Uploaded {key}")
+    return uploaded
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--league", help="Only upload this canonical league key")
+    parser.add_argument("--season", help="Only upload this database season label")
+    parser.add_argument("--limit", type=int, help="Maximum matches to upload")
+    parser.add_argument("--dry-run", action="store_true", help="Print selected object keys without uploading")
+    args = parser.parse_args()
+    upload_pending(league=args.league, season=args.season, limit=args.limit, dry_run=args.dry_run)
+
+
+if __name__ == "__main__":
+    main()

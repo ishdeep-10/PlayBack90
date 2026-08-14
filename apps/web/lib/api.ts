@@ -85,15 +85,19 @@ export type Fixture = {
   score: string;
   fixture_id?: string | null;
   state?: FixtureState | null;
-  source?: "r2" | "football-data" | null;
+  source?: "r2" | "football-data" | "official-mls" | null;
   round?: string | null;
   matchday?: number | null;
   post_match_href?: string | null;
   opposition_href?: string | null;
-  provider_fixture_id?: number | null;
+  provider_fixture_id?: number | string | null;
   provider_status?: string | null;
   home_crest?: string | null;
   away_crest?: string | null;
+  venue_id?: string | null;
+  venue?: string | null;
+  venue_city?: string | null;
+  venue_country?: string | null;
 };
 
 export type FixtureState = "completed" | "upcoming" | "postponed" | "cancelled" | "live" | "unknown";
@@ -102,7 +106,7 @@ export type FixtureHubFixture = {
   fixture_id: string;
   match_id: string;
   state: FixtureState;
-  source: "r2" | "football-data";
+  source: "r2" | "football-data" | "official-mls";
   league: string;
   season: string;
   round?: string | null;
@@ -114,12 +118,16 @@ export type FixtureHubFixture = {
   score: string;
   post_match_href?: string | null;
   opposition_href?: string | null;
-  provider_fixture_id?: number | null;
+  provider_fixture_id?: number | string | null;
   provider_status?: string | null;
   provider_home_team?: string | null;
   provider_away_team?: string | null;
   home_crest?: string | null;
   away_crest?: string | null;
+  venue_id?: string | null;
+  venue?: string | null;
+  venue_city?: string | null;
+  venue_country?: string | null;
 };
 
 export type FixtureRound = {
@@ -139,7 +147,7 @@ export type FixtureHubResponse = {
   state: "all" | FixtureState;
   round_id?: string | null;
   selected_round_id?: string | null;
-  source: "r2" | "football-data" | "hybrid";
+  source: "r2" | "football-data" | "official-mls" | "hybrid";
   updated_at?: string | null;
   is_stale: boolean;
   warning?: string | null;
@@ -193,7 +201,7 @@ export async function getFixtureHub(
   const suffix = params.toString() ? `?${params.toString()}` : "";
   return request<FixtureHubResponse>(
     `/leagues/${encodeURIComponent(league)}/seasons/${encodeURIComponent(season)}/fixture-hub${suffix}`,
-    { cache: "force-cache", next: { revalidate: 300 }, authToken },
+    { cache: "no-store", authToken },
   );
 }
 
@@ -386,7 +394,7 @@ export type StandingRow = {
   rank: number;
   team: string;
   provider_team_name: string | null;
-  provider_team_id: number | null;
+  provider_team_id: number | string | null;
   team_short_name: string | null;
   team_code: string | null;
   crest: string | null;
@@ -402,18 +410,26 @@ export type StandingRow = {
   xg: number | null;
   xga: number | null;
   xgd: number | null;
+  conference: string | null;
+};
+
+export type StandingsGroup = {
+  id: string;
+  label: string;
+  rows: StandingRow[];
 };
 
 export type StandingsResponse = {
   league: string;
   season: string;
-  source: "football-data" | "calculated";
+  source: "football-data" | "official-mls" | "calculated";
   updated_at: string;
   is_official: boolean;
   is_stale: boolean;
   is_complete: boolean;
   warning: string | null;
   rows: StandingRow[];
+  groups: StandingsGroup[];
 };
 
 export async function getLeagueTable(league: string, season: string, authToken?: string | null) {

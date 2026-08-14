@@ -1,39 +1,9 @@
 import type { League } from "../../lib/api";
+import { LEAGUE_PRESENTATION } from "../../lib/leagues";
 import { LandingCoverage } from "./LandingCoverage";
 import { LandingJourney } from "./journey/LandingJourney";
 
-const MOBILE_LEAGUES = [
-  {
-    key: "premier-league",
-    name: "Premier League",
-    country: "England",
-    logo: "/logos/premier-league.png",
-  },
-  {
-    key: "laliga",
-    name: "LaLiga",
-    country: "Spain",
-    logo: "/logos/laliga.png",
-  },
-  {
-    key: "bundesliga",
-    name: "Bundesliga",
-    country: "Germany",
-    logo: "/logos/bundesliga.png",
-  },
-  {
-    key: "serie-a",
-    name: "Serie A",
-    country: "Italy",
-    logo: "/logos/serie-a.png",
-  },
-  {
-    key: "ligue-1",
-    name: "Ligue 1",
-    country: "France",
-    logo: "/logos/ligue-1.png",
-  },
-];
+const MOBILE_LEAGUES = Object.values(LEAGUE_PRESENTATION);
 
 export function LandingHome({
   leagues,

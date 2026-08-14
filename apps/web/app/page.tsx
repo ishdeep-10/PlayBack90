@@ -1,14 +1,7 @@
 import { LandingHome } from "../components/landing/LandingHome";
-import { getLeagues, type League } from "../lib/api";
+import { getLeagues } from "../lib/api";
+import { FALLBACK_LEAGUES } from "../lib/leagues";
 import { getServerAuthToken } from "../lib/serverAuth";
-
-const FALLBACK_LEAGUES: League[] = [
-  { key: "premier-league", name: "Premier League" },
-  { key: "laliga", name: "LaLiga" },
-  { key: "bundesliga", name: "Bundesliga" },
-  { key: "serie-a", name: "Serie A" },
-  { key: "ligue-1", name: "Ligue 1" },
-];
 
 export const revalidate = 3_600;
 
