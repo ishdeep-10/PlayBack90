@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import io
 import os
-import re
 import sqlite3
 from pathlib import Path
 
@@ -17,22 +16,12 @@ import boto3
 import pandas as pd
 from dotenv import load_dotenv
 
+from r2_match_store import build_event_object_key
+
 
 DATA_DIR = Path(__file__).resolve().parent
 ROOT_DIR = DATA_DIR.parent
 DB_PATH = DATA_DIR / "playback90.db"
-
-
-def _clean(value: object) -> str:
-    return re.sub(r"[^A-Za-z0-9_-]", "_", str(value))
-
-
-def _match_id_text(value: object) -> str:
-    try:
-        numeric = float(value)
-        return str(int(numeric)) if numeric.is_integer() else str(value)
-    except (TypeError, ValueError):
-        return str(value)
 
 
 def _load_config() -> tuple[object, str]:
@@ -86,26 +75,7 @@ def _read_match(conn: sqlite3.Connection, match_id: str) -> pd.DataFrame:
 
 
 def _object_key(df: pd.DataFrame, league: str, season: str, match_id: str) -> str:
-    dates = pd.to_datetime(df["startDate"], errors="coerce").dropna()
-    if dates.empty:
-        raise ValueError("match has no valid startDate")
-    home_ids = df.loc[df["h_a"].astype(str) == "h", "teamId"].dropna()
-    away_ids = df.loc[df["h_a"].astype(str) == "a", "teamId"].dropna()
-    if home_ids.empty or away_ids.empty:
-        raise ValueError("match has no resolvable home/away team IDs")
-    scores = df["ftScore"].dropna()
-    score = scores.iloc[0] if not scores.empty else "NA"
-    filename = "_".join(
-        (
-            dates.iloc[0].strftime("%Y-%m-%d"),
-            _clean(_match_id_text(match_id)),
-            _clean(home_ids.iloc[0]),
-            "vs",
-            _clean(away_ids.iloc[0]),
-            _clean(score),
-        )
-    )
-    return f"event_data/{_clean(league)}/{_clean(season)}/{filename}.parquet"
+    return build_event_object_key(df, league, season, match_id)
 
 
 def upload_pending(

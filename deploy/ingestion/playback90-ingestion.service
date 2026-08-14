@@ -1,0 +1,34 @@
+[Unit]
+Description=PlayBack90 schedule-aware match ingestion worker
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=playback90
+Group=playback90
+WorkingDirectory=/opt/playback90
+Environment=PLAYBACK90_REPO_DIR=/opt/playback90
+EnvironmentFile=/etc/playback90/ingestion.env
+ExecStart=/opt/playback90/deploy/ingestion/run-worker.sh
+Restart=always
+RestartSec=15
+TimeoutStopSec=45
+KillMode=mixed
+UMask=0077
+
+# One Firefox process plus the Python model pipeline must remain within the
+# 1 GiB pilot Droplet. systemd restarts a full eight-match batch cleanly.
+MemoryHigh=850M
+MemoryMax=950M
+TasksMax=256
+LimitNOFILE=4096
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/playback90 /var/tmp/playback90
+
+[Install]
+WantedBy=multi-user.target

@@ -581,6 +581,19 @@ class ScheduleService:
         self._write_persisted_cache(league, season, fixtures, updated_at)
         return fixtures, updated_at, False, None
 
+    def official_fixtures(
+        self,
+        league: str,
+        season: str,
+    ) -> tuple[list[dict[str, Any]], datetime | None, bool, str | None]:
+        """Return normalized provider fixtures without requiring an R2 archive.
+
+        Remote ingestion workers use this boundary to plan future work while
+        keeping match-storage reconciliation separate from schedule fetching.
+        """
+
+        return self._provider_fixtures(league, season, [])
+
     def _completed_fixture(self, fixture: dict[str, Any], *, league: str, season: str) -> dict[str, Any]:
         from urllib.parse import urlencode
 

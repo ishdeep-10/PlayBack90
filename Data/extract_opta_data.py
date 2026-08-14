@@ -6,10 +6,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 if (current_dir not in sys.path):
     sys.path.append(current_dir)
 import pandas as pd
-import matplotlib.pyplot as plt
 from selenium import webdriver
 import main
-import seaborn as sns
 from datetime import datetime, timezone
 import re
 # import relevant functions
@@ -289,7 +287,14 @@ def extract_opta_data(country, league, season, refresh_urls=None, limit=None, di
     print(f"Data saved to {db_path} in table '{table_name}'. Processed matches updated.")
 
 
-def extract_single_match_data(url, raise_errors=False):
+def extract_single_match_data(
+    url,
+    raise_errors=False,
+    *,
+    league=None,
+    country=None,
+    season=None,
+):
     """
     Scrapes a single match URL and returns the processed DataFrame.
     Useful for 'Live' mode in Streamlit apps where a user drops a URL.
@@ -509,11 +514,21 @@ def extract_single_match_data(url, raise_errors=False):
     if events_df is None or events_df.empty:
         return fail("WhoScored match payload did not contain any events")
 
+    # Scheduled workers know the canonical competition before preprocessing.
+    # Model feature builders use these fields, so apply them before enrichment
+    # rather than correcting metadata only after predictions have run.
+    if league:
+        events_df['league'] = league
+    if country:
+        events_df['country'] = country
+    if season:
+        events_df['season'] = season
+
     processed_df = data_preprocessing(events_df)
     
-    processed_df['league'] = match_data.get('league', 'Unknown')
-    processed_df['country'] = match_data.get('region', 'Unknown')
-    processed_df['season'] = match_data.get('season', 'Unknown')
+    processed_df['league'] = league or match_data.get('league', 'Unknown')
+    processed_df['country'] = country or match_data.get('region', 'Unknown')
+    processed_df['season'] = season or match_data.get('season', 'Unknown')
 
     try:
         home_id = match_data['home']['teamId']

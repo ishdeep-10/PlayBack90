@@ -28,6 +28,7 @@ geckodriver.tar.gz
 Data/season_stats/
 Data/cleanup_reports/
 Data/database_backups/
+Data/.worker/
 models/*/*/backfills/
 models/*/*/dry_runs/
 certs/
