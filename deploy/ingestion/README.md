@@ -38,7 +38,7 @@ cd /opt/playback90
 sudo sh deploy/ingestion/setup-droplet.sh
 ```
 
-The setup script installs Firefox ESR, pinned geckodriver 0.37.1, CPU-only XGBoost, a dedicated Python virtual environment, a locked-down `playback90` system user, 2 GiB swap, and the systemd unit. Python packages install without a persistent pip download cache. It intentionally does not start the worker before secrets are configured.
+The setup script installs Firefox ESR, pinned geckodriver 0.37.1, CPU-only XGBoost, a dedicated Python virtual environment, a locked-down `playback90` system user, 2 GiB swap, and the systemd unit. Python packages install without a persistent pip download cache, and Firefox profiles stay inside the worker's protected state directory. It intentionally does not start the worker before secrets are configured.
 
 ## Configure secrets
 

@@ -32,7 +32,7 @@ fi
 
 install -d -m 0750 -o "${worker_user}" -g "${worker_user}" /var/lib/playback90
 install -d -m 0750 -o "${worker_user}" -g "${worker_user}" /var/lib/playback90/schedule-cache
-install -d -m 0750 -o "${worker_user}" -g "${worker_user}" /var/tmp/playback90
+install -d -m 0750 -o "${worker_user}" -g "${worker_user}" /var/lib/playback90/tmp
 install -d -m 0750 -o root -g "${worker_user}" /etc/playback90
 
 architecture="$(dpkg --print-architecture)"
@@ -60,6 +60,10 @@ chmod 0755 "${repo_dir}/deploy/ingestion/run-worker.sh"
 if [ ! -f /etc/playback90/ingestion.env ]; then
   install -m 0600 -o root -g "${worker_user}" \
     "${repo_dir}/deploy/ingestion/playback90-ingestion.env.example" \
+    /etc/playback90/ingestion.env
+fi
+if grep -q '^TMPDIR=/var/tmp/playback90$' /etc/playback90/ingestion.env; then
+  sed -i 's|^TMPDIR=/var/tmp/playback90$|TMPDIR=/var/lib/playback90/tmp|' \
     /etc/playback90/ingestion.env
 fi
 

@@ -28,7 +28,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/playback90 /var/tmp/playback90
+ReadWritePaths=/var/lib/playback90
 
 [Install]
 WantedBy=multi-user.target
