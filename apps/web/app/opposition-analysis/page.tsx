@@ -351,7 +351,7 @@ function ReportControls({
                   href={href as Route}
                   className={team === dossier.meta.reference_team ? "season-pill is-active" : "season-pill"}
                 >
-                  {teamLogoUrl(league, team) ? <Image src={teamLogoUrl(league, team)!} alt={`${team} logo`} width={18} height={18} className="opposition-pill-logo" /> : null}
+                  {teamLogoUrl(league, team) ? <Image unoptimized src={teamLogoUrl(league, team)!} alt={`${team} logo`} width={18} height={18} className="opposition-pill-logo" /> : null}
                   {team}
                 </Link>
               );
@@ -413,13 +413,13 @@ function MatchupHeader({
         <div>
           <span className="eyebrow">Opposition Analysis</span>
           <div className="opposition-title-row">
-            {opponentLogo ? <Image src={opponentLogo} alt={`${dossier.meta.opponent_team} logo`} width={54} height={54} className="opposition-team-logo" /> : null}
+            {opponentLogo ? <Image unoptimized src={opponentLogo} alt={`${dossier.meta.opponent_team} logo`} width={54} height={54} className="opposition-team-logo" /> : null}
             <h1>{dossier.meta.opponent_team}</h1>
           </div>
           <div className="opposition-fixture-logos">
-            {homeLogo ? <Image src={homeLogo} alt={`${fixture.home_team} logo`} width={28} height={28} /> : null}
+            {homeLogo ? <Image unoptimized src={homeLogo} alt={`${fixture.home_team} logo`} width={28} height={28} /> : null}
             <span>{matchup}</span>
-            {awayLogo ? <Image src={awayLogo} alt={`${fixture.away_team} logo`} width={28} height={28} /> : null}
+            {awayLogo ? <Image unoptimized src={awayLogo} alt={`${fixture.away_team} logo`} width={28} height={28} /> : null}
           </div>
         </div>
         <div className="opposition-context-panel" aria-label="Report context">
@@ -787,7 +787,7 @@ function CoachSquadContext({ dossier }: { dossier: OppositionDossier }) {
       <div className="opposition-team-context-card opposition-team-context-card-wide">
         <div className="opposition-context-main">
           <div className="opposition-context-team-head">
-            {crest ? <Image src={crest} alt={`${opponent.team} logo`} width={42} height={42} /> : null}
+            {crest ? <Image unoptimized src={crest} alt={`${opponent.team} logo`} width={42} height={42} /> : null}
             <div>
               <strong>{opponent.team}</strong>
               <span>Opponent being analysed</span>
@@ -964,7 +964,7 @@ function LineupContext({ dossier }: { dossier: OppositionDossier }) {
     <section className="opposition-visual-panel">
       <div className="opposition-visual-head">
         <div className="opposition-visual-title">
-          {logo ? <Image src={logo} alt={`${dossier.meta.opponent_team} logo`} width={34} height={34} className="opposition-mini-logo" /> : null}
+          {logo ? <Image unoptimized src={logo} alt={`${dossier.meta.opponent_team} logo`} width={34} height={34} className="opposition-mini-logo" /> : null}
           <div>
             <span className="eyebrow">Lineups</span>
             <h2>Shape and squad signals</h2>
@@ -985,7 +985,7 @@ function StyleRadar({ dossier }: { dossier: OppositionDossier }) {
     <section className="opposition-visual-panel opposition-style-radar">
       <div className="opposition-visual-head">
         <div className="opposition-visual-title">
-          {logo ? <Image src={logo} alt={`${dossier.meta.opponent_team} logo`} width={34} height={34} className="opposition-mini-logo" /> : null}
+          {logo ? <Image unoptimized src={logo} alt={`${dossier.meta.opponent_team} logo`} width={34} height={34} className="opposition-mini-logo" /> : null}
           <div>
           <span className="eyebrow">Style Fingerprint</span>
           <h2>{dossier.meta.opponent_team} profile</h2>
@@ -1366,7 +1366,7 @@ function ComparableVisual({ dossier }: { dossier: OppositionDossier }) {
             <div key={match.match_id} className="opposition-compact-match">
               <span className={`opposition-result ${resultClass(match.result)}`}>{match.result}</span>
               <strong>
-                {teamLogoUrl(dossier.meta.league, match.opponent) ? <Image src={teamLogoUrl(dossier.meta.league, match.opponent)!} alt={`${match.opponent} logo`} width={20} height={20} /> : null}
+                {teamLogoUrl(dossier.meta.league, match.opponent) ? <Image unoptimized src={teamLogoUrl(dossier.meta.league, match.opponent)!} alt={`${match.opponent} logo`} width={20} height={20} /> : null}
                 {match.opponent}
               </strong>
               <small>{formatSeason(match.season)} · xG {formatMetric(match.xg)}-{formatMetric(match.xga)}</small>
@@ -1378,7 +1378,7 @@ function ComparableVisual({ dossier }: { dossier: OppositionDossier }) {
             <div key={peer.team} className="opposition-peer-bar">
               <div>
                 <strong>
-                  {teamLogoUrl(dossier.meta.league, peer.team) ? <Image src={teamLogoUrl(dossier.meta.league, peer.team)!} alt={`${peer.team} logo`} width={20} height={20} /> : null}
+                  {teamLogoUrl(dossier.meta.league, peer.team) ? <Image unoptimized src={teamLogoUrl(dossier.meta.league, peer.team)!} alt={`${peer.team} logo`} width={20} height={20} /> : null}
                   {peer.team}
                 </strong>
                 <small>{peer.matches} matches</small>

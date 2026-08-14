@@ -233,6 +233,7 @@ export default async function SeasonStatsPage({ searchParams }: PageProps) {
                           <span className="standings-team">
                             {crest && (
                               <Image
+                                unoptimized
                                 src={crest}
                                 alt=""
                                 width={24}

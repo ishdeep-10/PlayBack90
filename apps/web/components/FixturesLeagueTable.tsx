@@ -33,6 +33,7 @@ function StandingsTable({ rows, label }: { rows: StandingRow[]; label?: string }
                 <span className="fixtures-standings-team">
                   {crest ? (
                     <Image
+                      unoptimized
                       src={crest}
                       alt=""
                       width={28}

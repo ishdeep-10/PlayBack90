@@ -254,13 +254,13 @@ export function TeamComparisonPanel({
       <div className="team-summary-compare">
         <div className="team-summary-compare-head">
           <strong className="team-summary-team team-summary-team-left" style={{ color: teamAColor ?? "var(--text)" }}>
-            {teamALogoUrl ? <Image className="team-summary-logo" src={teamALogoUrl} alt={`${teamA} logo`} width={28} height={28} /> : null}
+            {teamALogoUrl ? <Image unoptimized className="team-summary-logo" src={teamALogoUrl} alt={`${teamA} logo`} width={28} height={28} /> : null}
             <span>{teamA}</span>
           </strong>
           <span>Stat</span>
           <strong className="team-summary-team team-summary-team-right" style={{ color: teamBColor ?? "var(--text)" }}>
             <span>{teamB}</span>
-            {teamBLogoUrl ? <Image className="team-summary-logo" src={teamBLogoUrl} alt={`${teamB} logo`} width={28} height={28} /> : null}
+            {teamBLogoUrl ? <Image unoptimized className="team-summary-logo" src={teamBLogoUrl} alt={`${teamB} logo`} width={28} height={28} /> : null}
           </strong>
         </div>
         {STAT_ROWS.map((stat) => {
