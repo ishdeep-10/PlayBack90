@@ -254,80 +254,91 @@ def _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize
     seasons_element = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.ID, "seasons"))
     )
-    seasons = seasons_element.get_attribute('innerHTML').split(sep='\n')
-    seasons = [i for i in seasons if i]
-    
-    
-    for i in range(1, len(seasons)+1):
-        if driver.find_element(By.XPATH, '//*[@id="seasons"]/option['+str(i)+']').text == season:
-            driver.find_element(By.XPATH, '//*[@id="seasons"]/option['+str(i)+']').click()
-            
+    season_options = seasons_element.find_elements(By.TAG_NAME, "option")
+
+    for season_option in season_options:
+        if season_option.text == season:
+            season_option.click()
+
             time.sleep(5)
             try:
-                stages = driver.find_element(By.XPATH, '//*[@id="stages"]').get_attribute('innerHTML').split(sep='\n')
-                stages = [i for i in stages if i]
-                
+                stages_element = driver.find_element(By.XPATH, '//*[@id="stages"]')
+                stage_texts = [
+                    option.text for option in stages_element.find_elements(By.TAG_NAME, "option")
+                ]
+
+                def click_stage_by_text(text):
+                    # Selecting a stage can re-render the dropdown, so re-query
+                    # fresh elements by text right before each click instead of
+                    # reusing WebElement references collected earlier.
+                    fresh_stages = driver.find_element(
+                        By.XPATH, '//*[@id="stages"]'
+                    ).find_elements(By.TAG_NAME, "option")
+                    for option in fresh_stages:
+                        if option.text == text:
+                            option.click()
+                            return
+                    raise NoSuchElementException(f"Stage option {text!r} no longer present")
+
                 all_urls = []
-            
-                for i in range(1, len(stages)+1):
-                    print(driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').text)
-                    stage_text = driver.find_element(By.XPATH, f'//*[@id="stages"]/option[{i}]').text
+
+                for stage_text in stage_texts:
+                    print(stage_text)
 
                     if 'Final Stage' in stage_text:
                         continue
                     if competition == 'Champions League' or competition == 'Europa League' or competition == 'Europa Conference League' or competition == 'FIFA World Cup':
-                        if 'Grp' in driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').text or 'Final Stage' in driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').text:
-                        #if 'Grp' in driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').text in driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').text:
+                        if 'Grp' in stage_text or 'Final Stage' in stage_text:
 
-                            driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').click()
+                            click_stage_by_text(stage_text)
                             time.sleep(5)
-                            
-                            driver.execute_script("window.scrollTo(0, 400)") 
-                            
+
+                            driver.execute_script("window.scrollTo(0, 400)")
+
                             match_urls = fetch_fixture_data_with_retry(driver)
-                            
+
                             match_urls = getSortedData(match_urls)
-                            
+
                             match_urls2 = [url for url in match_urls if '?' not in url['date'] and '\n' not in url['date']]
-                            
+
                             all_urls += match_urls2
                         else:
                             continue
-                    
+
                     else:
-                        driver.find_element(By.XPATH, '//*[@id="stages"]/option['+str(i)+']').click()
+                        click_stage_by_text(stage_text)
                         time.sleep(5)
-                    
+
                         driver.execute_script("window.scrollTo(0, 400)")
-                        
+
                         match_urls = fetch_fixture_data_with_retry(driver)
-                        
+
                         match_urls = getSortedData(match_urls)
-                        
+
                         match_urls2 = [url for url in match_urls if '?' not in url['date'] and '\n' not in url['date']]
-                        
+
                         all_urls += match_urls2
-                
+
             except NoSuchElementException:
                 all_urls = []
-                
+
                 driver.execute_script("window.scrollTo(0, 400)")
-                
+
                 match_urls = fetch_fixture_data_with_retry(driver)
-                
+
                 match_urls = getSortedData(match_urls)
-                
+
                 match_urls2 = [url for url in match_urls if '?' not in url['date'] and '\n' not in url['date']]
-                
+
                 all_urls += match_urls2
-            
-            
+
+
             remove_dup = [dict(t) for t in {tuple(sorted(d.items())) for d in all_urls}]
             all_urls = getSortedData(remove_dup)
-            
+
             return all_urls
-     
-    season_names = [re.search(r'\>(.*?)\<',season).group(1) for season in seasons]
+
+    season_names = [option.text for option in season_options]
     print('Seasons available: {}'.format(season_names))
     raise ValueError('Season Not Found.')
     
