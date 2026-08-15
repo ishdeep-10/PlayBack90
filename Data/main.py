@@ -88,32 +88,59 @@ def close_overlay(driver, timeout=10):
         print("No overlay to close or failed to close overlay:", e)
 
 
-def accept_cookies(driver):
+def accept_cookies(driver, timeout=10):
     """
     Attempts to find and click 'Agree' or 'Accept' buttons on cookie consent banners.
-    """
-    try:
-        # List of XPaths for common cookie acceptance buttons
-        # 1. Original class observed
-        # 2. Generic text search for Agree/Accept
-        # 3. QC-CMP (Quantcast) buttons often used on these sites
-        cookie_xpaths = [
-            '//*[@class=" css-gweyaj"]',
-            '//button[contains(text(), "Agree")]',
-            '//button[contains(text(), "Accept")]',
-            '//div[contains(@class, "qc-cmp2-summary-buttons")]/button[last()]',
-            '//button[@mode="primary"]'
-        ]
 
+    Many cookie-consent providers (Sourcepoint, Quantcast, OneTrust, ...) render
+    their banner inside its own <iframe>, which top-level find_element(s) calls
+    cannot see at all regardless of selector. A fresh Selenium profile has no
+    stored consent, so this wall reliably appears on first page load even when
+    it never reappears in a browser that already accepted it once.
+    """
+    # 1. Generic text search for Agree/Accept
+    # 2. QC-CMP (Quantcast) buttons often used on these sites
+    cookie_xpaths = [
+        '//*[@class=" css-gweyaj"]',
+        '//button[contains(text(), "Agree")]',
+        '//button[contains(text(), "Accept")]',
+        '//*[contains(text(), "Accept All")]',
+        '//div[contains(@class, "qc-cmp2-summary-buttons")]/button[last()]',
+        '//button[@mode="primary"]',
+    ]
+
+    def try_click_in_current_context():
         for xpath in cookie_xpaths:
-            buttons = driver.find_elements(By.XPATH, xpath)
-            for btn in buttons:
+            for btn in driver.find_elements(By.XPATH, xpath):
                 if btn.is_displayed():
                     btn.click()
-                    print("Accepted cookies.")
-                    time.sleep(1) # Wait for banner to disappear
-                    return
+                    return True
+        return False
+
+    try:
+        # Give an async-loaded consent wall a moment to render before giving up.
+        end_time = time.monotonic() + timeout
+        while time.monotonic() < end_time:
+            if try_click_in_current_context():
+                print("Accepted cookies.")
+                time.sleep(1)  # Wait for banner to disappear
+                return
+
+            for frame in driver.find_elements(By.TAG_NAME, "iframe"):
+                driver.switch_to.frame(frame)
+                try:
+                    if try_click_in_current_context():
+                        print("Accepted cookies (inside iframe).")
+                        driver.switch_to.default_content()
+                        time.sleep(1)
+                        return
+                finally:
+                    driver.switch_to.default_content()
+
+            time.sleep(0.5)
+        print("No cookie consent banner accepted within timeout.")
     except Exception as e:
+        driver.switch_to.default_content()
         print(f"Note: Cookie acceptance check encountered: {e}")
 
 
