@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from itertools import groupby
 from typing import Callable, Iterable
 
+from discord_notifier import notify_ingestion_result
 from ingestion_worker import WorkerResult, run_match_worker
 from provider_match_resolver import ResolutionBatch, resolve_fixture_urls
 from worker_schedule import utc_datetime
@@ -57,6 +58,7 @@ def execute_due_batch(
     key_prefix: str | None = None,
     resolver: Callable[[Iterable[WorkerFixture]], ResolutionBatch] = resolve_fixture_urls,
     worker: Callable[..., WorkerResult] = run_match_worker,
+    notifier: Callable[..., object] = notify_ingestion_result,
 ) -> ExecutionReport:
     current = utc_datetime(now or datetime.now(timezone.utc))
     claimed = state.claim_due(
@@ -66,6 +68,40 @@ def execute_due_batch(
     )
     results: list[ExecutionItem] = []
 
+    def record(fixture: WorkerFixture, item: ExecutionItem) -> None:
+        results.append(item)
+        try:
+            notifier(
+                fixture_id=fixture.fixture_id,
+                league=fixture.league,
+                season=fixture.season,
+                home_team=fixture.home_team,
+                away_team=fixture.away_team,
+                status=item.status,
+                attempt=fixture.attempt_count + 1,
+                r2_key=item.r2_key,
+                retry_at=item.retry_at,
+                error=item.error,
+                occurred_at=current,
+            )
+        except Exception as exc:
+            # Custom notifiers must remain best-effort just like the Discord sender.
+            import json
+            import sys
+
+            print(
+                json.dumps(
+                    {
+                        "event": "ingestion_notification_failed",
+                        "fixture_id": fixture.fixture_id,
+                        "error_type": type(exc).__name__,
+                    },
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+
     for fixtures in _groups(claimed):
         try:
             resolution = resolver(fixtures)
@@ -73,7 +109,8 @@ def execute_due_batch(
             for fixture in fixtures:
                 error = f"provider_discovery: {exc}"
                 retry_at = state.schedule_retry(fixture.fixture_id, error, now=current)
-                results.append(
+                record(
+                    fixture,
                     ExecutionItem(
                         fixture_id=fixture.fixture_id,
                         league=fixture.league,
@@ -90,7 +127,8 @@ def execute_due_batch(
                 detail = resolution.errors.get(fixture.fixture_id, "Provider URL was not resolved")
                 error = f"provider_url_not_found: {detail}"
                 retry_at = state.schedule_retry(fixture.fixture_id, error, now=current)
-                results.append(
+                record(
+                    fixture,
                     ExecutionItem(
                         fixture_id=fixture.fixture_id,
                         league=fixture.league,
@@ -117,7 +155,8 @@ def execute_due_batch(
                     source_url=source_url,
                     now=current,
                 )
-                results.append(
+                record(
+                    fixture,
                     ExecutionItem(
                         fixture_id=fixture.fixture_id,
                         league=fixture.league,
@@ -129,7 +168,8 @@ def execute_due_batch(
             except Exception as exc:
                 error = f"ingestion: {exc}"
                 retry_at = state.schedule_retry(fixture.fixture_id, error, now=current)
-                results.append(
+                record(
+                    fixture,
                     ExecutionItem(
                         fixture_id=fixture.fixture_id,
                         league=fixture.league,

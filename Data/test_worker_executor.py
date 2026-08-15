@@ -166,3 +166,44 @@ def test_executor_schedules_retry_for_unresolved_url_and_ingestion_failure(tmp_p
     assert state.get("missing").last_error.startswith("provider_url_not_found:")
     assert state.get("failed").last_error == "ingestion: timeline incomplete"
     assert state.get("missing").next_retry_at == now + timedelta(hours=1)
+
+
+def test_executor_notifies_for_each_success_and_failed_attempt(tmp_path):
+    fixtures = [scheduled("success"), scheduled("missing", home="Austin FC", away="FC Dallas")]
+    state = persisted(tmp_path, fixtures)
+    now = fixtures[0].due_at + timedelta(minutes=5)
+    notifications = []
+
+    def resolver(group):
+        return ResolutionBatch(
+            urls={"success": "https://example.com/Matches/100001/Live/test"},
+            errors={"missing": "not published yet"},
+            candidate_count=1,
+        )
+
+    def worker(**kwargs):
+        return WorkerResult(
+            status="uploaded",
+            league=kwargs["league"],
+            season=kwargs["season"],
+            match_id="100001",
+            key="event_data/mls/2026/100001.parquet",
+            validation=None,
+        )
+
+    report = execute_due_batch(
+        state,
+        now=now,
+        resolver=resolver,
+        worker=worker,
+        notifier=lambda **kwargs: notifications.append(kwargs),
+    )
+
+    assert report.to_dict()["uploaded"] == 1
+    assert report.to_dict()["retry_scheduled"] == 1
+    by_fixture = {item["fixture_id"]: item for item in notifications}
+    assert by_fixture["success"]["status"] == "uploaded"
+    assert by_fixture["success"]["r2_key"] == "event_data/mls/2026/100001.parquet"
+    assert by_fixture["missing"]["status"] == "retry_scheduled"
+    assert by_fixture["missing"]["attempt"] == 1
+    assert by_fixture["missing"]["retry_at"] == (now + timedelta(hours=1)).isoformat()

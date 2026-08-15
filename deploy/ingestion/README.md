@@ -57,6 +57,16 @@ PLAYBACK90_R2_KEY_PREFIX=ingestion-test
 
 `FOOTBALL_DATA_API_KEY` can remain unset during the MLS-only pilot. It becomes required before enabling the five European leagues.
 
+To receive a Discord message for every successful ingestion and every failed
+attempt, create a webhook for the destination channel and set it without quotes:
+
+```text
+PLAYBACK90_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+```
+
+The webhook is optional. Discord delivery errors are written to the service
+journal without changing match state or triggering an ingestion retry.
+
 ## Validate before enabling automation
 
 Confirm the installed binaries:
