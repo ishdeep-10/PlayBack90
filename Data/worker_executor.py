@@ -121,6 +121,15 @@ def execute_due_batch(
             try:
                 discovered = resolver(discovery_fixtures)
             except Exception as exc:
+                import sys
+                import traceback
+
+                print(
+                    f"provider_discovery traceback for {[f.fixture_id for f in discovery_fixtures]}:",
+                    file=sys.stderr,
+                )
+                traceback.print_exc(file=sys.stderr)
+                sys.stderr.flush()
                 for fixture in discovery_fixtures:
                     error = f"provider_discovery: {exc}"
                     retry_at = state.schedule_retry(fixture.fixture_id, error, now=current)
