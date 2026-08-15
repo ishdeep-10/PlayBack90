@@ -6,6 +6,7 @@ import argparse
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any, Iterable
@@ -20,6 +21,17 @@ if str(API_DIR) not in sys.path:
 ELIGIBLE_STATES = {"completed", "live", "upcoming", "unknown"}
 INACTIVE_STATES = {"cancelled", "postponed"}
 KNOWN_STATES = ELIGIBLE_STATES | INACTIVE_STATES
+
+
+def configured_ingestion_delay() -> timedelta:
+    raw = os.getenv("PLAYBACK90_INGESTION_DELAY_HOURS", "3")
+    try:
+        hours = float(raw)
+    except ValueError as exc:
+        raise ValueError("PLAYBACK90_INGESTION_DELAY_HOURS must be a number") from exc
+    if hours <= 0:
+        raise ValueError("PLAYBACK90_INGESTION_DELAY_HOURS must be greater than zero")
+    return timedelta(hours=hours)
 
 
 def utc_datetime(value: datetime | str) -> datetime:
@@ -67,7 +79,7 @@ class IngestionGroup:
 def scheduled_ingestion(
     fixture: dict[str, Any],
     *,
-    delay: timedelta = timedelta(hours=3),
+    delay: timedelta | None = None,
 ) -> ScheduledIngestion | None:
     state = str(fixture.get("state") or "unknown").lower()
     if state not in KNOWN_STATES:
@@ -79,6 +91,7 @@ def scheduled_ingestion(
     fixture_id = str(fixture.get("fixture_id") or fixture.get("provider_fixture_id") or "")
     if not fixture_id:
         return None
+    ingestion_delay = delay if delay is not None else configured_ingestion_delay()
     return ScheduledIngestion(
         fixture_id=fixture_id,
         provider_fixture_id=str(fixture.get("provider_fixture_id") or fixture_id),
@@ -87,7 +100,7 @@ def scheduled_ingestion(
         home_team=str(fixture.get("home_team") or "Unknown"),
         away_team=str(fixture.get("away_team") or "Unknown"),
         kickoff_utc=kickoff,
-        due_at=kickoff + delay,
+        due_at=kickoff + ingestion_delay,
         provider_state=state,
     )
 
@@ -187,7 +200,11 @@ def main() -> None:
         metavar="LEAGUE:SEASON",
     )
     parser.add_argument("--days", type=int, default=7, help="Future planning horizon")
-    parser.add_argument("--delay-hours", type=float, default=3.0)
+    parser.add_argument(
+        "--delay-hours",
+        type=float,
+        default=configured_ingestion_delay().total_seconds() / 3600,
+    )
     parser.add_argument("--group-minutes", type=int, default=30)
     parser.add_argument("--buffer-minutes", type=int, default=5)
     args = parser.parse_args()

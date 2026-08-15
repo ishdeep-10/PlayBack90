@@ -52,6 +52,7 @@ Set the four R2 values. Leave these pilot settings unchanged initially:
 
 ```text
 PLAYBACK90_LEAGUE_SEASONS=mls:2026
+PLAYBACK90_INGESTION_DELAY_HOURS=2.5
 PLAYBACK90_R2_KEY_PREFIX=ingestion-test
 ```
 
@@ -102,7 +103,7 @@ sudo systemctl status playback90-ingestion --no-pager
 sudo journalctl -u playback90-ingestion -f
 ```
 
-The service keeps no browser open while sleeping. It wakes for a due fixture/retry, schedule refresh, or two-hour watchdog. It processes matches sequentially and exits after claiming eight; systemd starts a clean process after 15 seconds to continue the queue.
+The service keeps no browser open while sleeping. It wakes for a due fixture/retry, schedule refresh, or two-hour watchdog. The default deployment attempts each match 2.5 hours after kickoff, then applies the five-minute group publication buffer. It processes matches sequentially and exits after claiming eight; systemd starts a clean process after 15 seconds to continue the queue.
 
 To retry one known failed fixture immediately, stop the resident service and run
 the coordinator once with its official fixture ID:

@@ -30,6 +30,15 @@ def test_due_time_is_three_hours_after_kickoff_in_utc():
     assert item.due_at == datetime(2026, 8, 16, 2, 30, tzinfo=timezone.utc)
 
 
+def test_configured_delay_can_be_two_and_a_half_hours(monkeypatch):
+    monkeypatch.setenv("PLAYBACK90_INGESTION_DELAY_HOURS", "2.5")
+
+    item = scheduled_ingestion(fixture("1", "2026-08-15T19:30:00Z"))
+
+    assert item is not None
+    assert item.due_at == datetime(2026, 8, 15, 22, 0, tzinfo=timezone.utc)
+
+
 def test_absolute_provider_times_remain_correct_across_dst_boundaries():
     before_dst = scheduled_ingestion(
         fixture("pl-before", "2026-03-28T15:00:00+00:00", league="premier-league")

@@ -7,7 +7,7 @@
 - **Analytics database:** Remains on the local development device
 - **Leagues:** Premier League, La Liga, Bundesliga, Serie A, Ligue 1, and MLS
 - **Initial pilot:** MLS only
-- **Event-data availability assumption:** First attempt three hours after scheduled kickoff
+- **Event-data availability assumption:** Configurable first attempt, currently 2.5 hours after scheduled kickoff
 - **Implementation progress (2026-08-14):** Phases 1–3 implemented locally, including deadline-aware sleep, sequential execution, host locking, and soft-batch restarts; native systemd deployment package complete; DigitalOcean/Linux capacity spike still pending
 
 ## Goals
@@ -37,7 +37,7 @@ The selected design is a **schedule-aware coordinator**:
 
 1. Synchronize fixture schedules every six hours.
 2. Store all kickoff times in UTC.
-3. Calculate `due_at = kickoff_utc + 3 hours` for each fixture.
+3. Calculate `due_at = kickoff_utc + configured delay` for each fixture (currently 2.5 hours).
 4. Build groups of fixtures whose `due_at` values fall within a configurable 30-minute window.
 5. Sleep until the next group, retry, schedule refresh, or watchdog deadline.
 6. Wake once, process the group sequentially, and calculate the next wake time.
@@ -69,7 +69,7 @@ Example:
 | 15:15 | 18:15 | 18:20 |
 | 16:00 | 19:00 | Separate group |
 
-Grouping reduces repeated league discovery work while preserving the three-hour publication delay.
+Grouping reduces repeated league discovery work while preserving the configured publication delay.
 
 ### Safety watchdog
 
@@ -182,7 +182,7 @@ Only the verified canonical R2 object makes a match complete.
 | Failed attempt | Retry delay |
 | --- | --- |
 | 1 | 1 hour |
-| 2 | 3 hours |
+| 2 | Configured post-kickoff delay (currently 2.5 hours) |
 | 3 | 6 hours |
 | 4 | 12 hours |
 | 5 | 24 hours |
@@ -252,7 +252,7 @@ If the one-week pilot repeatedly exceeds these limits, resize to the 2 GB Drople
 - [x] Reuse Football-Data for the five European leagues.
 - [x] Reuse the official MLS Stats API for MLS.
 - [x] Normalize kickoff times to UTC.
-- [x] Calculate three-hour due times.
+- [x] Calculate configurable post-kickoff due times.
 - [x] Persist schedule snapshots and operational state.
 - [x] Handle kickoff changes, postponements, and cancellations when rebuilding the plan.
 - [x] Implement the 30-minute grouping algorithm.
