@@ -104,6 +104,30 @@ sudo journalctl -u playback90-ingestion -f
 
 The service keeps no browser open while sleeping. It wakes for a due fixture/retry, schedule refresh, or two-hour watchdog. It processes matches sequentially and exits after claiming eight; systemd starts a clean process after 15 seconds to continue the queue.
 
+To retry one known failed fixture immediately, stop the resident service and run
+the coordinator once with its official fixture ID:
+
+```bash
+sudo systemctl stop playback90-ingestion
+(
+  set -a
+  . /etc/playback90/ingestion.env
+  set +a
+  runuser -u playback90 --preserve-environment -- \
+    /opt/playback90/.venv-ingestion/bin/python \
+    /opt/playback90/Data/worker_coordinator.py \
+    --league-season mls:2026 \
+    --league-season laliga:2026/2027 \
+    --execute-due \
+    --batch-limit 1 \
+    --fixture-id fd-564634
+)
+sudo systemctl start playback90-ingestion
+```
+
+The selected claim refuses uploaded, cancelled, or postponed fixtures, and R2
+match-ID checks remain idempotent.
+
 After the first remote object under `ingestion-test/event_data/mls/2026/` is verified, clear `PLAYBACK90_R2_KEY_PREFIX`, restart the service, and capture production objects:
 
 ```bash

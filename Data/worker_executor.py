@@ -59,13 +59,18 @@ def execute_due_batch(
     resolver: Callable[[Iterable[WorkerFixture]], ResolutionBatch] = resolve_fixture_urls,
     worker: Callable[..., WorkerResult] = run_match_worker,
     notifier: Callable[..., object] = notify_ingestion_result,
+    fixture_ids: Iterable[str] | None = None,
 ) -> ExecutionReport:
     current = utc_datetime(now or datetime.now(timezone.utc))
-    claimed = state.claim_due(
-        now=current,
-        earliest=current - overdue_grace,
-        limit=limit,
-    )
+    if fixture_ids is None:
+        claimed = state.claim_due(
+            now=current,
+            earliest=current - overdue_grace,
+            limit=limit,
+        )
+    else:
+        selected = list(dict.fromkeys(str(value) for value in fixture_ids))[:limit]
+        claimed = state.claim_selected(selected, now=current)
     results: list[ExecutionItem] = []
 
     def record(fixture: WorkerFixture, item: ExecutionItem) -> None:

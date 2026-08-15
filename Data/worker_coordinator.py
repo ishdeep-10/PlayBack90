@@ -241,6 +241,12 @@ def main() -> None:
     )
     parser.add_argument("--batch-limit", type=int, default=8)
     parser.add_argument(
+        "--fixture-id",
+        action="append",
+        default=[],
+        help="Explicit fixture ID to claim for a one-shot manual retry; repeat as needed",
+    )
+    parser.add_argument(
         "--lock-file",
         default=os.getenv("PLAYBACK90_WORKER_LOCK", ""),
         help="Execution lock path; defaults beside the worker-state database",
@@ -253,6 +259,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.days <= 0 or args.batch_limit <= 0:
         parser.error("--days and --batch-limit must be greater than zero")
+    if args.fixture_id and (not args.execute_due or args.run_loop):
+        parser.error("--fixture-id requires one-shot --execute-due without --run-loop")
 
     now = datetime.now(timezone.utc)
     state = WorkerStateStore(args.state_db)
@@ -280,7 +288,16 @@ def main() -> None:
     sources = sync_official_schedules(state, args.league_season, now=now)
     groups = build_persisted_plan(state, now=now, horizon=timedelta(days=args.days))
     execution = None
-    if args.execute_due and groups and groups[0].run_at <= now:
+    if args.execute_due and args.fixture_id:
+        with exclusive_worker_lock(lock_file):
+            execution = execute_due_batch(
+                state,
+                now=now,
+                limit=args.batch_limit,
+                key_prefix=args.key_prefix,
+                fixture_ids=args.fixture_id,
+            ).to_dict()
+    elif args.execute_due and groups and groups[0].run_at <= now:
         with exclusive_worker_lock(lock_file):
             execution = execute_due_batch(
                 state,

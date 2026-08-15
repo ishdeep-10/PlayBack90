@@ -7,6 +7,8 @@ Created on Wed Oct 14 14:20:02 2020
 """
 
 import warnings
+import os
+import shutil
 import time
 import pandas as pd
 pd.options.mode.chained_assignment = None
@@ -27,6 +29,7 @@ from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service as FirefoxService
 
 # options = webdriver.FirefoxOptions()
 
@@ -170,14 +173,61 @@ def getLeagueUrls(minimize_window=True):
     return leagues
 
 
-def getMatchUrls(comp_urls, competition, season, maximize_window=True):
-
+def _remote_firefox_driver():
     options = Options()
-    options.headless = True
-    driver = webdriver.Firefox(options=options)
-    
+    # Selenium removed the ``options.headless`` convenience property in 4.10.
+    # Passing the Firefox argument works both locally and on display-less hosts.
+    options.add_argument("-headless")
+
+    firefox_binary = next(
+        (
+            path
+            for path in (
+                shutil.which("firefox-esr"),
+                shutil.which("firefox"),
+                "/usr/bin/firefox-esr",
+                "/usr/bin/firefox",
+            )
+            if path and os.path.exists(path)
+        ),
+        None,
+    )
+    if firefox_binary:
+        options.binary_location = firefox_binary
+
+    geckodriver = next(
+        (
+            path
+            for path in (
+                shutil.which("geckodriver"),
+                "/usr/local/bin/geckodriver",
+                "/usr/bin/geckodriver",
+            )
+            if path and os.path.isfile(path) and os.access(path, os.X_OK)
+        ),
+        None,
+    )
+    if geckodriver:
+        return webdriver.Firefox(service=FirefoxService(geckodriver), options=options)
+    return webdriver.Firefox(options=options)
+
+
+def getMatchUrls(comp_urls, competition, season, maximize_window=True):
+    driver = _remote_firefox_driver()
+    try:
+        return _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize_window)
+    finally:
+        try:
+            driver.quit()
+        except WebDriverException:
+            # Preserve the discovery error if Firefox has already exited.
+            pass
+
+
+def _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize_window=True):
+
     if maximize_window:
-        driver.maximize_window()
+        driver.set_window_size(1920, 1080)
     
     comp_url = comp_urls[competition]
     driver.get(comp_url)
@@ -267,14 +317,11 @@ def getMatchUrls(comp_urls, competition, season, maximize_window=True):
             remove_dup = [dict(t) for t in {tuple(sorted(d.items())) for d in all_urls}]
             all_urls = getSortedData(remove_dup)
             
-            driver.close() 
-    
             return all_urls
      
     season_names = [re.search(r'\>(.*?)\<',season).group(1) for season in seasons]
-    driver.close() 
     print('Seasons available: {}'.format(season_names))
-    raise('Season Not Found.')
+    raise ValueError('Season Not Found.')
     
 
 
@@ -728,9 +775,6 @@ def addEpvToDataFrame(data):
     data.rename(columns={'EPV_difference': 'EPV'}, inplace=True)
     
     return data
-
-
-
 
 
 

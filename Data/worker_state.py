@@ -272,6 +272,49 @@ class WorkerStateStore:
             ).fetchall()
         return sorted((self._row(row) for row in claimed), key=lambda item: (item.due_at, item.fixture_id))
 
+    def claim_selected(
+        self,
+        fixture_ids: Iterable[str],
+        *,
+        now: datetime | None = None,
+        lease: timedelta = timedelta(minutes=30),
+    ) -> list[WorkerFixture]:
+        """Claim explicit non-terminal fixtures for a controlled manual retry."""
+
+        requested = tuple(dict.fromkeys(str(value) for value in fixture_ids if str(value)))
+        if not requested:
+            return []
+        current = utc_datetime(now or datetime.now(timezone.utc))
+        expires = current + lease
+        placeholders = ",".join("?" for _ in requested)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                f"""
+                SELECT * FROM worker_fixtures
+                WHERE fixture_id IN ({placeholders})
+                  AND provider_state IN ('completed', 'live', 'upcoming', 'unknown')
+                  AND status IN ('scheduled', 'retry_scheduled', 'needs_attention')
+                ORDER BY due_at, fixture_id
+                """,
+                requested,
+            ).fetchall()
+            claimed_ids = [str(row["fixture_id"]) for row in rows]
+            if claimed_ids:
+                claimed_placeholders = ",".join("?" for _ in claimed_ids)
+                connection.execute(
+                    f"UPDATE worker_fixtures SET status='claimed', claim_expires_at=?, updated_at=? "
+                    f"WHERE fixture_id IN ({claimed_placeholders})",
+                    (_iso(expires), _iso(current), *claimed_ids),
+                )
+            connection.commit()
+            claimed = connection.execute(
+                f"SELECT * FROM worker_fixtures WHERE fixture_id IN ({','.join('?' for _ in claimed_ids)})"
+                if claimed_ids else "SELECT * FROM worker_fixtures WHERE 0",
+                claimed_ids,
+            ).fetchall()
+        return sorted((self._row(row) for row in claimed), key=lambda item: (item.due_at, item.fixture_id))
+
     def mark_uploaded(
         self,
         fixture_id: str,

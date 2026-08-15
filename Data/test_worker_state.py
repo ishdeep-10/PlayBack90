@@ -161,6 +161,31 @@ def test_failed_claim_uses_retry_schedule_and_uploaded_state_is_terminal(tmp_pat
     assert state.get(fixture.fixture_id).status == "uploaded"
 
 
+def test_selected_claim_forces_only_requested_retry_and_skips_uploaded(tmp_path):
+    state = WorkerStateStore(tmp_path / "state.db")
+    retry = scheduled("retry")
+    untouched = scheduled("untouched")
+    uploaded = scheduled("uploaded")
+    state.upsert_schedule([retry, untouched, uploaded])
+    state.schedule_retry(retry.fixture_id, "browser failed", now=retry.due_at)
+    state.mark_uploaded(
+        uploaded.fixture_id,
+        r2_key="event_data/mls/2026/uploaded.parquet",
+        source_match_id="123",
+        source_url="https://example.com/Matches/123/Live/test",
+    )
+
+    claimed = state.claim_selected(
+        [retry.fixture_id, uploaded.fixture_id],
+        now=retry.due_at + timedelta(minutes=5),
+    )
+
+    assert [item.fixture_id for item in claimed] == [retry.fixture_id]
+    assert state.get(retry.fixture_id).status == "claimed"
+    assert state.get(untouched.fixture_id).status == "scheduled"
+    assert state.get(uploaded.fixture_id).status == "uploaded"
+
+
 def test_next_wake_uses_absolute_utc_action_before_watchdog():
     now = datetime(2026, 8, 14, 12, tzinfo=UTC)
     wake, reason = calculate_next_wake(

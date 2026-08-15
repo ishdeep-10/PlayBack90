@@ -207,3 +207,44 @@ def test_executor_notifies_for_each_success_and_failed_attempt(tmp_path):
     assert by_fixture["missing"]["status"] == "retry_scheduled"
     assert by_fixture["missing"]["attempt"] == 1
     assert by_fixture["missing"]["retry_at"] == (now + timedelta(hours=1)).isoformat()
+
+
+def test_executor_can_retry_one_selected_fixture_before_retry_deadline(tmp_path):
+    fixtures = [scheduled("selected"), scheduled("other", home="Austin FC", away="FC Dallas")]
+    state = persisted(tmp_path, fixtures)
+    failed_at = fixtures[0].due_at + timedelta(minutes=1)
+    state.schedule_retry("selected", "browser failed", now=failed_at)
+    calls = []
+
+    def resolver(group):
+        group = list(group)
+        calls.extend(item.fixture_id for item in group)
+        return ResolutionBatch(
+            urls={"selected": "https://example.com/Matches/100001/Live/test"},
+            errors={},
+            candidate_count=1,
+        )
+
+    def worker(**kwargs):
+        return WorkerResult(
+            status="uploaded",
+            league=kwargs["league"],
+            season=kwargs["season"],
+            match_id="100001",
+            key="event_data/mls/2026/100001.parquet",
+            validation=None,
+        )
+
+    report = execute_due_batch(
+        state,
+        now=failed_at + timedelta(minutes=5),
+        fixture_ids=["selected"],
+        resolver=resolver,
+        worker=worker,
+        notifier=lambda **kwargs: None,
+    )
+
+    assert report.to_dict()["uploaded"] == 1
+    assert calls == ["selected"]
+    assert state.get("selected").status == "uploaded"
+    assert state.get("other").status == "scheduled"
