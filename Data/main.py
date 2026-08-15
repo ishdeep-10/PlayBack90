@@ -221,12 +221,34 @@ def getMatchUrls(comp_urls, competition, season, maximize_window=True):
     driver = _remote_firefox_driver()
     try:
         return _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize_window)
+    except Exception:
+        _dump_driver_state(driver, competition)
+        raise
     finally:
         try:
             driver.quit()
         except WebDriverException:
             # Preserve the discovery error if Firefox has already exited.
             pass
+
+
+def _dump_driver_state(driver, label):
+    # Diagnostic snapshot for provider_discovery failures: geckodriver's own
+    # error strings are opaque and identical across unrelated failures, so a
+    # failed discovery is otherwise a black box.
+    import re as _re
+
+    safe_label = _re.sub(r"[^a-zA-Z0-9_-]+", "_", str(label))
+    try:
+        with open(f"/tmp/playback90-discovery-{safe_label}.html", "w") as handle:
+            handle.write(driver.page_source)
+    except Exception as exc:
+        print(f"Failed to dump page source for {label!r}: {exc}")
+    try:
+        driver.save_screenshot(f"/tmp/playback90-discovery-{safe_label}.png")
+    except Exception as exc:
+        print(f"Failed to save screenshot for {label!r}: {exc}")
+    print(f"Saved discovery failure snapshot for {label!r} to /tmp/playback90-discovery-{safe_label}.*")
 
 
 def _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize_window=True):
