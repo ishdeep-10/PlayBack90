@@ -120,7 +120,8 @@ sudo systemctl stop playback90-ingestion
     --league-season laliga:2026/2027 \
     --execute-due \
     --batch-limit 1 \
-    --fixture-id fd-564634
+    --fixture-id fd-564634 \
+    --source-url https://1xbet.whoscored.com/matches/1993897/live/spain-laliga-2026-2027-deportivo-alaves-getafe
 )
 sudo systemctl start playback90-ingestion
 ```

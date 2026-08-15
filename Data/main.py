@@ -178,6 +178,11 @@ def _remote_firefox_driver():
     # Selenium removed the ``options.headless`` convenience property in 4.10.
     # Passing the Firefox argument works both locally and on display-less hosts.
     options.add_argument("-headless")
+    options.set_preference(
+        "general.useragent.override",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    )
 
     firefox_binary = next(
         (
@@ -246,7 +251,10 @@ def _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize
                 time.sleep(sleep_s)
         return []
 
-    seasons = driver.find_element(By.XPATH, '//*[@id="seasons"]').get_attribute('innerHTML').split(sep='\n')
+    seasons_element = WebDriverWait(driver, 30).until(
+        EC.presence_of_element_located((By.ID, "seasons"))
+    )
+    seasons = seasons_element.get_attribute('innerHTML').split(sep='\n')
     seasons = [i for i in seasons if i]
     
     
@@ -775,7 +783,6 @@ def addEpvToDataFrame(data):
     data.rename(columns={'EPV_difference': 'EPV'}, inplace=True)
     
     return data
-
 
 
 

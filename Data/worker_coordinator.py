@@ -247,6 +247,10 @@ def main() -> None:
         help="Explicit fixture ID to claim for a one-shot manual retry; repeat as needed",
     )
     parser.add_argument(
+        "--source-url",
+        help="Known provider match URL for a single --fixture-id; bypasses URL discovery",
+    )
+    parser.add_argument(
         "--lock-file",
         default=os.getenv("PLAYBACK90_WORKER_LOCK", ""),
         help="Execution lock path; defaults beside the worker-state database",
@@ -261,6 +265,8 @@ def main() -> None:
         parser.error("--days and --batch-limit must be greater than zero")
     if args.fixture_id and (not args.execute_due or args.run_loop):
         parser.error("--fixture-id requires one-shot --execute-due without --run-loop")
+    if args.source_url and len(args.fixture_id) != 1:
+        parser.error("--source-url requires exactly one --fixture-id")
 
     now = datetime.now(timezone.utc)
     state = WorkerStateStore(args.state_db)
@@ -296,6 +302,7 @@ def main() -> None:
                 limit=args.batch_limit,
                 key_prefix=args.key_prefix,
                 fixture_ids=args.fixture_id,
+                source_urls={args.fixture_id[0]: args.source_url} if args.source_url else None,
             ).to_dict()
     elif args.execute_due and groups and groups[0].run_at <= now:
         with exclusive_worker_lock(lock_file):

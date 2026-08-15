@@ -60,6 +60,7 @@ def execute_due_batch(
     worker: Callable[..., WorkerResult] = run_match_worker,
     notifier: Callable[..., object] = notify_ingestion_result,
     fixture_ids: Iterable[str] | None = None,
+    source_urls: dict[str, str] | None = None,
 ) -> ExecutionReport:
     current = utc_datetime(now or datetime.now(timezone.utc))
     if fixture_ids is None:
@@ -108,25 +109,48 @@ def execute_due_batch(
             )
 
     for fixtures in _groups(claimed):
-        try:
-            resolution = resolver(fixtures)
-        except Exception as exc:
-            for fixture in fixtures:
-                error = f"provider_discovery: {exc}"
-                retry_at = state.schedule_retry(fixture.fixture_id, error, now=current)
-                record(
-                    fixture,
-                    ExecutionItem(
-                        fixture_id=fixture.fixture_id,
-                        league=fixture.league,
-                        status="retry_scheduled",
-                        retry_at=retry_at.isoformat(),
-                        error=error,
+        supplied_urls = {
+            fixture.fixture_id: source_urls[fixture.fixture_id]
+            for fixture in fixtures
+            if source_urls and fixture.fixture_id in source_urls
+        }
+        discovery_fixtures = [
+            fixture for fixture in fixtures if fixture.fixture_id not in supplied_urls
+        ]
+        if discovery_fixtures:
+            try:
+                discovered = resolver(discovery_fixtures)
+            except Exception as exc:
+                for fixture in discovery_fixtures:
+                    error = f"provider_discovery: {exc}"
+                    retry_at = state.schedule_retry(fixture.fixture_id, error, now=current)
+                    record(
+                        fixture,
+                        ExecutionItem(
+                            fixture_id=fixture.fixture_id,
+                            league=fixture.league,
+                            status="retry_scheduled",
+                            retry_at=retry_at.isoformat(),
+                            error=error,
+                        )
                     )
-                )
-            continue
+                discovery_fixtures = []
+                discovered = ResolutionBatch(urls={}, errors={}, candidate_count=0)
+            resolution = ResolutionBatch(
+                urls={**supplied_urls, **discovered.urls},
+                errors=discovered.errors,
+                candidate_count=discovered.candidate_count,
+            )
+        else:
+            resolution = ResolutionBatch(
+                urls=supplied_urls,
+                errors={},
+                candidate_count=len(supplied_urls),
+            )
 
         for fixture in fixtures:
+            if any(item.fixture_id == fixture.fixture_id for item in results):
+                continue
             source_url = resolution.urls.get(fixture.fixture_id)
             if source_url is None:
                 detail = resolution.errors.get(fixture.fixture_id, "Provider URL was not resolved")

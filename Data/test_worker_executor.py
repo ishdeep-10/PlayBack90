@@ -248,3 +248,38 @@ def test_executor_can_retry_one_selected_fixture_before_retry_deadline(tmp_path)
     assert calls == ["selected"]
     assert state.get("selected").status == "uploaded"
     assert state.get("other").status == "scheduled"
+
+
+def test_selected_fixture_can_use_supplied_url_without_discovery(tmp_path):
+    fixture = scheduled("selected")
+    state = persisted(tmp_path, [fixture])
+    source_url = "https://1xbet.whoscored.com/matches/1993897/live/test"
+    worker_calls = []
+
+    def resolver(group):
+        raise AssertionError("resolver must not run when the source URL is supplied")
+
+    def worker(**kwargs):
+        worker_calls.append(kwargs)
+        return WorkerResult(
+            status="uploaded",
+            league=kwargs["league"],
+            season=kwargs["season"],
+            match_id="1993897",
+            key="event_data/laliga/2026_2027/1993897.parquet",
+            validation=None,
+        )
+
+    report = execute_due_batch(
+        state,
+        now=fixture.due_at + timedelta(minutes=5),
+        fixture_ids=[fixture.fixture_id],
+        source_urls={fixture.fixture_id: source_url},
+        resolver=resolver,
+        worker=worker,
+        notifier=lambda **kwargs: None,
+    )
+
+    assert report.to_dict()["uploaded"] == 1
+    assert worker_calls[0]["url"] == source_url
+    assert state.get(fixture.fixture_id).source_url == source_url
