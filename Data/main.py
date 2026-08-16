@@ -205,6 +205,13 @@ def _configure_proxy(options):
     # is explicitly configured. Scoped to this one Firefox instance rather
     # than the whole droplet (no VPN tunnel), so R2 uploads, schedule syncs,
     # and the operator's own SSH session are never affected.
+    #
+    # No credentials in the URL: Firefox's SOCKS5 client has never
+    # implemented RFC 1929 username/password auth (Mozilla bug 122752, open
+    # 20+ years) -- its handshake only ever offers "no auth", so a proxy
+    # that requires credentials will flatly refuse the connection. Use your
+    # proxy provider's IP-whitelist feature (whitelist the droplet's public
+    # IP) instead, and configure a credential-free URL here.
     proxy_url = os.environ.get("PLAYBACK90_SCRAPE_PROXY_URL")
     if not proxy_url:
         return
@@ -215,30 +222,24 @@ def _configure_proxy(options):
     if not parsed.hostname or not parsed.port:
         raise ValueError(
             "PLAYBACK90_SCRAPE_PROXY_URL must include a scheme, host, and port, "
-            "e.g. socks5://user:pass@host:1080 or http://host:8080"
+            "e.g. socks5://host:1080 or http://host:8080"
+        )
+    if parsed.username or parsed.password:
+        raise ValueError(
+            "PLAYBACK90_SCRAPE_PROXY_URL must not embed credentials -- "
+            "Firefox cannot authenticate a SOCKS5 or HTTP(S) proxy "
+            "headlessly. Whitelist the droplet's public IP with your proxy "
+            "provider instead and use a credential-free URL."
         )
 
     options.set_preference("network.proxy.type", 1)
 
     if parsed.scheme.startswith("socks"):
-        # Firefox authenticates SOCKS5 proxies via preferences with no popup.
-        # HTTP(S) proxies do not support this -- use an IP-whitelisted proxy
-        # (no credentials in the URL) if your provider only offers HTTP(S).
         options.set_preference("network.proxy.socks", parsed.hostname)
         options.set_preference("network.proxy.socks_port", parsed.port)
         options.set_preference("network.proxy.socks_version", 5)
         options.set_preference("network.proxy.socks_remote_dns", True)
-        if parsed.username:
-            options.set_preference("network.proxy.socks_username", parsed.username)
-        if parsed.password:
-            options.set_preference("network.proxy.socks_password", parsed.password)
     else:
-        if parsed.username or parsed.password:
-            raise ValueError(
-                "HTTP(S) proxy credentials in the URL are not supported "
-                "(Firefox would show an auth popup and hang headless); "
-                "use an IP-whitelisted HTTP(S) proxy or a socks5:// URL instead."
-            )
         options.set_preference("network.proxy.http", parsed.hostname)
         options.set_preference("network.proxy.http_port", parsed.port)
         options.set_preference("network.proxy.ssl", parsed.hostname)
