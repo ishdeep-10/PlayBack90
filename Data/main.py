@@ -259,23 +259,39 @@ def getMatchUrls(comp_urls, competition, season, maximize_window=True):
             pass
 
 
+_DISCOVERY_DEBUG_DIR = "/var/lib/playback90/discovery-debug"
+
+
 def _dump_driver_state(driver, label):
     # Diagnostic snapshot for provider_discovery failures: geckodriver's own
     # error strings are opaque and identical across unrelated failures, so a
-    # failed discovery is otherwise a black box.
+    # failed discovery is otherwise a black box. Written under
+    # /var/lib/playback90 rather than /tmp because the systemd unit runs with
+    # PrivateTmp=true + ProtectSystem=strict, so /tmp is a private tmpfs that
+    # is invisible outside the service's own mount namespace and does not
+    # survive past the run -- ReadWritePaths only grants /var/lib/playback90.
     import re as _re
 
     safe_label = _re.sub(r"[^a-zA-Z0-9_-]+", "_", str(label))
+    saved_paths = []
     try:
-        with open(f"/tmp/playback90-discovery-{safe_label}.html", "w") as handle:
+        os.makedirs(_DISCOVERY_DEBUG_DIR, exist_ok=True)
+        html_path = os.path.join(_DISCOVERY_DEBUG_DIR, f"{safe_label}.html")
+        with open(html_path, "w") as handle:
             handle.write(driver.page_source)
+        saved_paths.append(html_path)
     except Exception as exc:
         print(f"Failed to dump page source for {label!r}: {exc}")
     try:
-        driver.save_screenshot(f"/tmp/playback90-discovery-{safe_label}.png")
+        png_path = os.path.join(_DISCOVERY_DEBUG_DIR, f"{safe_label}.png")
+        driver.save_screenshot(png_path)
+        saved_paths.append(png_path)
     except Exception as exc:
         print(f"Failed to save screenshot for {label!r}: {exc}")
-    print(f"Saved discovery failure snapshot for {label!r} to /tmp/playback90-discovery-{safe_label}.*")
+    if saved_paths:
+        print(f"Saved discovery failure snapshot for {label!r}: {saved_paths}")
+    else:
+        print(f"Could not save any discovery failure snapshot for {label!r}")
 
 
 def _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize_window=True):
