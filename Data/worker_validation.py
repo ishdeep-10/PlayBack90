@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from difflib import SequenceMatcher
 import re
-import unicodedata
 
 import pandas as pd
+
+from team_names import team_names_match
 
 
 class MatchValidationError(ValueError):
@@ -37,19 +37,7 @@ def _identifier(value: object) -> str:
         return text
 
 
-def _normalized_name(value: object) -> str:
-    ascii_value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode()
-    return re.sub(r"[^a-z0-9]+", " ", ascii_value.lower()).strip()
-
-
-def _names_match(expected: str, actual: str) -> bool:
-    left = _normalized_name(expected)
-    right = _normalized_name(actual)
-    if not left or not right:
-        return False
-    if left == right or left in right or right in left:
-        return True
-    return SequenceMatcher(None, left, right).ratio() >= 0.78
+_names_match = team_names_match
 
 
 def _single_team_name(frame: pd.DataFrame, side: str) -> str | None:

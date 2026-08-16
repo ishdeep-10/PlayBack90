@@ -4,16 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from difflib import SequenceMatcher
 import json
 from pathlib import Path
-import re
 from typing import Callable, Iterable
-import unicodedata
 from urllib.parse import urljoin
 
 from ingestion_worker import match_id_from_url
 from league_sources import LEAGUE_SOURCES
+from team_names import team_name_similarity
 from worker_state import WorkerFixture
 
 
@@ -21,7 +19,6 @@ DATA_DIR = Path(__file__).resolve().parent
 LEAGUE_URLS_PATH = DATA_DIR / "league_urls_updated.json"
 PROVIDER_BASE_URL = "https://1xbet.whoscored.com/"
 _DATE_FORMATS = ("%A, %b %d %Y", "%a, %b %d %Y", "%b %d %Y", "%Y-%m-%d")
-_CLUB_TOKENS = {"afc", "cf", "fc", "football", "club", "sc"}
 
 
 @dataclass(frozen=True)
@@ -40,25 +37,7 @@ class ResolutionBatch:
     candidate_count: int
 
 
-def _normalized_team(value: str) -> str:
-    ascii_text = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode()
-    tokens = re.findall(r"[a-z0-9]+", ascii_text.lower().replace("&", " and "))
-    meaningful = [token for token in tokens if token not in _CLUB_TOKENS]
-    return " ".join(meaningful or tokens)
-
-
-def _team_similarity(left: str, right: str) -> float:
-    left_text = _normalized_team(left)
-    right_text = _normalized_team(right)
-    if not left_text or not right_text:
-        return 0.0
-    direct = SequenceMatcher(None, left_text, right_text).ratio()
-    token_sorted = SequenceMatcher(
-        None,
-        " ".join(sorted(left_text.split())),
-        " ".join(sorted(right_text.split())),
-    ).ratio()
-    return max(direct, token_sorted)
+_team_similarity = team_name_similarity
 
 
 def _provider_date(value: object) -> date | None:
