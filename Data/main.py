@@ -200,6 +200,51 @@ def getLeagueUrls(minimize_window=True):
     return leagues
 
 
+def _configure_proxy(options):
+    # Opt-in only: unset by default, so behavior is unchanged unless a proxy
+    # is explicitly configured. Scoped to this one Firefox instance rather
+    # than the whole droplet (no VPN tunnel), so R2 uploads, schedule syncs,
+    # and the operator's own SSH session are never affected.
+    proxy_url = os.environ.get("PLAYBACK90_SCRAPE_PROXY_URL")
+    if not proxy_url:
+        return
+
+    from urllib.parse import urlparse
+
+    parsed = urlparse(proxy_url)
+    if not parsed.hostname or not parsed.port:
+        raise ValueError(
+            "PLAYBACK90_SCRAPE_PROXY_URL must include a scheme, host, and port, "
+            "e.g. socks5://user:pass@host:1080 or http://host:8080"
+        )
+
+    options.set_preference("network.proxy.type", 1)
+
+    if parsed.scheme.startswith("socks"):
+        # Firefox authenticates SOCKS5 proxies via preferences with no popup.
+        # HTTP(S) proxies do not support this -- use an IP-whitelisted proxy
+        # (no credentials in the URL) if your provider only offers HTTP(S).
+        options.set_preference("network.proxy.socks", parsed.hostname)
+        options.set_preference("network.proxy.socks_port", parsed.port)
+        options.set_preference("network.proxy.socks_version", 5)
+        options.set_preference("network.proxy.socks_remote_dns", True)
+        if parsed.username:
+            options.set_preference("network.proxy.socks_username", parsed.username)
+        if parsed.password:
+            options.set_preference("network.proxy.socks_password", parsed.password)
+    else:
+        if parsed.username or parsed.password:
+            raise ValueError(
+                "HTTP(S) proxy credentials in the URL are not supported "
+                "(Firefox would show an auth popup and hang headless); "
+                "use an IP-whitelisted HTTP(S) proxy or a socks5:// URL instead."
+            )
+        options.set_preference("network.proxy.http", parsed.hostname)
+        options.set_preference("network.proxy.http_port", parsed.port)
+        options.set_preference("network.proxy.ssl", parsed.hostname)
+        options.set_preference("network.proxy.ssl_port", parsed.port)
+
+
 def _remote_firefox_driver():
     options = Options()
     # Selenium removed the ``options.headless`` convenience property in 4.10.
@@ -210,6 +255,7 @@ def _remote_firefox_driver():
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     )
+    _configure_proxy(options)
 
     firefox_binary = next(
         (
