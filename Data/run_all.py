@@ -18,11 +18,12 @@ def send_discord_notification(webhook_url, message):
         print(f"Failed to send Discord notification: {e}")
 
 jobs = [
+    ("usa", "mls", "2026"),
+    ("spain", "laliga", "2026/2027"),
     #("england", "premier-league", "2025/2026"),
-    #("spain", "laliga", "2025/2026"),
-    ("italy", "serie-a", "2025/2026"),
+    #("italy", "serie-a", "2025/2026"),
     #("germany", "bundesliga", "2025/2026"),
-    ("france", "ligue-1", "2025/2026"),
+    #("france", "ligue-1", "2025/2026"),
     #("international", "fifa-world-cup", "2026")
     #("europe", "champions-league", "2025/2026")
     #("england" , "league-one", "2024/2025")
@@ -34,7 +35,7 @@ try:
     for country, league, season in jobs:
         print(f"Extracting: {country}, {league}, {season}")
         result = subprocess.run(
-            ["python", "extract_opta_data.py", country, league, season,"auto"],
+            [sys.executable, "extract_opta_data.py", country, league, season,"auto"],
             capture_output=True, text=True
         )
         if result.returncode != 0:
@@ -51,7 +52,7 @@ try:
 
     # Run db_to_parquet
     print("Uploading to R2...")
-    result = subprocess.run(["python", "db_to_parquet.py"], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, "db_to_parquet.py"], capture_output=True, text=True)
     if result.returncode != 0:
         success = False
         summary.append(f"❌ db_to_parquet.py: FAILED\nError: {result.stderr}")

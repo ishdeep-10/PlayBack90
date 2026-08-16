@@ -343,6 +343,8 @@ def extract_single_match_data(
         url = url.replace("/preview/", "/live/")
         print(f"Adjusted URL to Match Centre: {url}")
     
+    from main import _configure_proxy
+
     user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     options = FirefoxOptions()
     options.add_argument('--headless')
@@ -350,6 +352,7 @@ def extract_single_match_data(
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument("--window-size=1920,1080")
     options.add_argument(f"user-agent={user_agent}")
+    _configure_proxy(options)
     
     # 1. Find Firefox Binary - Aggressive Search
     firefox_binary = None
@@ -447,6 +450,20 @@ def extract_single_match_data(
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument(f"user-agent={user_agent}")
+        proxy_url = os.environ.get("PLAYBACK90_SCRAPE_PROXY_URL")
+        if proxy_url:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(proxy_url)
+            if parsed.username or parsed.password:
+                print(
+                    "Chrome fallback cannot authenticate a credentialed proxy "
+                    "headlessly; PLAYBACK90_SCRAPE_PROXY_URL will be ignored on "
+                    "this fallback path. Use an IP-whitelisted proxy or ensure "
+                    "the primary Firefox path succeeds instead."
+                )
+            else:
+                chrome_options.add_argument(f"--proxy-server={proxy_url}")
         chrome_binary_paths = [
             shutil.which("google-chrome"),
             shutil.which("google-chrome-stable"),
