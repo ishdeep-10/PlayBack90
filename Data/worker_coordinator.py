@@ -152,6 +152,7 @@ def run_coordinator_loop(
     output = emit or (lambda payload: print(json.dumps(payload, sort_keys=True), flush=True))
     schedule_refresh_at = datetime.min.replace(tzinfo=timezone.utc)
     cycles = 0
+    total_claimed = 0
 
     while True:
         now = utc_datetime(clock())
@@ -195,11 +196,18 @@ def run_coordinator_loop(
             }
         )
         cycles += 1
+        if execution:
+            total_claimed += int(execution.get("claimed", 0))
         if max_cycles is not None and cycles >= max_cycles:
             return cycles
-        if execution and int(execution.get("claimed", 0)) >= batch_limit:
+        if total_claimed >= batch_limit:
             # Let systemd start a clean Python process after a full soft batch,
             # releasing model and browser memory before claiming more work.
+            # Tracked cumulatively across wake cycles rather than per-execution,
+            # since due groups are usually much smaller than batch_limit -- a
+            # per-execution check almost never fired in practice, so the
+            # resident process ran for many hours/many Firefox launches
+            # without ever getting a clean restart.
             return cycles
         sleep_seconds = max(0.0, (next_wake - now).total_seconds())
         if wait(sleep_seconds):
