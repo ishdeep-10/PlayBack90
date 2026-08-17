@@ -291,19 +291,37 @@ def _remote_firefox_driver():
     return webdriver.Firefox(options=options)
 
 
-def getMatchUrls(comp_urls, competition, season, maximize_window=True):
-    driver = _remote_firefox_driver()
-    try:
-        return _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize_window)
-    except Exception:
-        _dump_driver_state(driver, competition)
-        raise
-    finally:
+def getMatchUrls(comp_urls, competition, season, maximize_window=True, max_attempts=2):
+    # A residential proxy adds real latency/instability compared to a direct
+    # connection, and has been observed crashing the Firefox session mid-page
+    # (InvalidSessionIdException / "Tried to run command without
+    # establishing a connection") rather than failing a specific selector
+    # lookup. WebDriverException (parent of InvalidSessionIdException,
+    # TimeoutException, NoSuchElementException) covers exactly the failure
+    # classes seen so far, so one immediate retry with a brand new driver
+    # absorbs transient proxy/browser flakiness before falling back to the
+    # caller's own longer retry-with-backoff schedule.
+    last_error: WebDriverException | None = None
+    for attempt in range(1, max_attempts + 1):
+        driver = _remote_firefox_driver()
         try:
-            driver.quit()
-        except WebDriverException:
-            # Preserve the discovery error if Firefox has already exited.
-            pass
+            return _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize_window)
+        except WebDriverException as exc:
+            last_error = exc
+            _dump_driver_state(driver, competition)
+            if attempt < max_attempts:
+                print(f"Discovery attempt {attempt} failed ({exc.__class__.__name__}); retrying with a fresh driver.")
+        except Exception:
+            _dump_driver_state(driver, competition)
+            raise
+        finally:
+            try:
+                driver.quit()
+            except WebDriverException:
+                # Preserve the discovery error if Firefox has already exited.
+                pass
+    assert last_error is not None
+    raise last_error
 
 
 _DISCOVERY_DEBUG_DIR = "/var/lib/playback90/discovery-debug"
