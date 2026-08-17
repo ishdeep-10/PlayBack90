@@ -256,6 +256,12 @@ def _remote_firefox_driver():
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     )
+    # WhoScored's tournament pages are ad-heavy. We only ever read DOM/text,
+    # never pixels, so skip images entirely -- this cuts page weight a lot
+    # (helpful for both proxy GB cost and the 1GB droplet's memory headroom)
+    # and has been observed to correlate with the Firefox content process
+    # dying mid-page under a slow proxy connection.
+    options.set_preference("permissions.default.image", 2)
     _configure_proxy(options)
 
     firefox_binary = next(

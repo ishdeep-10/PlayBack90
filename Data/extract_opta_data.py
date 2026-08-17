@@ -352,6 +352,7 @@ def extract_single_match_data(
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument("--window-size=1920,1080")
     options.add_argument(f"user-agent={user_agent}")
+    options.set_preference("permissions.default.image", 2)
     _configure_proxy(options)
     
     # 1. Find Firefox Binary - Aggressive Search
@@ -450,6 +451,7 @@ def extract_single_match_data(
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument(f"user-agent={user_agent}")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         proxy_url = os.environ.get("PLAYBACK90_SCRAPE_PROXY_URL")
         if proxy_url:
             from urllib.parse import urlparse
