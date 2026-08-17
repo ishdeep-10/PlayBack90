@@ -291,7 +291,7 @@ def _remote_firefox_driver():
     return webdriver.Firefox(options=options)
 
 
-def getMatchUrls(comp_urls, competition, season, maximize_window=True, max_attempts=2):
+def getMatchUrls(comp_urls, competition, season, maximize_window=True, max_attempts=3):
     # A residential proxy adds real latency/instability compared to a direct
     # connection, and has been observed crashing the Firefox session mid-page
     # (InvalidSessionIdException / "Tried to run command without
@@ -363,7 +363,12 @@ def _get_match_urls_with_driver(driver, comp_urls, competition, season, maximize
 
     if maximize_window:
         driver.set_window_size(1920, 1080)
-    
+
+    # A slow/unhealthy proxy exit node should fail fast so getMatchUrls's
+    # own retry-with-a-fresh-driver gets a chance at a different node,
+    # rather than hanging on Firefox's long default page-load timeout.
+    driver.set_page_load_timeout(60)
+
     comp_url = comp_urls[competition]
     driver.get(comp_url)
     close_overlay(driver)
