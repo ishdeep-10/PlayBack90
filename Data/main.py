@@ -320,6 +320,13 @@ def getMatchUrls(comp_urls, competition, season, maximize_window=True, max_attem
             except WebDriverException:
                 # Preserve the discovery error if Firefox has already exited.
                 pass
+        if attempt < max_attempts:
+            # Give the OS a moment to fully release the previous Firefox/
+            # geckodriver process's port and sockets before starting a new
+            # one -- launching back-to-back with no gap risked a race where
+            # the next driver failed to establish its own Marionette
+            # connection, itself indistinguishable from proxy flakiness.
+            time.sleep(3)
     assert last_error is not None
     raise last_error
 
