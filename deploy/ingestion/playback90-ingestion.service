@@ -30,5 +30,14 @@ ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/var/lib/playback90
 
+# Firefox's multi-process architecture relies on /dev/shm for internal IPC.
+# Under this unit's private mount namespace (PrivateTmp + ProtectSystem),
+# headless Firefox has been observed crashing outright ("Failed to decode
+# response from marionette" / lost Marionette connection) specifically in
+# automated runs, never in a plain interactive shell where these sandboxing
+# directives don't apply -- give it an explicit, adequately sized tmpfs
+# rather than whatever the sandboxed default provides.
+TemporaryFileSystem=/dev/shm:size=512M,mode=1777
+
 [Install]
 WantedBy=multi-user.target
