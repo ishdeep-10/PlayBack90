@@ -12,13 +12,22 @@ from worker_schedule import ScheduledIngestion, utc_datetime
 
 
 ACTIVE_PROVIDER_STATES = {"completed", "live", "upcoming", "unknown"}
+# Aggressive schedule: most failures are now expected to be transient (a
+# slow proxy exit node) rather than a systemic block, following the
+# /dev/shm sandbox fix -- recover fast from those instead of waiting up to
+# the old first-retry delay of 1h. Capped at the last entry thereafter.
 RETRY_DELAYS = (
+    timedelta(minutes=5),
+    timedelta(minutes=15),
+    timedelta(minutes=30),
     timedelta(hours=1),
-    timedelta(hours=3),
-    timedelta(hours=6),
-    timedelta(hours=12),
-    timedelta(hours=24),
+    timedelta(hours=2),
 )
+# Attempts beyond this move to needs_attention and stop being auto-retried
+# (see schedule_retry below). Chosen so the total give-up window stays close
+# to the previous ~5 days despite the much faster early cadence, rather than
+# giving up in under 10 hours the way a naive attempt-count cutoff would.
+MAX_RETRY_ATTEMPTS = 60
 
 
 @dataclass(frozen=True)
@@ -354,7 +363,7 @@ class WorkerStateStore:
             attempt = int(row["attempt_count"]) + 1
             delay = RETRY_DELAYS[min(attempt - 1, len(RETRY_DELAYS) - 1)]
             retry_at = current + delay
-            status = "needs_attention" if attempt > len(RETRY_DELAYS) + 3 else "retry_scheduled"
+            status = "needs_attention" if attempt > MAX_RETRY_ATTEMPTS else "retry_scheduled"
             connection.execute(
                 """
                 UPDATE worker_fixtures SET

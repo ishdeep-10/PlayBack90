@@ -181,12 +181,12 @@ Only the verified canonical R2 object makes a match complete.
 
 | Failed attempt | Retry delay |
 | --- | --- |
-| 1 | 1 hour |
-| 2 | Configured post-kickoff delay (currently 2.5 hours) |
-| 3 | 6 hours |
-| 4 | 12 hours |
-| 5 | 24 hours |
-| Later attempts | Once daily, up to 72 hours after the first attempt |
+| 1 | 5 minutes |
+| 2 | 15 minutes |
+| 3 | 30 minutes |
+| 4 | 1 hour |
+| 5 | 2 hours |
+| Later attempts | Every 2 hours, up to attempt 60 (~4.5 days after the first attempt) |
 
 Retryable failures include:
 

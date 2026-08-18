@@ -165,7 +165,7 @@ def test_executor_schedules_retry_for_unresolved_url_and_ingestion_failure(tmp_p
     assert report.to_dict()["retry_scheduled"] == 2
     assert state.get("missing").last_error.startswith("provider_url_not_found:")
     assert state.get("failed").last_error == "ingestion: timeline incomplete"
-    assert state.get("missing").next_retry_at == now + timedelta(hours=1)
+    assert state.get("missing").next_retry_at == now + timedelta(minutes=5)
 
 
 def test_executor_notifies_for_each_success_and_failed_attempt(tmp_path):
@@ -206,7 +206,7 @@ def test_executor_notifies_for_each_success_and_failed_attempt(tmp_path):
     assert by_fixture["success"]["r2_key"] == "event_data/mls/2026/100001.parquet"
     assert by_fixture["missing"]["status"] == "retry_scheduled"
     assert by_fixture["missing"]["attempt"] == 1
-    assert by_fixture["missing"]["retry_at"] == (now + timedelta(hours=1)).isoformat()
+    assert by_fixture["missing"]["retry_at"] == (now + timedelta(minutes=5)).isoformat()
 
 
 def test_executor_can_retry_one_selected_fixture_before_retry_deadline(tmp_path):

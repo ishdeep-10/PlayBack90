@@ -145,7 +145,7 @@ def test_failed_claim_uses_retry_schedule_and_uploaded_state_is_terminal(tmp_pat
 
     retry_at = state.schedule_retry(claimed.fixture_id, "source unavailable", now=failed_at)
 
-    assert retry_at == failed_at + timedelta(hours=1)
+    assert retry_at == failed_at + timedelta(minutes=5)
     assert state.get(fixture.fixture_id).status == "retry_scheduled"
     assert state.claim_due(now=retry_at - timedelta(seconds=1)) == []
     assert len(state.claim_due(now=retry_at)) == 1
