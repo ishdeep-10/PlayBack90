@@ -243,11 +243,19 @@ def _pdf_chart_page(
         ax.axis("off")
         ax.imshow(img)
         ax.set_title(title, color="white", fontsize=14, pad=8)
-        pdf.savefig(fig, bbox_inches="tight", facecolor="#010b14")
+        _save_page(pdf, fig, "#010b14", "#9eb0c4")
         plt.close(fig)
     except Exception:
         # If chart fails (e.g. missing fonts) just skip the page
         pass
+
+
+DATA_ATTRIBUTION = "Data by Dribble (dribble360.com)"  # vendor-approved wording, no logo (docs/dribble360-licence.md)
+
+
+def _save_page(pdf, fig, bg, color) -> None:
+    fig.text(0.5, 0.012, DATA_ATTRIBUTION, ha="center", va="bottom", fontsize=8, color=color)
+    pdf.savefig(fig, bbox_inches="tight", facecolor=bg)
 
 
 def build_match_report_pdf(df: pd.DataFrame, context: MatchContext, narrative: str | None = None) -> bytes:
@@ -276,7 +284,7 @@ def build_match_report_pdf(df: pd.DataFrame, context: MatchContext, narrative: s
         ax1.text(0.5, 0.42, f"Events: {summary['events']}    Shots: {summary['shots']}    Goals: {summary['goals']}    xG: {summary['xg_total']}    xGOT: {summary.get('xgot_total', 0.0)}", fontsize=13, color=muted, ha="center", transform=ax1.transAxes)
         if context.league:
             ax1.text(0.5, 0.32, f"{context.league}  ·  {context.season or ''}", fontsize=11, color=muted, ha="center", transform=ax1.transAxes)
-        pdf.savefig(fig1, bbox_inches="tight", facecolor=bg)
+        _save_page(pdf, fig1, bg, muted)
         plt.close(fig1)
 
         # ── Optional: AI analyst narrative page ──────────────────────────
@@ -299,7 +307,7 @@ def build_match_report_pdf(df: pd.DataFrame, context: MatchContext, narrative: s
                 y_pos -= 0.02
                 if y_pos < 0.05:
                     break
-            pdf.savefig(fig_n, bbox_inches="tight", facecolor=bg)
+            _save_page(pdf, fig_n, bg, muted)
             plt.close(fig_n)
 
         # ── Page 2: Team summaries + player stats ────────────────────────
@@ -329,7 +337,7 @@ def build_match_report_pdf(df: pd.DataFrame, context: MatchContext, narrative: s
             y -= 0.055
             if y < 0.05:
                 break
-        pdf.savefig(fig2, bbox_inches="tight", facecolor=bg)
+        _save_page(pdf, fig2, bg, muted)
         plt.close(fig2)
 
         # ── Pages 3-5: Native match charts ────────────────────────────────
@@ -357,7 +365,7 @@ def build_match_report_pdf(df: pd.DataFrame, context: MatchContext, narrative: s
                 if y < 0.05:
                     break
             y -= 0.04
-        pdf.savefig(fig8, bbox_inches="tight", facecolor=bg)
+        _save_page(pdf, fig8, bg, muted)
         plt.close(fig8)
 
     return buffer.getvalue()

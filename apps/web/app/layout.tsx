@@ -52,6 +52,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </div>
         <footer style={{ padding: "24px 0", textAlign: "center" }}>
           <Link href="/privacy" className="muted" style={{ fontSize: "0.85rem" }}>Privacy</Link>
+          <p className="muted" style={{ fontSize: "0.8rem", margin: "8px 0 0" }}>Data by Dribble (dribble360.com)</p>
         </footer>
         </AuthProvider>
         </PostHogProvider>
