@@ -21,6 +21,14 @@ Keep a dated copy of the terms and the reply below: the page can change, and a p
 
 Data my server sends to a logged-in subscriber's browser so PlayBack90 can display the chart in front of them is display within the product, not redistribution (dashboards and apps are named permitted products on Pro). Anything that makes the data itself the product needs the signed data-licence addendum: an API or feed of the underlying data, row exports or downloads, bulk delivery, or giving subscribers rights to reuse the raw data outside PlayBack90. Tip from them: send each visual only the figures it needs (aggregates and derived values where the chart allows).
 
+## Upstream (Opta) question: written confirmation (Dribble360, 2026-10-28)
+
+- The data is supplied to Dribble360 under licence from Opta (Stats Perform); the rights granted on the Pro plan rest on that licence.
+- My described use (paid subscriber access to PlayBack90, visuals and derived metrics only, no raw data export) is "covered end to end" under the Pro licence. They stated that this email is the written confirmation.
+- The Terms of Service are the complete set of rules that apply to me. No separate obligations to Opta, no licence needed from Opta, no Opta attribution required, and no extra upstream conditions on competitions, regions or uses.
+- The upstream agreement is between Dribble360 and its supplier and is not shared. "If your use stays within our Terms, you are compliant, and the licence we grant you is ours to stand behind."
+- Keep this email with the others. Do not name Opta in public posts or in the app credit (the credit points to Dribble only).
+
 ## Safeguards I told them about: status as of 2026-10-28
 
 | Commitment | Status |
