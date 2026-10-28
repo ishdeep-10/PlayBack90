@@ -209,7 +209,7 @@ def list_leagues() -> list[LeagueSummary]:
 def get_player_images(names: str, team: str | None = None) -> dict[str, str | None]:
     from app.services.player_images import resolve_player_images
 
-    wanted = [name.strip() for name in names.split(",") if name.strip()][:80]
+    wanted = [name.strip() for name in names.split(",") if name.strip()][:200]
     return resolve_player_images(wanted, team=team)
 
 

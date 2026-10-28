@@ -1,8 +1,9 @@
 """Build a team-aware player image map from SoccerWiki squad pages.
 
-For every club team in app.domain.TEAM_DICT, finds the SoccerWiki club id,
-fetches its squad page once, and joins the squad player ids against the
-SoccerWiki player export to produce:
+For every club team in app.domain.TEAM_DICT, finds the SoccerWiki club id (crawled live from the country pages),
+fetches its squad page once, and resolves each squad player id to an image: the player export's ImageURL when it has
+one, else the CDN path for that id (summer signings and promoted-club players are newer than the export), verified
+with a HEAD request. Clubs the crawl cannot match keep their entry from the previous map. Produces:
 
     player_images_map.json   { "<team name>": { "<normalized player name>": "<image url>", ... } }
 
@@ -11,6 +12,7 @@ Run from repo root:  python Data/build_player_image_map.py
 
 from __future__ import annotations
 
+import concurrent.futures as cf
 import difflib
 import json
 import re
@@ -27,10 +29,13 @@ sys.path.insert(0, str(ROOT / "apps" / "api"))
 from app.domain import TEAM_DICT  # noqa: E402
 
 PLAYER_JSON = sorted(ROOT.glob("SoccerWiki*Player Data*.json"))[-1]
-CLUB_JSON = sorted(ROOT.glob("SoccerWiki*Club Data*.json"))[-1]
 OUT_PATH = ROOT / "player_images_map.json"
 
 SQUAD_URL = "https://en.soccerwiki.org/squad.php?clubid={club_id}"
+COUNTRY_URL = "https://en.soccerwiki.org/country.php?countryId={code}"
+CDN_URL = "https://cdn.soccerwiki.org/images/player/{pid}.png"
+COUNTRIES = ["ENG", "ESP", "GER", "ITA", "FRA", "NED", "POR", "BEL", "TUR", "USA", "MEX", "BRA", "ARG", "JPN", "KSA"]
+CLUB_LINK_RE = re.compile(r'squad\.php\?clubid=(\d+)"[^>]*>([^<]+)<')
 PLAYER_LINK_RE = re.compile(r'player\.php\?pid=(\d+)"[^>]*>([^<]+)<')
 
 # App team name -> SoccerWiki club name, for names token matching can't bridge.
@@ -53,6 +58,11 @@ ALIASES = {
     "Slavia Prague": "SK Slavia Praha",
     "PSG": "Paris Saint-Germain",
     "Rennes": "Stade Rennais",
+    "Lyon": "Olympique Lyonnais",
+    "Deportivo La Coruna": "RC Deportivo",
+    "Racing Santander": "Real Racing Club",
+    "LA Galaxy": "Los Angeles Galaxy",
+    "Red Bull New York": "New York RB",
 }
 
 # National sides (FIFA World Cup) have no SoccerWiki club squad — skipped.
@@ -68,15 +78,29 @@ def norm(value: str) -> str:
     return " ".join(text.lower().replace(".", " ").replace("-", " ").replace("/", " ").split())
 
 
-def load_clubs() -> dict[str, int]:
-    data = json.loads(CLUB_JSON.read_text())
-    nationals = {norm(c["Name"]) for c in data.get("InternationalData", [])}
+def load_clubs(session: requests.Session) -> dict[str, int]:
+    """Normalized club name -> SoccerWiki club id, from the live country pages (the export's ClubData is empty)."""
     index: dict[str, int] = {}
-    for club in data["ClubData"]:
-        name = norm(club["Name"])
-        if name and name not in nationals:
-            index.setdefault(name, int(club["ID"]))
+    for code in COUNTRIES:
+        try:
+            response = session.get(COUNTRY_URL.format(code=code), timeout=30)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            print(f"  [WARN] country {code}: fetch failed ({exc})")
+            continue
+        for club_id, name in CLUB_LINK_RE.findall(response.text):
+            name = re.sub(r"\s*\(\d+\)$", "", name.strip())  # "Manchester United (13)" carries a rank suffix
+            if norm(name):
+                index.setdefault(norm(name), int(club_id))
+        time.sleep(0.4)
     return index
+
+
+def image_exists(url: str, session: requests.Session) -> bool:
+    try:
+        return session.head(url, timeout=15, allow_redirects=True).status_code == 200
+    except requests.RequestException:
+        return False
 
 
 def match_club(team: str, clubs: dict[str, int]) -> int | None:
@@ -104,13 +128,13 @@ def match_club(team: str, clubs: dict[str, int]) -> int | None:
 def main() -> None:
     players = json.loads(PLAYER_JSON.read_text())["PlayerData"]
     url_by_id = {int(p["ID"]): str(p.get("ImageURL") or "") for p in players}
-    clubs = load_clubs()
-
     team_names = sorted(set(TEAM_DICT.values()))
     session = requests.Session()
     session.headers["User-Agent"] = "PlayBack90/1.0 (player image mapper)"
+    clubs = load_clubs(session)
+    print(f"{len(clubs)} clubs indexed from {len(COUNTRIES)} country pages")
 
-    result: dict[str, dict[str, str]] = {}
+    result: dict[str, dict[str, str]] = json.loads(OUT_PATH.read_text()) if OUT_PATH.exists() else {}
     misses: list[str] = []
     for team in team_names:
         club_id = match_club(team, clubs)
@@ -124,14 +148,26 @@ def main() -> None:
             print(f"  [WARN] {team}: fetch failed ({exc})")
             continue
         squad: dict[str, str] = {}
+        unverified: dict[str, str] = {}
         for pid_str, raw_name in PLAYER_LINK_RE.findall(response.text):
             name = norm(raw_name)
+            if not name:
+                continue
             url = url_by_id.get(int(pid_str), "")
-            if name and url:
+            if url:
                 squad.setdefault(name, url)
+            else:
+                unverified.setdefault(name, CDN_URL.format(pid=pid_str))
+        with cf.ThreadPoolExecutor(8) as pool:
+            checked = list(pool.map(lambda item: (item[0], item[1], image_exists(item[1], session)), unverified.items()))
+        added = 0
+        for name, url, ok in checked:
+            if ok:
+                squad.setdefault(name, url)
+                added += 1
         if squad:
             result[team] = squad
-            print(f"  {team:<24} club {club_id}: {len(squad)} players")
+            print(f"  {team:<24} club {club_id}: {len(squad)} players ({added} beyond the export)")
         else:
             print(f"  [WARN] {team}: no players parsed (club {club_id})")
         time.sleep(0.4)

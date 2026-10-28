@@ -24,10 +24,17 @@ _SURNAME_INDEX: dict[str, list[tuple[str, str]]] | None = None
 _TEAM_MAP: dict[str, dict[str, str]] | None = None
 
 
+# Letters NFKD leaves intact ("Højlund" must meet "Hojlund").
+_TRANSLIT = str.maketrans({"ø": "o", "Ø": "O", "æ": "ae", "Æ": "AE", "œ": "oe", "ł": "l", "Ł": "L", "đ": "d", "Đ": "D", "ß": "ss", "ð": "d", "þ": "th"})
+
+
 def _normalize(name: str) -> str:
-    text = unicodedata.normalize("NFKD", str(name or ""))
+    text = unicodedata.normalize("NFKD", str(name or "").translate(_TRANSLIT))
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
-    return " ".join(text.lower().replace("-", " ").split())
+    text = text.lower().replace("-", " ")
+    for apostrophe in ("'", "’", "ʼ", "`"):  # "N'Dri" vs "N’dri" must index the same
+        text = text.replace(apostrophe, "")
+    return " ".join(text.split())
 
 
 def _load_index() -> tuple[dict[str, str], dict[str, list[tuple[str, str]]], dict[str, dict[str, str]]]:

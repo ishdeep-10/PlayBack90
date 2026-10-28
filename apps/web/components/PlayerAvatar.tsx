@@ -13,8 +13,15 @@ function cacheKey(name: string, team?: string) {
   return `${name}|${team ?? ""}`;
 }
 
+const API_BATCH_SIZE = 80;
+const RETRY_AFTER_MS = 30_000;
+const failedAt = new Map<string, number>();
+
 function requestImage(name: string, team?: string) {
-  if (imageCache.has(cacheKey(name, team))) return;
+  const key = cacheKey(name, team);
+  if (imageCache.has(key)) return;
+  // A failed batch is not cached as "no image" (that would blank those players until reload); retry after a pause.
+  if (Date.now() - (failedAt.get(key) ?? 0) < RETRY_AFTER_MS) return;
   const teamKey = team ?? "";
   const bucket = pendingByTeam.get(teamKey) ?? new Set<string>();
   bucket.add(name);
@@ -26,18 +33,19 @@ function requestImage(name: string, team?: string) {
       pendingPromise = null;
       await Promise.all(
         batches.map(async ([teamKey, namesSet]) => {
-          const batch = [...namesSet];
-          if (!batch.length) return;
-          try {
-            const teamParam = teamKey ? `&team=${encodeURIComponent(teamKey)}` : "";
-            const response = await fetch(
-              `${PUBLIC_API_BASE}/players/images?names=${encodeURIComponent(batch.join(","))}${teamParam}`,
-              { headers: await getAuthHeaders() }
-            );
-            const data = (await response.json()) as Record<string, string | null>;
-            for (const key of batch) imageCache.set(cacheKey(key, teamKey || undefined), data[key] ?? null);
-          } catch {
-            for (const key of batch) imageCache.set(cacheKey(key, teamKey || undefined), null);
+          const all = [...namesSet];
+          const headers = await getAuthHeaders();
+          const teamParam = teamKey ? `&team=${encodeURIComponent(teamKey)}` : "";
+          for (let i = 0; i < all.length; i += API_BATCH_SIZE) {
+            const batch = all.slice(i, i + API_BATCH_SIZE);
+            try {
+              const response = await fetch(`${PUBLIC_API_BASE}/players/images?names=${encodeURIComponent(batch.join(","))}${teamParam}`, { headers });
+              if (!response.ok) throw new Error(`player images ${response.status}`);
+              const data = (await response.json()) as Record<string, string | null>;
+              for (const key of batch) imageCache.set(cacheKey(key, teamKey || undefined), data[key] ?? null);
+            } catch {
+              for (const key of batch) failedAt.set(cacheKey(key, teamKey || undefined), Date.now());
+            }
           }
         })
       );
