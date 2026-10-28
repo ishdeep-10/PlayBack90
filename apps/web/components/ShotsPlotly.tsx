@@ -224,6 +224,8 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
     () => shots.filter(hasValidPitchPoint).map((row, index) => ({ ...row, shotNumber: index + 1 }) as NumberedShot),
     [shots],
   );
+  // Feeds without goal-mouth data (Dribble360) have no goal-face placement or xGOT: hide those visuals.
+  const hasPlacement = useMemo(() => shots.some((row) => row.goal_mouth_y !== null && row.goal_mouth_y !== undefined), [shots]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [animateSequence, setAnimateSequence] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -460,6 +462,7 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
   return (
     <div className={`shots-sca-layout is-${orientation}`}>
       <div className={`plotly-chart-shell shots-plotly-shell is-${orientation}`}>
+        {hasPlacement ? (
         <div className="shot-click-chart shot-click-chart-goal">
           <Plot
             data={goalChartData}
@@ -504,6 +507,7 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
             })}
           </div>
         </div>
+        ) : null}
 
         <div className="shot-click-chart shot-click-chart-pitch">
           <Plot
@@ -641,7 +645,7 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
             <div className="shot-detail-grid">
               <span>Minute</span><strong>{num(selectedShot.minute)}&apos;</strong>
               <span>xG</span><strong>{num(selectedShot.xg).toFixed(2)}</strong>
-              <span>xGOT</span><strong>{num(selectedShot.xgot ?? selectedShot.xGOT).toFixed(2)}</strong>
+              {hasPlacement ? <><span>xGOT</span><strong>{num(selectedShot.xgot ?? selectedShot.xGOT).toFixed(2)}</strong></> : null}
               <span>Result</span><strong>{shotOutcome(selectedShot)}</strong>
               <span>Situation</span><strong>{String(selectedShot.situation ?? "N/A")}</strong>
               <span>Body Part</span><strong>{String(selectedShot.body_part ?? "N/A")}</strong>
@@ -670,7 +674,7 @@ export function ShotsPlotly({ shots, team, teamColor, orientation = "stacked" }:
                 <div className={`shot-sca-event is-shot-end${sequenceStep >= sequenceFinalStep ? " is-current" : " is-pending"}`}>
                   <span>Shot</span>
                   <p>{String(selectedShot.player ?? "Unknown")} · {shotOutcome(selectedShot)}</p>
-                  <small>xG {num(selectedShot.xg).toFixed(2)} · xGOT {num(selectedShot.xgot ?? selectedShot.xGOT).toFixed(2)}</small>
+                  <small>xG {num(selectedShot.xg).toFixed(2)}{hasPlacement ? ` · xGOT ${num(selectedShot.xgot ?? selectedShot.xGOT).toFixed(2)}` : ""}</small>
                 </div>
               )}
             </div>

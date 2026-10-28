@@ -619,6 +619,11 @@ def _safe_float(value: Any) -> float:
     return float(numeric)
 
 
+def _optional_float(value: Any) -> float | None:
+    numeric = pd.to_numeric(value, errors="coerce")
+    return None if pd.isna(numeric) else float(numeric)
+
+
 def _is_shot_on_target(row: pd.Series) -> bool:
     shot_type = str(row.get("type", ""))
     if shot_type == "Goal":
@@ -1168,8 +1173,8 @@ def _build_shot_detail_rows(enriched_df: pd.DataFrame, shots_df: pd.DataFrame) -
                 "y": display_y,
                 "raw_x": _safe_float(row.get("x")),
                 "raw_y": _safe_float(row.get("y")),
-                "goal_mouth_y": _safe_float(row.get("goalMouthY")),
-                "goal_mouth_z": _safe_float(row.get("goalMouthZ")),
+                "goal_mouth_y": _optional_float(row.get("goalMouthY")),
+                "goal_mouth_z": _optional_float(row.get("goalMouthZ")),
                 "own_goal": is_own_goal,
                 "score_before": str(row.get("score_before", "0-0")),
                 "game_state": _score_state_value(display_goal_diff),

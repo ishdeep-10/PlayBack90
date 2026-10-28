@@ -117,6 +117,8 @@ export function ShotsScaSection({
   const [selectedGameState, setSelectedGameState] = useState(initialGameState);
   const [selectedTimeRange, setSelectedTimeRange] = useState(initialTimeRange);
   const [mapOrientation, setMapOrientation] = useState<"stacked" | "side-by-side">("stacked");
+  // Feeds without goal-mouth data (Dribble360) have no xGOT / goal-face placement: hide those figures.
+  const hasPlacement = useMemo(() => shotRows.some((row) => row.goal_mouth_y !== null && row.goal_mouth_y !== undefined), [shotRows]);
 
   useSyncFiltersToUrl({
     team: selectedTeam,
@@ -225,7 +227,7 @@ export function ShotsScaSection({
                     { label: "Goals", value: String(selectedTotal?.goals ?? 0) },
                     { label: "Shots on target", value: String(selectedTotal?.shots_on_target ?? 0) },
                     { label: "xG", value: format(selectedTotal?.xg, 2) },
-                    { label: "xGOT", value: format(selectedTotal?.xgot, 2) },
+                    ...(hasPlacement ? [{ label: "xGOT", value: format(selectedTotal?.xgot, 2) }] : []),
                     { label: "SCA", value: String(selectedTotal?.sca ?? 0) },
                     { label: "SCA xT", value: format(selectedTotal?.sca_xt, 2) },
                     { label: "Assists", value: String(selectedTotal?.assists ?? 0) },
@@ -239,7 +241,7 @@ export function ShotsScaSection({
                         image: getCachedPlayerImage(name, selectedTeam),
                         label: name,
                         value: `${num(row["Total Shots"])} shots`,
-                        sub: `xG ${format(row["Total xG"], 2)} · xGOT ${format(row["Total xGOT"], 2)} · ${num(row.Goals)} goals · ${num(row["Shots On Target"])} on target`,
+                        sub: `xG ${format(row["Total xG"], 2)}${hasPlacement ? ` · xGOT ${format(row["Total xGOT"], 2)}` : ""} · ${num(row.Goals)} goals · ${num(row["Shots On Target"])} on target`,
                       });
                     });
                   }
@@ -307,7 +309,7 @@ export function ShotsScaSection({
             ["Goals", selectedTotal?.goals],
             ["SOT", selectedTotal?.shots_on_target],
             ["xG", format(selectedTotal?.xg, 2)],
-            ["xGOT", format(selectedTotal?.xgot, 2)],
+            ...(hasPlacement ? [["xGOT", format(selectedTotal?.xgot, 2)]] : []),
             ["SCA", selectedTotal?.sca],
             ["SCA xT", format(selectedTotal?.sca_xt, 2)],
             ["Assists", selectedTotal?.assists],
@@ -374,7 +376,7 @@ export function ShotsScaSection({
               </button>
             ))}
             <select className="select" value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}>
-              {sortOptions.map(([key, label]) => <option key={key} value={key}>Sort: {label}</option>)}
+              {sortOptions.filter(([key]) => hasPlacement || key !== "Total xGOT").map(([key, label]) => <option key={key} value={key}>Sort: {label}</option>)}
             </select>
           </div>
         </div>
@@ -391,9 +393,9 @@ export function ShotsScaSection({
                 <th>Blocked</th>
                 <th>Avg Dist</th>
                 <th>xG</th>
-                <th>xGOT</th>
+                {hasPlacement ? <th>xGOT</th> : null}
                 <th>xG/Shot</th>
-                <th>xGOT/Shot</th>
+                {hasPlacement ? <th>xGOT/Shot</th> : null}
                 <th>SCA</th>
                 <th>SCA xT</th>
                 <th>Ast</th>
@@ -429,9 +431,9 @@ export function ShotsScaSection({
                     <td>{row.BlockedShots}</td>
                     <td>{num(row["Total Shots"]) > 0 ? `${format(row["Avg Shot Distance"], 1)}m` : "-"}</td>
                     <td>{format(row["Total xG"], 2)}</td>
-                    <td>{format(row["Total xGOT"], 2)}</td>
+                    {hasPlacement ? <td>{format(row["Total xGOT"], 2)}</td> : null}
                     <td>{format(row["xG/Shot"], 3)}</td>
-                    <td>{format(row["xGOT/Shot"], 3)}</td>
+                    {hasPlacement ? <td>{format(row["xGOT/Shot"], 3)}</td> : null}
                     <td>
                       <details>
                         <summary>{row["SCA Count"] ?? 0}</summary>

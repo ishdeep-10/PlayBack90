@@ -227,4 +227,26 @@ TEAM_DICT = {
     2748: "Pafos",
     2569: "Qarabag",
     2647: "Union Saint-Gilloise",
+    # 2026-27 top-five promoted teams
+    17: "Coventry City",
+    214: "Hull City",
+    56: "Racing Santander",
+    59: "Deportivo La Coruna",
+    69: "Malaga",
+    39: "Schalke 04",
+    1134: "SV Elversberg",
+    810: "SC Paderborn",
+    2732: "Frosinone",
+    229: "Troyes",
+    611: "Le Mans",
 }
+
+
+# Clubs from the Dribble360 competitions beyond the top five / MLS (Data/dribble360/build_team_registry.py).
+try:
+    import json as _json
+
+    TEAM_DICT.update({int(k): v for k, v in _json.loads((Path(__file__).with_name("team_registry.json")).read_text()).items()
+                      if int(k) not in TEAM_DICT})
+except (OSError, ValueError):
+    pass

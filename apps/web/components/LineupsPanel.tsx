@@ -22,6 +22,7 @@ type LineupPlayer = {
 type TeamLineup = {
   formation_id: number;
   formation: string;
+  estimated?: boolean;
   starters: LineupPlayer[];
   bench: LineupPlayer[];
 };
@@ -195,8 +196,11 @@ function PlayerMarker({
 }
 
 export function LineupsPanel({ teams, teamColors, lineups, substitutions, phases = {} }: Props) {
-  const [mode, setMode] = useState<"formation" | "average">("formation");
   const [teamA, teamB] = teams;
+  // Matches ingested without published formation data have rebuilt (estimated) lineups: only avg positions are reliable.
+  const formationUnavailable = Boolean(lineups[teamA]?.estimated || lineups[teamB]?.estimated);
+  const [modeChoice, setMode] = useState<"formation" | "average">("formation");
+  const mode = formationUnavailable ? "average" : modeChoice;
   const [avgTeam, setAvgTeam] = useState(teamA);
   const [phaseIndexByTeam, setPhaseIndexByTeam] = useState<Record<string, number>>({});
   const lineupA = lineups[teamA];
@@ -326,9 +330,11 @@ export function LineupsPanel({ teams, teamColors, lineups, substitutions, phases
             </div>
           ) : null}
           <div className="lineup-toggle-group" role="tablist" aria-label="Lineup display mode">
-            <button type="button" className={mode === "formation" ? "is-active" : ""} onClick={() => setMode("formation")}>
-              Formation
-            </button>
+            {formationUnavailable ? null : (
+              <button type="button" className={mode === "formation" ? "is-active" : ""} onClick={() => setMode("formation")}>
+                Formation
+              </button>
+            )}
             <button type="button" className={mode === "average" ? "is-active" : ""} onClick={() => setMode("average")}>
               Avg positions
             </button>
@@ -456,7 +462,8 @@ export function LineupsPanel({ teams, teamColors, lineups, substitutions, phases
         })}
       </div>
       <p className="chart-footnote">
-        Team sheets from the official lineup data ({lineupA?.formation || "—"} vs {lineupB?.formation || "—"}); captains are ringed in gold. Each team&apos;s phase chips split the match at its own substitutions and formation changes — pick a phase to see the XI (and formation) actually on the pitch. Avg positions show mean touch locations within the phase (home attacks →, away ←); players without touches in a phase sit at their formation slot.
+        {formationUnavailable ? "Team sheets rebuilt from match events (starters by minutes played, substitutions from the event log); the feed does not publish formations or shirt numbers, so only average positions are shown. Avg positions show mean touch locations within the phase (home attacks →, away ←)." : null}
+        {formationUnavailable ? null : <>Team sheets from the official lineup data ({lineupA?.formation || "—"} vs {lineupB?.formation || "—"}); captains are ringed in gold. Each team&apos;s phase chips split the match at its own substitutions and formation changes — pick a phase to see the XI (and formation) actually on the pitch. Avg positions show mean touch locations within the phase (home attacks →, away ←); players without touches in a phase sit at their formation slot.</>}
       </p>
     </section>
   );

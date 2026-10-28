@@ -490,7 +490,7 @@ function hoverActionText(row: Row, kind: PitchKind, label?: string) {
     if (row.situation && String(row.situation) !== "nan") lines.push(`Situation: ${String(row.situation)}`);
     if (row.body_part && String(row.body_part) !== "nan") lines.push(`Body part: ${String(row.body_part)}`);
     lines.push(`xG: ${formatNumber(row.xg ?? row.xG, 2)}`);
-    lines.push(`xGOT: ${formatNumber(row.xgot ?? row.xGOT, 2)}`);
+    if (row.goal_mouth_y !== null && row.goal_mouth_y !== undefined) lines.push(`xGOT: ${formatNumber(row.xgot ?? row.xGOT, 2)}`);
   }
   if (num(row.xT)) lines.push(`xT: ${formatNumber(row.xT, 3)}`);
   if (num(row.xA)) lines.push(`xA: ${formatNumber(row.xA, 3)}`);
@@ -645,6 +645,8 @@ export function PlayerAnalysisSection({
     () => visibleTeams.flatMap((team) => rowsFromPayload(payloadsByTeam[team] ?? {}, "shot_rows")),
     [visibleTeams, payloadsByTeam],
   );
+  // Dribble360 Pro ships no goal-mouth placement, so xGOT and the goal-face map are unavailable for those matches.
+  const hasPlacement = useMemo(() => shotRows.some((row) => row.goal_mouth_y !== null && row.goal_mouth_y !== undefined), [shotRows]);
   const shotSummaries = useMemo(
     () => visibleTeams.flatMap((team) => rowsFromPayload(payloadsByTeam[team] ?? {}, "shot_player_summary")),
     [visibleTeams, payloadsByTeam],
@@ -1306,7 +1308,7 @@ export function PlayerAnalysisSection({
       ["Shots", playerShots.length],
       ["Goals", playerShots.filter((row) => String(row.type ?? "") === "Goal").length],
       ["xG", playerShots.reduce((sum, row) => sum + num(row.xg ?? row.xG), 0).toFixed(2)],
-      ["xGOT", playerShots.reduce((sum, row) => sum + num(row.xgot ?? row.xGOT), 0).toFixed(2)],
+      ...(hasPlacement ? [["xGOT", playerShots.reduce((sum, row) => sum + num(row.xgot ?? row.xGOT), 0).toFixed(2)]] : []),
       ["SCA", sca],
       ["xA", xa.toFixed(2)],
     ] as Array<[string, string | number]>;
@@ -1432,7 +1434,7 @@ export function PlayerAnalysisSection({
                   <td>{rowClock(event)}</td>
                   <td>{displayActionType(String(event.type ?? "SCA"))} by {String(event.player ?? "")}</td>
                   <td>{actionOutcome(event)}</td>
-                  <td>{shotOutcome(shot)} by {String(shot.player ?? "")} · xG {formatNumber(shot.xg ?? shot.xG, 2)} · xGOT {formatNumber(shot.xgot ?? shot.xGOT, 2)}</td>
+                  <td>{shotOutcome(shot)} by {String(shot.player ?? "")} · xG {formatNumber(shot.xg ?? shot.xG, 2)}{hasPlacement ? ` · xGOT ${formatNumber(shot.xgot ?? shot.xGOT, 2)}` : ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -1572,7 +1574,7 @@ export function PlayerAnalysisSection({
       <Plot data={heatmapTraceFor(rows)} layout={pitchLayout(pitchHeight)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
     ) : kind === "shots" ? (
       <div className="player-analysis-shot-split">
-        <Plot data={goalTrace(rows, createdShotKeys, showSca)} layout={goalLayout(compactAnalysis ? 105 : 160)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+        {hasPlacement ? <Plot data={goalTrace(rows, createdShotKeys, showSca)} layout={goalLayout(compactAnalysis ? 105 : 160)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} /> : null}
         <Plot data={[...scaTraces(rows, panelPlayers, showSca), ...shotTrace(rows, createdShotKeys, showSca)]} layout={shotHalfPitchLayout(compactAnalysis ? 225 : 356)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
       </div>
     ) : (
@@ -1718,7 +1720,7 @@ export function PlayerAnalysisSection({
       },
       {
         title: "Shots + SCA",
-        rows: [["Shots", panelShots.length], ["Goals", panelShots.filter((row) => String(row.type) === "Goal").length], ["xG", panelShots.reduce((sum, row) => sum + num(row.xg ?? row.xG), 0).toFixed(2)], ["xGOT", panelShots.reduce((sum, row) => sum + num(row.xgot ?? row.xGOT), 0).toFixed(2)], ["SCA", summaries.reduce((sum, row) => sum + num(row["SCA Count"]), 0)], ["xA", summaries.reduce((sum, row) => sum + num(row.xA), 0).toFixed(2)]],
+        rows: [["Shots", panelShots.length], ["Goals", panelShots.filter((row) => String(row.type) === "Goal").length], ["xG", panelShots.reduce((sum, row) => sum + num(row.xg ?? row.xG), 0).toFixed(2)], ...(hasPlacement ? [["xGOT", panelShots.reduce((sum, row) => sum + num(row.xgot ?? row.xGOT), 0).toFixed(2)]] : []), ["SCA", summaries.reduce((sum, row) => sum + num(row["SCA Count"]), 0)], ["xA", summaries.reduce((sum, row) => sum + num(row.xA), 0).toFixed(2)]],
       },
     ];
   };
@@ -1861,6 +1863,7 @@ export function PlayerAnalysisSection({
     const passMap = rowsFromPayload(goalkeeperPayload, "pass_map");
     const gkActions = rowsFromPayload(goalkeeperPayload, "gk_actions");
     const shotsFaced = rowsFromPayload(goalkeeperPayload, "shots_faced_rows");
+    const gkHasPlacement = shotsFaced.some((row) => row.goal_mouth_y !== null && row.goal_mouth_y !== undefined);
     const gkArea = defensiveAreaForPoints(gkActions);
     const opponentTeam = teams.find((team) => team !== keeperTeam);
     const gkOpponentActions = showGkOpponentActions && gkArea
@@ -1975,7 +1978,7 @@ export function PlayerAnalysisSection({
             <div className="player-analysis-pitch-control-row" />
             <div className="player-analysis-pitch-viewport">
               <div className="player-analysis-shot-split">
-                <Plot data={goalTrace(shotsFaced)} layout={goalLayout(160)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
+                {gkHasPlacement ? <Plot data={goalTrace(shotsFaced)} layout={goalLayout(160)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} /> : null}
                 <Plot data={shotTrace(shotsFaced)} layout={shotHalfPitchLayout(356)} config={plotConfig} className="plotly-chart" style={{ width: "100%", height: "100%" }} />
               </div>
             </div>
@@ -1985,8 +1988,8 @@ export function PlayerAnalysisSection({
               <span className="player-analysis-static-stat"><span>Saves</span><strong>{formatNumber(shotStopping.saves)}</strong></span>
               <span className="player-analysis-static-stat"><span>Save %</span><strong>{formatNumber(shotStopping.save_pct, 1)}</strong></span>
               <span className="player-analysis-static-stat"><span>xG faced</span><strong>{formatNumber(shotStopping.xg_on_target_faced, 2)}</strong></span>
-              <span className="player-analysis-static-stat"><span>xGOT faced</span><strong>{formatNumber(shotStopping.xgot_faced, 2)}</strong></span>
-              <span className="player-analysis-static-stat"><span>Goals prevented</span><strong>{formatNumber(shotStopping.goals_prevented, 2)}</strong></span>
+              {gkHasPlacement ? <span className="player-analysis-static-stat"><span>xGOT faced</span><strong>{formatNumber(shotStopping.xgot_faced, 2)}</strong></span> : null}
+              {gkHasPlacement ? <span className="player-analysis-static-stat"><span>Goals prevented</span><strong>{formatNumber(shotStopping.goals_prevented, 2)}</strong></span> : null}
             </div>
             <div className="player-analysis-detail-slot">
               <div className="player-analysis-shot-legend" aria-label="Shot marker legend">

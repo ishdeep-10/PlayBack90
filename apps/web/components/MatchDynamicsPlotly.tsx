@@ -245,6 +245,8 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
   const xgA = teamSeries(xgFlowRows, teamA, "cumulative_xg");
   const xgB = teamSeries(xgFlowRows, teamB, "cumulative_xg");
   const summaryA = teamSummaries.find((row) => row.team === teamA);
+  // xGOT needs goal-mouth placement, which the Dribble360 Pro feed lacks (it then reads 0 for every shot).
+  const showXgot = teamSummaries.some((row) => Number(row.xgot ?? 0) > 0);
   const summaryB = teamSummaries.find((row) => row.team === teamB);
   const hasThirds = thirdsRows.length > 0;
   const possessionA = possessionThird === "all" ? teamSeries(passRows, teamA, "possession_pct") : thirdSeries(thirdsRows, teamA, possessionThird, "possession_pct");
@@ -421,8 +423,8 @@ export const MatchDynamicsPlotly = memo(function MatchDynamicsPlotlyInner({
           <DownloadPngButton filename={`${teamA}-vs-${teamB}-xg-flow`} title="xG Flow" />
         </div>
         <div className="xg-flow-summary-strip">
-          <span><strong>{teamA}</strong> xG {Number(summaryA?.xg ?? 0).toFixed(2)} · xGOT {Number(summaryA?.xgot ?? 0).toFixed(2)} · EPV {Number(summaryA?.epv_added ?? 0).toFixed(2)}</span>
-          <span><strong>{teamB}</strong> xG {Number(summaryB?.xg ?? 0).toFixed(2)} · xGOT {Number(summaryB?.xgot ?? 0).toFixed(2)} · EPV {Number(summaryB?.epv_added ?? 0).toFixed(2)}</span>
+          <span><strong>{teamA}</strong> xG {Number(summaryA?.xg ?? 0).toFixed(2)}{showXgot ? ` · xGOT ${Number(summaryA?.xgot ?? 0).toFixed(2)}` : ""} · EPV {Number(summaryA?.epv_added ?? 0).toFixed(2)}</span>
+          <span><strong>{teamB}</strong> xG {Number(summaryB?.xg ?? 0).toFixed(2)}{showXgot ? ` · xGOT ${Number(summaryB?.xgot ?? 0).toFixed(2)}` : ""} · EPV {Number(summaryB?.epv_added ?? 0).toFixed(2)}</span>
         </div>
         <div className="plotly-chart-shell">
           <Plot

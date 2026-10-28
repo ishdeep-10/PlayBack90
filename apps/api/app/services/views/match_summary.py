@@ -388,6 +388,7 @@ def build_lineups(df: pd.DataFrame, teams: list[str]) -> dict[str, Any]:
             "minute": float(row.get(clock_col, 0) or 0),
             "formation_id": int(quals.get("TeamFormation", 0) or 0),
             "formation_name": quals.get("Formation", ""),
+            "estimated": quals.get("FormationEstimated") == "1",
             "captain_id": int(quals.get("CaptainPlayerId", 0) or 0),
             "slot_by_pid": dict(zip(player_ids, slots)),
             "jersey_by_pid": {pid: jerseys[idx] for idx, pid in enumerate(player_ids) if idx < len(jerseys)},
@@ -583,7 +584,7 @@ def build_lineups(df: pd.DataFrame, teams: list[str]) -> dict[str, Any]:
                 "end": int(end),
                 "label": f"{display_minute(int(start))}'–{display_minute(int(end))}'",
                 "formation_id": formation_id,
-                "formation": FORMATION_ID_NAMES.get(formation_id, state["initial"].get("formation_name", "")),
+                "formation": "" if state["initial"]["estimated"] else FORMATION_ID_NAMES.get(formation_id, state["initial"].get("formation_name", "")),
                 "players": players,
             })
         phases[team] = team_phases
@@ -608,7 +609,8 @@ def build_lineups(df: pd.DataFrame, teams: list[str]) -> dict[str, Any]:
             entry["avg"] = avg_positions.get(entry["player"])
         lineups[team] = {
             "formation_id": initial["formation_id"],
-            "formation": FORMATION_ID_NAMES.get(initial["formation_id"], initial.get("formation_name", "")),
+            "formation": "" if initial["estimated"] else FORMATION_ID_NAMES.get(initial["formation_id"], initial.get("formation_name", "")),
+            "estimated": initial["estimated"],
             "starters": starters,
             "bench": bench,
         }
