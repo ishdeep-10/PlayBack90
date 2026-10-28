@@ -17,8 +17,19 @@ Keep a dated copy of the terms and the reply below: the page can change, and a p
 - API keys are personal and non-transferable; plan request limits apply across all keys.
 - Violations can mean immediate suspension without refund.
 
-## Open
+## Follow-up reply (Dribble360, 2026-10-28): chart data in the browser is covered
 
-- **Data sent to the browser to draw charts:** the terms do not address it and the reply did not answer it. Ask: "is chart data delivered to the subscriber's browser for display covered?" Meanwhile: keep the API behind login, rate-limit it, forbid scraping in the PlayBack90 terms, and send aggregates where a visual does not need rows.
-- Model training on Pro data: the reply covers "models" generally; the earlier plan item stays closed only because the product does not train models.
-- Add "Data by Dribble (dribble360.com)" to the app footer and the PDF report template before the data goes live and before any public post.
+Data my server sends to a logged-in subscriber's browser so PlayBack90 can display the chart in front of them is display within the product, not redistribution (dashboards and apps are named permitted products on Pro). Anything that makes the data itself the product needs the signed data-licence addendum: an API or feed of the underlying data, row exports or downloads, bulk delivery, or giving subscribers rights to reuse the raw data outside PlayBack90. Tip from them: send each visual only the figures it needs (aggregates and derived values where the chart allows).
+
+## Safeguards I told them about: status as of 2026-10-28
+
+| Commitment | Status |
+|---|---|
+| Data behind login | Implemented: Clerk auth middleware (`app/auth.py`) gates every route except health/docs/asset paths when `AUTH_REQUIRED=true`. The production example env has it on; **verify the live server** (the code default is off). |
+| Rate-limited | **Partial.** `enforce_rate_limit` covers only PNG/PDF rendering and imports. The data endpoints (matches, analysis views, season stats) have no limit. To do before the paywall. |
+| My own terms forbid scraping and automated access | **Not done.** The web app has `/privacy` only; there is no terms-of-service page. To do before the paywall. |
+
+## Still to do
+
+- Add "Data by Dribble (dribble360.com)" to the PNG downloads if wanted (done for the app footer and PDF reports).
+- Review which API responses send more rows than their visual needs, and aggregate server-side where the chart allows.
