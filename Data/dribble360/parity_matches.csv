@@ -1,0 +1,20 @@
+ws_match_id,d360_match_id,league,season,date,ws_home,ws_away,ws_score,reds,why
+1914212,3msszbu4fc0okhk1cy6k7f09g,laliga,2025/2026,2026-05-10,Real Oviedo,Getafe,0-0,2,0-0
+1910800,eih94tu5gjls2jjozxfkdsxlg,bundesliga,2025/2026,2026-01-14,Hoffenheim,Borussia M.Gladbach,5-1,0,high-scoring
+1952806,89s9l0whawbrihd7kuxvjsnpw,mls,2026,2026-05-17,,,1-0,1,red card
+1901285,dzus54uynnlkk8kunhzse0u1g,serie-a,2025/2026,2025-12-07,Lazio,Bologna,1-1,1,red card
+1903411,4vc1zzuh5bx70tivhn30mgutw,premier-league,2025/2026,2026-05-04,Chelsea,Nottingham Forest,1-3,0,random
+1903417,4wkjiv475wzfcfplo9208ek9g,premier-league,2025/2026,2026-05-03,Man Utd,Liverpool,3-2,0,random
+1903275,3nni7s0t32dzfr5vzeqhxnvv8,premier-league,2025/2026,2026-02-02,Sunderland,Burnley,3-0,0,random
+1903441,49ruzbiksyl5zqe38z2czh4wk,premier-league,2025/2026,2026-03-14,Burnley,Bournemouth,0-0,0,random
+1914063,1xweeu166hhelv9hh9l8lnpjo,laliga,2025/2026,2026-01-09,Getafe,Real Sociedad,1-2,0,random
+1914113,2sjqtzqw7toxdc5xpqu843vh0,laliga,2025/2026,2026-03-08,Villarreal,Elche,2-1,0,random
+1901357,f56c1hbg188f69e7naokiszro,serie-a,2025/2026,2026-02-08,Lecce,Udinese,2-1,0,random
+1901218,dl8z0whe7rrb6x9q5t2ujr0gk,serie-a,2025/2026,2025-11-02,Torino,Pisa,2-2,1,random
+1910732,drhvn5pnlf4o1iw3w7us0se1g,bundesliga,2025/2026,2025-11-09,Eintracht Frankfurt,Mainz 05,1-0,0,random
+1910848,evkygv6vtxb2w8xxfz6w5fkk,bundesliga,2025/2026,2026-04-04,Werder Bremen,RB Leipzig,1-2,0,random
+1911412,8j97zseqjb93yvwy9n2vf0ums,ligue-1,2025/2026,2025-12-13,Rennes,Brest,3-1,0,random
+1911462,93mssjxmeg7m6j5qdzug0gpp0,ligue-1,2025/2026,2026-02-15,Le Havre,Toulouse,2-1,1,random
+1911311,7uez0go2lksfpxv0envcy2txw,ligue-1,2025/2026,2025-10-26,Lyon,Strasbourg,2-1,1,random
+1952681,6eow9wdjui26pbm9r6kztslqs,mls,2026,2026-03-22,,,1-1,1,random
+1952629,5oistud1fw3t0q7q2as3k48wk,mls,2026,2026-03-01,,,0-2,2,random
