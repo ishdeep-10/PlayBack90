@@ -147,3 +147,30 @@ def test_readiness_passes_when_deployment_config_is_present(monkeypatch):
     payload = response.json()
     assert payload["ok"] is True
     assert all(payload["checks"].values())
+
+
+def test_data_routes_are_rate_limited_per_user(monkeypatch):
+    from app.config import settings
+    from app.services import rate_limit
+
+    monkeypatch.setattr(settings, "api_rate_limit_per_minute", 3)
+    monkeypatch.setattr(settings, "api_rate_limit_per_hour", 0)
+    rate_limit._hits.clear()
+    codes = [client.get("/api/leagues").status_code for _ in range(5)]
+    assert codes == [200, 200, 200, 429, 429]
+    limited = client.get("/api/leagues")
+    assert limited.headers["Retry-After"] == "60"
+    # health stays reachable however many requests came before
+    assert client.get("/health").status_code == 200
+    rate_limit._hits.clear()
+
+
+def test_hourly_cap_applies(monkeypatch):
+    from app.config import settings
+    from app.services import rate_limit
+
+    monkeypatch.setattr(settings, "api_rate_limit_per_minute", 0)
+    monkeypatch.setattr(settings, "api_rate_limit_per_hour", 2)
+    rate_limit._window_counts.clear()
+    assert [client.get("/api/leagues").status_code for _ in range(3)] == [200, 200, 429]
+    rate_limit._window_counts.clear()

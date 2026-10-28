@@ -43,3 +43,24 @@ def enforce_rate_limit(request: Request, *, bucket: str, limit: int, window_seco
         stale = [k for k, v in _hits.items() if not v or v[-1] < cutoff]
         for k in stale:
             _hits.pop(k, None)
+
+
+_window_counts: dict[str, tuple[float, int]] = {}
+
+
+def enforce_fixed_window(request: Request, *, bucket: str, limit: int, window_seconds: int) -> None:
+    """Cheap counter for long windows (an hour of sliding timestamps per user would cost memory)."""
+    key = f"{bucket}:{_identity(request)}"
+    now = time.monotonic()
+    started, count = _window_counts.get(key, (now, 0))
+    if now - started >= window_seconds:
+        started, count = now, 0
+    if count >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Request limit reached. Please try again later.",
+        )
+    _window_counts[key] = (started, count + 1)
+    if len(_window_counts) > _MAX_TRACKED_KEYS:
+        for k in [k for k, (t, _) in _window_counts.items() if now - t >= window_seconds]:
+            _window_counts.pop(k, None)

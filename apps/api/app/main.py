@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.middleware.gzip import GZipMiddleware
 
-from app.auth import require_auth_middleware
+from app.auth import is_public_path, require_auth_middleware
 from app.config import settings
 from app.domain import LEAGUE_DISPLAY_MAP
 from app.schemas import (
@@ -29,7 +29,7 @@ from app.schemas import (
     StandingsResponse,
 )
 from app.services import fixture_rounds, live_scrape, r2
-from app.services.rate_limit import enforce_rate_limit
+from app.services.rate_limit import enforce_fixed_window, enforce_rate_limit
 from app.services.import_jobs import import_job_store
 from app.services.live_jobs import job_store
 from app.services.providers.statsbomb import StatsBombImportError, normalize_statsbomb_match
@@ -87,6 +87,28 @@ if settings.sentry_dsn:
 
 
 app = FastAPI(title=settings.app_name)
+
+
+async def rate_limit_middleware(request: Request, call_next):
+    """Cap request volume per user on every data route. Registered before the auth middleware so it runs after it
+    and can key on the signed-in user; health, docs, asset and image-lookup routes are exempt."""
+    path = request.url.path
+    if (
+        request.method != "OPTIONS"
+        and not is_public_path(path, request.method)
+        and not path.endswith("/players/images")
+    ):
+        try:
+            if settings.api_rate_limit_per_minute:
+                enforce_rate_limit(request, bucket="api", limit=settings.api_rate_limit_per_minute, window_seconds=60)
+            if settings.api_rate_limit_per_hour:
+                enforce_fixed_window(request, bucket="api-hour", limit=settings.api_rate_limit_per_hour, window_seconds=3600)
+        except HTTPException as exc:
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail}, headers={"Retry-After": "60"})
+    return await call_next(request)
+
+
+app.middleware("http")(rate_limit_middleware)  # first registered = runs after auth
 app.middleware("http")(require_auth_middleware)
 app.add_middleware(
     CORSMiddleware,

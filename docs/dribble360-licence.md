@@ -26,8 +26,8 @@ Data my server sends to a logged-in subscriber's browser so PlayBack90 can displ
 | Commitment | Status |
 |---|---|
 | Data behind login | Implemented: Clerk auth middleware (`app/auth.py`) gates every route except health/docs/asset paths when `AUTH_REQUIRED=true`. The production example env has it on; **verify the live server** (the code default is off). |
-| Rate-limited | **Partial.** `enforce_rate_limit` covers only PNG/PDF rendering and imports. The data endpoints (matches, analysis views, season stats) have no limit. To do before the paywall. |
-| My own terms forbid scraping and automated access | **Not done.** The web app has `/privacy` only; there is no terms-of-service page. To do before the paywall. |
+| Rate-limited | Done 2026-10-28: every data route is limited per signed-in user (240 requests/minute, 4,000/hour; env `API_RATE_LIMIT_PER_MINUTE` / `API_RATE_LIMIT_PER_HOUR`, 0 turns one off). Health, docs, asset and image-lookup routes are exempt; PNG/PDF/import routes keep their own tighter limits. Watch for 429s after launch and tune the numbers. |
+| My own terms forbid scraping and automated access | Drafted 2026-10-28 at `/terms` (linked in the footer, public route). **Needs the owner's review**: payment/refund wording, liability cap, governing law (not stated yet) and whether sharing downloaded visuals with credit is what is wanted. Have a lawyer read it before charging users. |
 
 ## Still to do
 

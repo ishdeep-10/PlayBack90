@@ -24,6 +24,10 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
     live_scrape_rate_limit_per_minute: int = 5
+    # Per signed-in user across all data routes (0 turns a limit off). A person browsing stays far below these;
+    # bulk extraction does not. Part of the safeguards promised to the data provider (docs/dribble360-licence.md).
+    api_rate_limit_per_minute: int = 240
+    api_rate_limit_per_hour: int = 4000
 
     football_data_api_key: str | None = None
     football_data_base_url: str = "https://api.football-data.org/v4"
