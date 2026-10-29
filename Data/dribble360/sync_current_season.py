@@ -141,7 +141,11 @@ def main() -> None:
     cached = None
     if all((cache_dir / f"{n}.parquet").exists() for n in ("events", "player_matches", "players")) and not args.refetch:
         cached = {n: pd.read_parquet(cache_dir / f"{n}.parquet") for n in ("events", "player_matches", "players")}
-        if not set(ids) <= set(cached["events"].match_id):
+        manifest = cache_dir / "requested_ids.json"
+        # Matches the vendor had not published yet are absent from the cached events but were still asked for: the
+        # manifest records every id the pull covered, so only genuinely new matches force a new scan.
+        covered = set(cached["events"].match_id) | (set(json.loads(manifest.read_text())) if manifest.exists() else set())
+        if not set(ids) <= covered:
             cached = None  # the cache does not cover every match we need now
     if cached is not None:
         data = cached
@@ -151,6 +155,7 @@ def main() -> None:
         cache_dir.mkdir(exist_ok=True)
         for n, frame_ in data.items():
             frame_.to_parquet(cache_dir / f"{n}.parquet", index=False)
+        (cache_dir / "requested_ids.json").write_text(json.dumps(sorted(ids)))
     ev = data["events"]
     present = set(ev.match_id)
     pm = data["player_matches"]
