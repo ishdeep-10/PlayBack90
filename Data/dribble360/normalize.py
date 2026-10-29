@@ -177,7 +177,8 @@ ASSIST_WINDOW_S = 8   # tuned against WhoScored on the 19 parity matches (see do
 
 
 def _derive_pass_fields(out: pd.DataFrame) -> pd.DataFrame:
-    """passKey = successful pass whose next same-team action is a shot by a different player."""
+    """passKey = successful pass whose next same-team action is a shot by a different player (before the corrected
+    snapshot); in the corrected snapshot it comes from the vendor's shot-assist flag, see below."""
     out["passKey"] = False
     out["keyShotIdx"] = np.nan
     t = out.minute * 60 + out.second
@@ -196,17 +197,26 @@ def _derive_pass_fields(out: pd.DataFrame) -> pd.DataFrame:
         scored = out.loc[linked.values, "type"].eq("Goal").to_numpy()
         out.loc[linked.index[scored], "assist"] = True
     else:
-        # The corrected snapshot's `is_assist` still flags every pass that leads to a shot (about 20x the real assists,
-        # all real assists included). Keep a flagged pass only when the same team's next shot, by someone else,
-        # within ASSIST_WINDOW_S in the same period is a goal.
+        # In the corrected snapshot `is_assist` is a SHOT assist: every pass that leads to a shot (checked on the 19
+        # parity matches: as a key-pass flag it has precision 1.00 / recall 0.93 vs WhoScored, better than the
+        # heuristic above at 0.93 / 0.84). Use it for passKey, link each flagged pass to the same team's next shot
+        # by someone else within ASSIST_WINDOW_S, and call it a goal assist only when that shot is a goal
+        # (precision 0.96 / recall 0.93 vs WhoScored's assists).
         flagged = out.index[out.assist | out.intentionalAssist]
+        out["passKey"] = False
+        out["keyShotIdx"] = np.nan
+        out["assist"] = False
+        out["intentionalAssist"] = False
         for i in flagged:
             nxt = out[(out.index > i) & out.isShot & (out.teamId == out.at[i, "teamId"])
                       & (out.period == out.at[i, "period"]) & (t - t[i] <= ASSIST_WINDOW_S)
                       & (out.playerId != out.at[i, "playerId"])]
-            if nxt.empty or nxt.iloc[0].type != "Goal":
-                out.at[i, "assist"] = False
-                out.at[i, "intentionalAssist"] = False
+            if nxt.empty:
+                continue
+            out.at[i, "passKey"] = True
+            out.at[i, "keyShotIdx"] = nxt.index[0]
+            if nxt.iloc[0].type == "Goal":
+                out.at[i, "assist"] = True
     dx = (out.endX - out.x) * 1.05
     dy = (out.endY - out.y) * 0.68
     out["passAngle"] = np.arctan2(dy, dx)  # Pro ships no real angle; computed from coordinates
