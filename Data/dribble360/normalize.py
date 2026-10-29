@@ -173,6 +173,9 @@ def _derive_shot_fields(out: pd.DataFrame, gk_ids: set[str]) -> pd.DataFrame:
     return out
 
 
+ASSIST_WINDOW_S = 8   # tuned against WhoScored on the 19 parity matches (see docs/dribble360-migration-plan.md)
+
+
 def _derive_pass_fields(out: pd.DataFrame) -> pd.DataFrame:
     """passKey = successful pass whose next same-team action is a shot by a different player."""
     out["passKey"] = False
@@ -192,6 +195,18 @@ def _derive_pass_fields(out: pd.DataFrame) -> pd.DataFrame:
         linked = out.keyShotIdx.dropna().astype(int)
         scored = out.loc[linked.values, "type"].eq("Goal").to_numpy()
         out.loc[linked.index[scored], "assist"] = True
+    else:
+        # The corrected snapshot's `is_assist` still flags every pass that leads to a shot (about 20x the real assists,
+        # all real assists included). Keep a flagged pass only when the same team's next shot, by someone else,
+        # within ASSIST_WINDOW_S in the same period is a goal.
+        flagged = out.index[out.assist | out.intentionalAssist]
+        for i in flagged:
+            nxt = out[(out.index > i) & out.isShot & (out.teamId == out.at[i, "teamId"])
+                      & (out.period == out.at[i, "period"]) & (t - t[i] <= ASSIST_WINDOW_S)
+                      & (out.playerId != out.at[i, "playerId"])]
+            if nxt.empty or nxt.iloc[0].type != "Goal":
+                out.at[i, "assist"] = False
+                out.at[i, "intentionalAssist"] = False
     dx = (out.endX - out.x) * 1.05
     dy = (out.endY - out.y) * 0.68
     out["passAngle"] = np.arctan2(dy, dx)  # Pro ships no real angle; computed from coordinates

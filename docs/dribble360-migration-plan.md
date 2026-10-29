@@ -264,3 +264,13 @@ Pass network progressive passes (-18%), progressive carries (-19%) and channel-a
 
 ### Better than before
 EPV and xPass populated on new matches (old 2026/27 frames had none), situation filled for 99% of shots (88% before).
+
+## 14. Vendor republish check (2026-10-29)
+
+- The corrected tables were already live when checked: `match_events` last modified 2026-10-28 04:47 UTC (earlier than the announced 23:00 UTC). The 651-match local trial of 2026-10-28 was therefore already on the corrected snapshot (`pass_length_m` populated, average 18 m).
+- Checked against WhoScored on the 19 parity matches (33,020 events):
+  - `is_big_chance` on shots: **fixed**, 82 of 82 identical to WhoScored. It is not set on passes (BigChanceCreated is still derived).
+  - `is_assist`: **still wrong**. 460 flagged vs 20 real goal assists (precision 4%, recall 100%): it flags every pass that leads to a shot. `is_intentional_assist` is the same (487 flagged).
+  - `is_switch_of_play`: 135 flagged; WhoScored has no such tag locally, so it cannot be checked.
+- Fix in `normalize._derive_pass_fields`: a vendor-flagged pass keeps `assist` only if the same team's next shot by another player within 8 s (same period) is a goal. Against WhoScored: precision 0.96, recall 0.93 (5 s: 0.96 / 0.86; 12 s: same as 8 s). The old fallback (key pass of a goal, ignoring the vendor flag) gave 0.73 / 0.76.
+- Ask Dribble360 whether `is_assist` is meant to mean "shot assist" (it behaves like one).
