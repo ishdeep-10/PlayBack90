@@ -73,10 +73,14 @@ const COMPETITION_PRESENTATION: Record<string, LeaguePresentation> = {
   "europa-league": { key: "europa-league", name: "Europa League", country: "Europe", logo: "/logos/europa-league.png", mapNames: [], coordinates: [10, 50] },
 };
 
-export const FALLBACK_LEAGUES: League[] = Object.values(LEAGUE_PRESENTATION).map(({ key, name }) => ({
+export const FALLBACK_LEAGUES: League[] = [...Object.values(LEAGUE_PRESENTATION), ...Object.values(COMPETITION_PRESENTATION)].map(({ key, name }) => ({
   key,
   name,
 }));
+
+export function competitionPresentation(key: string): LeaguePresentation | undefined {
+  return COMPETITION_PRESENTATION[key];
+}
 
 export function leaguePresentation(key: string): LeaguePresentation | undefined {
   return LEAGUE_PRESENTATION[key] ?? COMPETITION_PRESENTATION[key];

@@ -20,7 +20,7 @@ def test_list_leagues():
     keys = {item["key"] for item in leagues}
     assert "premier-league" in keys
     assert "mls" in keys
-    assert "champions-league" not in keys
+    assert {"champions-league", "europa-league"} <= keys
     assert "fifa-world-cup" not in keys
 
 

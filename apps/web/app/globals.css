@@ -15456,6 +15456,69 @@ html:not(.dark) .coverage-logo-chip.is-hot {
   background: rgba(255, 255, 255, 1);
 }
 
+.coverage-competitions {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+}
+
+.coverage-competitions > span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.coverage-competition-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 7px;
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  border-radius: 999px;
+  background: rgba(3, 14, 22, 0.82);
+  backdrop-filter: blur(10px);
+  text-decoration: none;
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+html:not(.dark) .coverage-competition-chip {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.coverage-competition-chip:hover,
+.coverage-competition-chip:focus-visible {
+  transform: scale(1.05);
+  border-color: var(--accent);
+}
+
+.coverage-competition-chip img {
+  width: 24px;
+  height: 24px;
+  padding: 3px;
+  border-radius: 50%;
+  background: #f1f5f9;   /* the cup logos are dark artwork: keep them legible on the dark chip */
+  object-fit: contain;
+}
+
+.coverage-competition-chip b {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
 .coverage-logo-chip img {
   width: 22px;
   height: 22px;

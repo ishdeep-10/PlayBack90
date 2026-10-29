@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 
 import type { League } from "../lib/api";
-import { LEAGUE_PRESENTATION, type LeaguePresentation } from "../lib/leagues";
+import { LEAGUE_PRESENTATION, competitionPresentation, type LeaguePresentation } from "../lib/leagues";
 
 const COUNTRIES_URL = "https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_110m_admin_0_countries.geojson";
 const US_STATES_URL = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json";
@@ -99,6 +99,11 @@ export function LeagueCoverageMap({ leagues }: Props) {
       .filter((item): item is { league: League; region: LeaguePresentation } => Boolean(item.region)),
     [leagues],
   );
+
+  // Continental cups (Champions League, Europa League) have no single country: shown as a row under the Europe map.
+  const europeanCompetitions = leagues
+    .map((league) => ({ league, region: competitionPresentation(league.key) }))
+    .filter((item): item is { league: League; region: LeaguePresentation } => Boolean(item.region));
 
   const activeRegions = coveredRegions.filter(({ league }) => continentForLeague(league.key) === selectedContinent);
   const globeHighlightedCountries = new Set(coveredRegions.flatMap(({ region }) => region.mapNames));
@@ -204,7 +209,7 @@ export function LeagueCoverageMap({ leagues }: Props) {
                 >
                   <i />
                   <span>{continent.label}</span>
-                  <small>{continent.configured ? "Leagues available" : "Coming soon"}</small>
+                  <small>{continent.configured ? (continent.key === "Europe" ? "Leagues & European cups" : "Leagues available") : "Coming soon"}</small>
                 </button>
               ))}
             </nav>
@@ -303,6 +308,18 @@ export function LeagueCoverageMap({ leagues }: Props) {
                 </a>
               );
             })}
+
+            {selectedContinent === "Europe" && europeanCompetitions.length ? (
+              <nav className="coverage-competitions" aria-label="European competitions">
+                <span>European competitions</span>
+                {europeanCompetitions.map(({ league, region }) => (
+                  <a key={league.key} href={`/matches/${league.key}/latest`} className="coverage-competition-chip">
+                    <img src={region.logo} alt="" />
+                    <b>{region.name}</b>
+                  </a>
+                ))}
+              </nav>
+            ) : null}
 
             {hovered && hoveredPoint ? (
               <div className="coverage-hover-card" style={{ left: `${(hoveredPoint[0] / MAP_WIDTH) * 100}%`, top: `${(hoveredPoint[1] / MAP_HEIGHT) * 100}%` }}>

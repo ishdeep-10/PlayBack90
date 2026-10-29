@@ -11,6 +11,8 @@ LEAGUE_NAME_MAP = {
     "Serie A": "serie-a",
     "Ligue 1": "ligue-1",
     "Major League Soccer": "mls",
+    "Champions League": "champions-league",
+    "Europa League": "europa-league",
 }
 
 LEAGUE_DISPLAY_MAP = {value: key for key, value in LEAGUE_NAME_MAP.items()}
