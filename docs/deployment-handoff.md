@@ -200,13 +200,30 @@ ssh -i ~/.lightsail/playback90-key.pem ubuntu@35.154.255.109 '
 '
 ```
 
+**Rollback tag (do this before `docker load`):** `sudo docker tag playback90-api:latest playback90-api:previous`
+(same for `web`). If the new container misbehaves: `sudo docker tag playback90-api:previous playback90-api:latest`
+then `sudo docker compose up -d --force-recreate api`. `docker image prune -a` would delete the `previous` tag
+(it is unused and older than 1h), so use plain `docker image prune -f` (dangling layers only) while a rollback
+may still be needed, and remove the `previous` images with `docker rmi` once the deploy is trusted.
+Also `rm ~/api.tar.gz ~/web.tar.gz` on the server afterwards (about 1.3GB).
+
+**Gotcha found 2026-10-29:** a `COPY` with a wildcard that matches nothing does *not* fail under BuildKit, it
+silently copies nothing. The Dockerfile's SoccerWiki line used an escaped space (`Player\ Data`) and matched
+nothing, so production had no player-name fallback index (about a third of players had no photo). The glob is now
+`SoccerWiki*.json`. After building, check inside the image, e.g.
+`docker run --rm --platform linux/amd64 playback90-api:latest ls /app/repo`.
+The `.dockerignore` also excludes `Data/dribble360/out/` and `cache/` (local build output, hundreds of MB).
+
 ### Rebuild + ship the web app (after any `apps/web` change)
 
 `NEXT_PUBLIC_*` values are baked in at **build time**, not read from the server's env file —
 this build-arg list must stay in sync with what the server's live config expects:
 
 ```bash
-PK=$(grep "^NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=" .env | cut -d= -f2-)
+# Use the PRODUCTION key. The root .env keeps a pk_test_ key under NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY for local
+# development and the pk_live_ key under NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY_PROD; a build with the test key breaks
+# sign-in for everyone. Check `${PK:0:8}` reads pk_live_ before building.
+PK=$(grep "^NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY_PROD=" .env | cut -d= -f2-)
 PH=$(grep "^NEXT_PUBLIC_POSTHOG_KEY=" .env | cut -d= -f2-)
 SENTRY=$(grep "^NEXT_PUBLIC_SENTRY_DSN=" .env | cut -d= -f2-)
 docker build --platform linux/amd64 \
@@ -258,6 +275,9 @@ Edit the real file directly on the server (`~ubuntu/api.env.production` or
 `NEXT_PUBLIC_*` vars don't work this way — those need a full rebuild (above).
 
 ### Verifying after any deploy
+
+Also check: `/terms` and `/privacy` return 200 without login, `/api/leagues` returns 401 without login (data is
+login-gated; `AUTH_REQUIRED=true` is set on the server), and the sign-in page references `clerk.playback90.com`.
 
 ```bash
 curl -s https://playback90.com/health
@@ -326,3 +346,12 @@ curl -s -I https://playback90.com/   # sign-in redirect should point at playback
    creating users with a pre-existing bcrypt `password_digest`, so all 100 accounts were
    carried over intact (`scripts/migrate_clerk_users.py`) rather than forcing a mass
    re-registration.
+
+## 2026-10-29 deploy (Dribble360 data + app changes)
+
+Deployed API and web together with the Dribble360 data swap: team registry, rate limit on all data routes
+(240/min, 4,000/h per user; env `API_RATE_LIMIT_PER_MINUTE` / `API_RATE_LIMIT_PER_HOUR`), `/terms` page, data credit
+in the footer and PDF reports, Champions League / Europa League in the league list and on the home globe,
+estimated-lineup and no-xGOT rendering, player-image fixes (including the Dockerfile glob above), and the
+WhoScored HTML import tab removed from the UI (the `/import-jobs/whoscored-html` endpoint still exists server-side).
+Licence record: `docs/dribble360-licence.md`.

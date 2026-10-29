@@ -29,7 +29,9 @@ COPY apps/api /app/repo/apps/api
 COPY Data /app/repo/Data
 COPY models /app/repo/models
 COPY player_images_map.json /app/repo/player_images_map.json
-COPY SoccerWiki*Player\ Data*.json /app/repo/
+# No space in the glob: an escaped space matched nothing, and BuildKit silently copies nothing for an empty wildcard,
+# which left the image without the player-name fallback index (about a third of players then had no photo).
+COPY SoccerWiki*.json /app/repo/
 
 WORKDIR /app/repo/apps/api
 
