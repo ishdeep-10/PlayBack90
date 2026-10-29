@@ -85,3 +85,14 @@ Each phase is one `sync_current_season.py --league ... ` run, then `--upload-loc
   - `expandedMinute` now continues through extra time (ET1 starts where the 2H ended, ET2 where ET1 ended). **Unverified against WhoScored** (the legacy database has no extra-time matches); it follows the usual Opta convention.
 - **Still to do before enabling cups:** the match summary page and score display for a match decided on penalties (shootout score, "pens" label); standings view for the league phase; stage labels.
 - **Deliberately not done yet:** `LEAGUE_NAME_MAP` in `apps/api/app/domain.py` does not list the Champions League / Europa League, so they stay out of the league picker until their data is uploaded. Add `"Champions League": "champions-league"` and `"Europa League": "europa-league"` (and update `tests/test_api.py::test_list_leagues`) in the same deploy as the upload. `apps/web/lib/leagues.ts` already has their name and logo.
+
+## 7. Status update (2026-10-29)
+
+- **Phase 0 and Phase 1 are live in R2** (uploaded 2026-10-29): top five 395 matches, MLS 466, Champions League 88,
+  Europa League 97; season stats generated; the API lists the Champions League and Europa League and the home globe
+  shows them (row of competition chips in the Europe view).
+- Team registry built and in use (`Data/dribble360/team_registry.csv`, 126 clubs).
+- Not done: Phase 2 (Eredivisie, Primeira Liga, Super Lig, Belgium, Saudi, Brazil), Phase 3 (cups), the decisions in
+  section 5, the cup rules in section 2.3 (league-phase table, penalties label on the match page, stage labels).
+- Measured: ~3 s per match to process, ~14 min per events download, 0.28 MB per match.
+- Runbooks: `dribble360-handoff.md` section 4.

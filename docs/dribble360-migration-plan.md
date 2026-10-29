@@ -1,5 +1,9 @@
 # Dribble360 Migration — Feature Audit & Plan
 
+> **Status (2026-10-29):** the migration to Dribble360 for the current season is done and live. For how things work now,
+> the runbooks and the open items, read `dribble360-handoff.md` first; this file is the history and the audit trail.
+
+
 _Drafted 2026-10-27. Status: **plan only — nothing in the app or pipeline has been changed.**_
 
 Evidence labels used below: **[verified]** = tested against live data; **[code-scan]** = inferred from a keyword scan of the repo (not a per-visual trace); **[assumed]** = needs checking.
