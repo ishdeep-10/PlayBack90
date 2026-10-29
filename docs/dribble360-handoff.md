@@ -116,6 +116,10 @@ copied nothing).
 
 ## 6. Open items (as of 2026-10-29)
 
+0. **Git push is blocked.** This machine's GitHub login is `ishdeep-score`, which gets `403` on
+   `ishdeep-10/PlayBack90`. All work up to 2026-10-29 is committed locally on `main` (17 commits ahead of `origin/main`)
+   and deployed, but not on GitHub. Fix: add `ishdeep-score` as a collaborator with write access (repo Settings,
+   Collaborators), or push from a session logged in as `ishdeep-10`; then `git push origin main`.
 1. Audit differences not yet explained: progressive passes -15%, progressive carries -18%, transitions to attack -27%,
    box entries -14%, channel xT and flow, goal difference before shots (own goals or ordering?). Next step: compare one
    match event by event, old vs new.
