@@ -2,6 +2,9 @@
 # The API reads match/season data from Cloudflare R2, not this local SQLite db.
 Data/playback90.db
 Data/season_stats/
+# Dribble360 sync output and the WhoScored backup: local build artefacts, never read by the API
+Data/dribble360/out/
+Data/dribble360/cache/
 Data/__pycache__/
 Data/*.pyc
 
