@@ -22,6 +22,7 @@ export function getPlotly() {
     plotlyPromise = Promise.all([
       import("plotly.js/lib/core"),
       import("plotly.js/lib/scatter"),
+      import("plotly.js/lib/scatter3d"),
       import("plotly.js/lib/bar"),
       import("plotly.js/lib/scatterpolar"),
       import("plotly.js/lib/heatmap"),

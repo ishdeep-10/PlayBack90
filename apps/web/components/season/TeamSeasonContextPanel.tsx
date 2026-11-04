@@ -6,6 +6,9 @@ import { Plot } from "../../lib/plotly";
 import { CHART_FONT_FAMILY, readThemeColors } from "../../lib/theme";
 import { useCompactAnalysis } from "../../lib/useCompactAnalysis";
 import { DownloadPngButton } from "../DownloadPngButton";
+import { useShareMatchInfo } from "../ShareExportContext";
+import { matchMeta } from "../exportFrame";
+import { renderContextPng } from "./contextExport";
 import { metricByKey, type TeamBaseline, type TeamSeasonMatch } from "./baselineTypes";
 
 type Props = {
@@ -47,6 +50,7 @@ function rolling(values: number[], window: number): number[] {
 export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, baselines, fullTime }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
   const compactAnalysis = useCompactAnalysis();
+  const match = useShareMatchInfo();
   useEffect(() => {
     setThemeColors(readThemeColors());
     const observer = new MutationObserver(() => setThemeColors(readThemeColors()));
@@ -129,12 +133,18 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
             <h3 className="comb-subtitle" style={{ margin: 0 }}>Over / under each side&apos;s season level</h3>
             <DownloadPngButton
               filename={`${teamA}-vs-${teamB}-season-baseline`}
-              title="Match vs Season Baselines"
-              scopeSelector=".season-chart-scope"
-              filters={["Per 90"]}
-              chartPanels={() => [{
-                legend: sides.map((side) => ({ label: side.team, color: side.color, shape: "square" as const })),
-              }]}
+              renderImage={() => renderContextPng({
+                title: "Match vs season baselines",
+                subtitle: [matchMeta(match), "Per 90"].filter(Boolean).join("  |  "),
+                match,
+                panels: [{
+                  kind: "bars",
+                  series: sides.map((side) => ({ name: side.team, color: side.color })),
+                  rows: barRows.map((row) => ({ label: row.label, pcts: row.pcts, texts: row.tonight.map(fmt) })),
+                  xTitle: "% vs own season average",
+                }],
+                captions: ["Bars compare tonight's per-90 value with each side's season per-90 average (dotted line, capped at ±100%); the number on each bar is tonight's value. Possession, pass accuracy and PPDA compare as rates; for PPDA and turnovers a left bar is the better direction."],
+              })}
             />
           </div>
           <Plot
@@ -189,14 +199,25 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
             <h3 className="comb-subtitle" style={{ margin: 0 }}>Where tonight sits in their seasons</h3>
             <DownloadPngButton
               filename={`${teamA}-vs-${teamB}-season-scatter`}
-              title="Season xG Map"
-              scopeSelector=".season-chart-scope"
-              chartPanels={() => [{
-                legend: [
-                  ...sides.map((side) => ({ label: `${side.team} season`, color: side.color, shape: "circle" as const })),
-                  ...sides.map((side) => ({ label: `${side.team} tonight`, color: side.color, shape: "square" as const })),
-                ],
-              }]}
+              renderImage={() => renderContextPng({
+                title: "Season xG map",
+                subtitle: matchMeta(match),
+                match,
+                panels: [{
+                  kind: "map",
+                  series: sides.map((side) => ({
+                    name: side.team,
+                    color: side.color,
+                    past: (side.baseline.matches ?? []).map((m) => [m.xg, m.xga] as [number, number]),
+                    tonight: [tonightByTeam[side.team].xg, tonightByTeam[side.team].xga] as [number, number],
+                  })),
+                  xTitle: "xG created",
+                  yTitle: "xG conceded",
+                  max: scatterMax,
+                  corners: ["dominant", "under siege"],
+                }],
+                captions: ["Every match of each side's season by xG created and conceded: faded dots are past matches, the large diamonds are tonight. Below the dotted diagonal means outcreating the opponent."],
+              })}
             />
           </div>
           <Plot
@@ -245,12 +266,19 @@ export function TeamSeasonContextPanel({ teamA, teamB, teamAColor, teamBColor, b
             <h3 className="comb-subtitle" style={{ margin: 0 }}>Form coming into tonight</h3>
             <DownloadPngButton
               filename={`${teamA}-vs-${teamB}-form-into-tonight`}
-              title="Form Into Tonight"
-              scopeSelector=".season-chart-scope"
-              filters={["Rolling 5-match xG diff"]}
-              chartPanels={() => [{
-                legend: sides.map((side) => ({ label: side.team, color: side.color, shape: "line" as const })),
-              }]}
+              renderImage={() => renderContextPng({
+                title: "Form into tonight",
+                subtitle: [matchMeta(match), "Rolling 5-match xG difference"].filter(Boolean).join("  |  "),
+                match,
+                panels: [{
+                  kind: "lines",
+                  series: formSeries.map((side) => ({ name: side.team, color: side.color, values: side.rolling })),
+                  xTitle: "Match number",
+                  yTitle: "Rolling 5-match xG difference",
+                  lastIsTonight: true,
+                }],
+                captions: ["Rolling five-match xG difference through the season, ending with tonight (diamond). Above zero means sustained chance superiority; the last step shows whether tonight extended or broke the trend."],
+              })}
             />
           </div>
           <Plot

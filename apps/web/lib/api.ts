@@ -410,6 +410,8 @@ export type StandingRow = {
   xg: number | null;
   xga: number | null;
   xgd: number | null;
+  xpts?: number | null;
+  xpts_delta?: number | null;
   conference: string | null;
 };
 
@@ -972,3 +974,140 @@ export function getImportReportUrl(matchId: string, jobId: string) {
   url.searchParams.set("job_id", jobId);
   return url.toString();
 }
+
+type MetricsError = { error: string };
+
+export type AdminMetrics = {
+  generated_at: string;
+  fixed_costs_usd_month: { dribble_pro: number };
+  aws: MetricsError | {
+    months: { month: string; gross_usd: number; credits_used_usd: number; net_usd: number }[];
+    credits_used_total_usd: number;
+    budgets: { name: string; limit_usd: number; actual_usd: number; forecast_usd: number }[];
+    note: string;
+  };
+  r2: MetricsError | {
+    total_gb: number;
+    free_tier_gb: number;
+    objects?: number;
+    est_monthly_usd?: number;
+    areas?: { area: string; mb: number; files: number }[];
+    prefixes: { prefix: string; mb: number; files: number; last_modified: string }[];
+    coverage: { league: string; season: string; matches: number; first_match: string; latest_match: string }[];
+    season_analysis?: { league: string; season: string; matches: number; built_at: string; players: number; players_with_age: number }[];
+  };
+  users: MetricsError | {
+    total_users: number;
+    signed_in_last_30d: number;
+    signups_per_week: { week: string; signups: number }[];
+  };
+  site: MetricsError | { health_status: number; health_ms: number };
+  bigquery: MetricsError | { month_bytes_billed_gb: number; month_queries: number; cap_tib: number; cap_used_pct: number;
+    competitions?: MetricsError | {
+      key: string | null; league_id: string; league: string; season: string; played: number; upcoming: number; latest_played: string | null;
+    }[];
+  };
+  revenue: { status: string };
+  history?: { date: string; r2_gb?: number; objects?: number; users?: number }[];
+};
+
+/** Owner dashboard snapshot; the API answers 404 to everyone who is not an admin. */
+export async function getAdminMetrics(authToken?: string | null) {
+  return request<AdminMetrics>("/admin/metrics", { authToken });
+}
+
+export type TeamMetricDef = { key: string; label: string; higher_is_better: boolean; category?: string };
+
+export type SeasonTeamMetrics = {
+  league: string;
+  season: string;
+  league_name: string;
+  season_label: string;
+  generated_at: string;
+  matches: number;
+  metrics: TeamMetricDef[];
+  /** metric -> the pitch action that shows where it happens */
+  metric_action?: Record<string, string>;
+  teams: ({ team: string; teamId: number; matches: number; crest?: string } & Record<string, number | string | null>)[];
+};
+
+export async function getSeasonAnalysisIndex(authToken?: string | null) {
+  return request<{ league: string; season: string }[]>("/season-analysis", { authToken });
+}
+
+export async function getSeasonTeamMetrics(league: string, season: string, authToken?: string | null) {
+  return request<SeasonTeamMetrics>(`/season-analysis/${league}/${season}/team-metrics`, { authToken });
+}
+
+export type SeasonPlayer = {
+  id: number;
+  name: string;
+  team: string;
+  role: string | null;
+  group: "Goalkeeper" | "Defender" | "Midfielder" | "Forward" | null;
+  age?: number;
+  minutes: number;
+  matches: number;
+} & Record<string, number | string | null>;
+
+export type SeasonPlayerMetrics = {
+  league: string;
+  season: string;
+  league_name: string;
+  season_label: string;
+  generated_at: string;
+  matches: number;
+  metrics: { key: string; label: string; category?: string }[];
+  metric_action?: Record<string, string>;
+  /** true when player ages are available */
+  has_age?: boolean;
+  /** team -> possession-adjustment factor for per-90 values */
+  padj?: Record<string, number>;
+  players: SeasonPlayer[];
+};
+
+export async function getSeasonPlayerMetrics(league: string, season: string, authToken?: string | null) {
+  return request<SeasonPlayerMetrics>(`/season-analysis/${league}/${season}/player-metrics`, { authToken });
+}
+
+export type SeasonTeamMatches = {
+  league: string;
+  season: string;
+  teams: { team: string; matches: { d: string; opp: string; v: "h" | "a"; xg: number; xga: number; gf: number; ga: number }[] }[];
+};
+
+export type SeasonZones = {
+  league: string;
+  season: string;
+  grid: { x: number[]; y: number[] };
+  metrics: { key: string; label: string; group?: string }[];
+  teams: ({ team: string; matches: number } & Record<string, number[] | string | number>)[];
+};
+
+export type SeasonFileKind = "team-metrics" | "player-metrics" | "team-matches" | "zones" | "player-slices" | "team-slices" | "zone-leaders";
+
+/** Browser-side fetch of one aggregated season file. */
+export async function getSeasonFile<T>(league: string, season: string, kind: SeasonFileKind) {
+  return request<T>(`/season-analysis/${league}/${season}/${kind}`);
+}
+
+/** [x, y] or [x, y, endX, endY] in 105 x 68 pitch coordinates. */
+/** x, y, endX, endY, set-piece phase (0 open, 1 set), and for shots: kind (G goal, S saved, M off target, P post, B blocked) and xG. */
+export type ActionPoint = [number, number, (number | null)?, (number | null)?, number?, string?, number?];
+
+export type SeasonSlices = { states: string[]; buckets: string[]; phases?: string[] };
+export type PlayerSlices = SeasonSlices & { players: { id: number; m: number[]; v: Record<string, number[]> }[] };
+export type TeamSlices = SeasonSlices & { metrics: string[]; teams: { team: string; m: number[]; v: Record<string, number[]> }[] };
+
+export async function getPlayerActions(league: string, season: string, playerId: number) {
+  return request<{ id: number; actions: Record<string, ActionPoint[]> }>(`/season-analysis/${league}/${season}/player-actions/${playerId}`);
+}
+
+export type ZoneLeadersFile = {
+  league: string;
+  season: string;
+  zones: { id: string; x1: number; x2: number; y1: number; y2: number }[];
+  metrics: { key: string; label: string; group: string }[];
+  /** action -> playerId -> [zone index, open-play count, set-piece count][] */
+  actions: Record<string, Record<string, [number, number, number][]>>;
+};

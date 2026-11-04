@@ -71,6 +71,16 @@ PYTHONPATH=~/.d360-bq apps/api/.venv/bin/python -W ignore Data/dribble360/sync_c
 Drop `--dry-run` to build locally into `Data/dribble360/out/` (new matches only). Add `--upload --live` to upload as it
 goes. `--since 2026-01-01` is needed for MLS (calendar-year season). The default league list is the top five only.
 
+### Daily BigQuery check (metadata only, a few MB billed)
+```
+PYTHONPATH=~/.d360-bq apps/api/.venv/bin/python -W ignore Data/dribble360/check_new_matches.py playback90-505308
+```
+Prints the exact time each vendor table was last modified (UTC; BigQuery has no per-match timestamp, so this is the
+refresh time), PLAYED matches not yet in `out/synced_matches.json` (what the sync will take), and past-dated matches
+still `FIXTURE` in BigQuery (vendor behind). Appends a row per run to `out/bq_check_log.csv` and says whether the vendor
+refreshed since the last run. Run the sync only when "New in BigQuery" is not 0. On 2026-11-02 the vendor had not
+refreshed since 2026-10-28 04:47 UTC, so 79 past-dated matches (incl. St. Louis City v Portland) were still `FIXTURE`.
+
 ### Full rebuild after a vendor republish
 1. `PYTHONPATH=~/.d360-bq apps/api/.venv/bin/python Data/dribble360/validate_vendor_flags.py playback90-505308 --refetch`
    and compare with the reference numbers in its docstring. If the flags changed, fix `normalize._derive_pass_fields`.
@@ -131,3 +141,30 @@ copied nothing).
 7. Pro price steps from $99 to $149 after month 3: set a reminder.
 8. Ask Dribble360 to confirm `is_assist` means "shot assist" (it behaves as one).
 9. Season Stats page, matches list, AI analyst/insights and reports were not audited on the new data.
+
+## 2026-10-30: UEFA qualifiers removed
+
+The 77 qualifying and play-off match files (34 Champions League, 43 Europa League, dated before 2026-09-01, 21.8 MB)
+were deleted from R2 `event_data/` on the owner's request; local copies remain in `Data/dribble360/out/event_data/`.
+`sync_current_season.py` and `generate_season_stats.py` now skip UEFA matches before `LEAGUE_PHASE_START` (2026-09-01),
+so a later sync does not bring them back. The season stats in R2 still need regenerating and uploading to drop them.
+
+## 2026-11-04: Share image exports (web)
+
+The Share button (`apps/web/components/DownloadPngButton.tsx`) has two paths:
+- **Generic capture:** screenshots the Plotly chart(s) in the card and frames them with title, filters, logos and footer.
+  In dark theme it now uses the shared frame in `components/exportFrame.ts` (dark canvas, underlined title, one-line
+  subtitle, brand tile, footer with the "Data by Dribble (dribble360.com)" credit). Match pages use this path.
+- **`renderImage` prop:** the chart draws its own image on a canvas (2000 px wide, same look as `social-media/`) and the
+  button only shows the preview and download dialog. Used by the Season Analysis tab: zone leaders (`zoneLeadersExport.ts`,
+  with per-leader action dots; the dots come from the `player-actions` files), leaderboard, player and team scatter
+  (`scatterExport.ts`), team radar, pitch zones, team trend (rolling and most improved), over/under.
+  Each is wired in its `Season*.tsx` component, which passes the active filters into the subtitle.
+- **Match-page season context** (`SeasonContextPanel`, `TeamSeasonContextPanel`) also use `renderImage`, through
+  `contextExport.ts` (bars, radar, xG map, form lines; one or two panels per image). The header gets the club crests,
+  score, league and date from `ShareExportContext` (`loadHeaderImages` / `matchMeta` in `exportFrame.ts`).
+
+Gotchas: the 3D scatters (Z axis set) and the player-detail pitch maps keep the generic export. Player photos come from the avatar cache, so a chart that
+shows none on screen (over/under) prefetches them with `prefetchPlayerImages`; a photo that has not loaded shows initials.
+Remote images go through the API image proxy (`toProxiedDataUrl`) so the canvas stays untainted. Every export must keep the
+Dribble credit and never include raw event rows.

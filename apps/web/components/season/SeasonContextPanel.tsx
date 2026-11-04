@@ -6,6 +6,9 @@ import { Plot } from "../../lib/plotly";
 import { CHART_FONT_FAMILY, readThemeColors } from "../../lib/theme";
 import { useCompactAnalysis } from "../../lib/useCompactAnalysis";
 import { DownloadPngButton } from "../DownloadPngButton";
+import { useShareMatchInfo } from "../ShareExportContext";
+import { matchMeta } from "../exportFrame";
+import { renderContextPng, type ContextPanel } from "./contextExport";
 import { metricByKey, type MetricGroup, type PlayerBaseline } from "./baselineTypes";
 
 export type SeasonContextPlayer = {
@@ -46,6 +49,7 @@ function ordinal(n: number): string {
 export function SeasonContextPanel({ players, groups }: Props) {
   const [themeColors, setThemeColors] = useState(readThemeColors);
   const compactAnalysis = useCompactAnalysis();
+  const match = useShareMatchInfo();
   const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
 
   useEffect(() => {
@@ -135,11 +139,6 @@ export function SeasonContextPanel({ players, groups }: Props) {
     </div>
   );
 
-  const comparisonLegend = players.map(({ player, color }) => ({
-    label: player,
-    color,
-    shape: "line" as const,
-  }));
   const exportChartLabels = [
     ...(deltaMetricKeys.length >= 2 ? [`Match vs own season · ${group.label.toLowerCase()}`] : []),
     ...(radarKeys.length >= 3 ? [`League percentile · ${group.label.toLowerCase()}`] : []),
@@ -167,13 +166,46 @@ export function SeasonContextPanel({ players, groups }: Props) {
         {eligiblePlayers.length > 0 && exportChartLabels.length > 0 && (
           <DownloadPngButton
             filename={`${comparisonTitle}-season-context-${group.id}`}
-            title={() => `${comparisonTitle} · Season Context`}
-            scopeSelector=".season-context-panel"
-            filters={() => [group.label, "Per 90"]}
-            chartLabels={() => exportChartLabels}
-            chartPanels={() => exportChartLabels.map(() => ({ legend: comparisonLegend }))}
-            maxCharts={2}
-            chartsPerRow={2}
+            renderImage={() => {
+              const panels: ContextPanel[] = [];
+              if (deltaMetricKeys.length >= 2) {
+                panels.push({
+                  kind: "bars",
+                  heading: `Match vs own season · ${group.label.toLowerCase()}`,
+                  series: deltasByPlayer.map((entry) => ({ name: entry.player, color: entry.color })),
+                  rows: deltaMetricKeys.map((key, i) => ({
+                    label: deltaLabels[i],
+                    pcts: deltasByPlayer.map((entry) => entry.deltas.find((delta) => delta.key === key)?.pct ?? null),
+                    texts: deltasByPlayer.map((entry) => {
+                      const pct = entry.deltas.find((delta) => delta.key === key)?.pct;
+                      return pct === undefined ? "" : `${pct > 0 ? "+" : ""}${Math.round(pct)}%`;
+                    }),
+                  })),
+                  xTitle: "% vs own season per 90",
+                });
+              }
+              if (radarKeys.length >= 3) {
+                panels.push({
+                  kind: "radar",
+                  heading: `League percentile · ${group.label.toLowerCase()}`,
+                  axes: radarLabels,
+                  series: metricsByPlayer.flatMap((entry) => {
+                    const values = radarKeys.map((key) => entry.metrics.find((metric) => metric.key === key)?.leaguePercentilePer90);
+                    return values.filter((value) => value !== undefined).length < 3 ? [] : [{ name: entry.player, color: entry.color, values: values.map((value) => value ?? 0) }];
+                  }),
+                });
+              }
+              return renderContextPng({
+                title: `${comparisonTitle}: season context`,
+                subtitle: [matchMeta(match), group.label, "Per 90"].filter(Boolean).join("  |  "),
+                match,
+                panels,
+                captions: [
+                  "Each bar compares the player's match per-90 rate with their own season level; values are capped at ±100%.",
+                  `Season per-90 output as league percentile ranks among players with 450+ minutes.${standouts.length ? ` Today: ${standouts.join("; ")}.` : ""}`,
+                ],
+              });
+            }}
           />
         )}
       </div>

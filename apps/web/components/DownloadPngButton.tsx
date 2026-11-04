@@ -8,6 +8,7 @@ import { toProxiedDataUrl as toDataUrl } from "../lib/images";
 import { getPlotly } from "../lib/plotly";
 import { capture } from "../lib/posthog";
 import { CHART_FONT_FAMILY } from "../lib/theme";
+import { drawBrandLogo, drawFooter, drawTitleUnderline, EXPORT_ACCENT, EXPORT_BG, EXPORT_MUTED, fitSubtitle } from "./exportFrame";
 import { useShareMatchInfo } from "./ShareExportContext";
 
 type Props = {
@@ -62,6 +63,8 @@ type Props = {
   expandCanvasForRows?: boolean;
   /** Override the logical canvas height for compact single-chart exports. */
   canvasHeight?: number;
+  /** Draws the whole image itself (as a PNG data URL) instead of capturing the chart on the page. */
+  renderImage?: () => Promise<string | null>;
 };
 
 export type SideTableRow = {
@@ -213,6 +216,7 @@ export function DownloadPngButton({
   expandCanvasForRows = false,
   captureAspect,
   canvasHeight,
+  renderImage,
 }: Props) {
   const anchorRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
@@ -309,7 +313,7 @@ export function DownloadPngButton({
           newPlot: (el: HTMLElement, data: unknown, layout: Record<string, unknown>, config?: Record<string, unknown>) => Promise<unknown>;
           purge: (el: HTMLElement) => void;
         };
-        const background = cssVar("--panel", "#0b1622");
+        const background = document.documentElement.classList.contains("dark") ? EXPORT_BG : cssVar("--panel", "#ffffff"); // the charts are captured on the same colour as the export canvas
         const images: HTMLImageElement[] = [];
         for (const group of groups) {
           const plots = [...group.querySelectorAll<HTMLElement>(".js-plotly-plot")];
@@ -349,7 +353,7 @@ export function DownloadPngButton({
         newPlot: (el: HTMLElement, data: unknown, layout: Record<string, unknown>, config?: Record<string, unknown>) => Promise<unknown>;
         purge: (el: HTMLElement) => void;
       };
-      const background = cssVar("--panel", "#0b1622");
+      const background = document.documentElement.classList.contains("dark") ? EXPORT_BG : cssVar("--panel", "#ffffff"); // the charts are captured on the same colour as the export canvas
       const images: HTMLImageElement[] = [];
       for (const plotEl of plotEls) {
         const image = await capturePlot(plotly, plotEl, background);
@@ -357,7 +361,8 @@ export function DownloadPngButton({
       }
       return images;
     }
-    const svgs = [...scope.querySelectorAll<SVGSVGElement>("svg")].slice(0, maxCharts);
+    // icons inside buttons (the share icon itself) are not charts
+    const svgs = [...scope.querySelectorAll<SVGSVGElement>("svg")].filter((svg) => !svg.closest("button")).slice(0, maxCharts);
     const images: HTMLImageElement[] = [];
     for (const svg of svgs) {
       const image = await svgToImage(svg);
@@ -370,6 +375,14 @@ export function DownloadPngButton({
     if (busy) return;
     setBusy(true);
     try {
+      if (renderImage) {
+        const image = await renderImage();
+        if (image) {
+          setPreview(image);
+          capture("share_export_opened", { filename });
+        }
+        return;
+      }
       const scope = anchorRef.current?.closest(scopeSelector) ?? document;
       const stackedColumns: boolean[] = [];
       const charts = await captureCharts(scope, stackedColumns);
@@ -390,10 +403,10 @@ export function DownloadPngButton({
       const displayTitle = resolvedTitle ?? filename.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
       const isDark = document.documentElement.classList.contains("dark");
-      const background = cssVar("--panel", isDark ? "#0b1622" : "#ffffff");
+      const background = isDark ? EXPORT_BG : cssVar("--panel", "#ffffff");
       const textColor = cssVar("--text", isDark ? "#e5eef7" : "#0f172a");
-      const mutedColor = cssVar("--muted", "#9fb0c3");
-      const accentColor = cssVar("--accent", "#22c55e");
+      const mutedColor = isDark ? EXPORT_MUTED : cssVar("--muted", "#9fb0c3");
+      const accentColor = isDark ? EXPORT_ACCENT : cssVar("--accent", "#22c55e");
       const lineColor = "rgba(148,163,184,0.28)";
 
       const resolvedTitleImages = typeof titleImages === "function" ? titleImages() : titleImages;
@@ -705,11 +718,12 @@ export function DownloadPngButton({
         titleX += headshotSize + 12 * SCALE;
       }
       ctx.fillStyle = textColor;
-      ctx.font = `800 ${36 * SCALE}px ${CHART_FONT_FAMILY}`;
+      ctx.font = `700 ${36 * SCALE}px ${CHART_FONT_FAMILY}`;
       ctx.fillText(displayTitle, titleX, titleBaseline);
+      drawTitleUnderline(ctx, titleX, titleBaseline, SCALE, accentColor);
       if (brandImg) {
         const logoSize = 86 * SCALE;
-        ctx.drawImage(brandImg, width - margin - logoSize, cursorY + (titleRowH - logoSize) / 2, logoSize, logoSize);
+        drawBrandLogo(ctx, brandImg, width - margin - logoSize, cursorY + (titleRowH - logoSize) / 2, logoSize);
       }
       cursorY += titleRowH;
 
@@ -741,23 +755,9 @@ export function DownloadPngButton({
 
       if (resolvedFilters.length) {
         cursorY += chipsRowH - 6 * SCALE;
-        let chipX = margin;
-        ctx.font = `700 ${12 * SCALE}px ${CHART_FONT_FAMILY}`;
-        for (const label of resolvedFilters) {
-          const text = label.toUpperCase();
-          const textWidth = ctx.measureText(text).width;
-          const chipW = textWidth + 20 * SCALE;
-          const chipH = 21 * SCALE;
-          ctx.strokeStyle = lineColor;
-          ctx.fillStyle = "rgba(148,163,184,0.12)";
-          ctx.beginPath();
-          ctx.roundRect(chipX, cursorY - chipH + 4 * SCALE, chipW, chipH, 9 * SCALE);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = mutedColor;
-          ctx.fillText(text, chipX + 9 * SCALE, cursorY);
-          chipX += chipW + 8 * SCALE;
-        }
+        ctx.fillStyle = mutedColor;
+        ctx.font = `500 ${15 * SCALE}px ${CHART_FONT_FAMILY}`;
+        ctx.fillText(fitSubtitle(ctx, resolvedFilters, contentW - 100 * SCALE), margin, cursorY);
         cursorY += 6 * SCALE;
       }
 
@@ -1187,11 +1187,7 @@ export function DownloadPngButton({
       }
 
       const footerY = height - margin + 8 * SCALE;
-      ctx.fillStyle = mutedColor;
-      ctx.font = `600 ${11 * SCALE}px ${CHART_FONT_FAMILY}`;
-      ctx.fillText("Generated with PlayBack90", margin, footerY);
-      const rightText = new Date().toISOString().slice(0, 10);
-      ctx.fillText(rightText, width - margin - ctx.measureText(rightText).width, footerY);
+      drawFooter(ctx, { left: margin, right: width - margin, baseline: footerY, size: 11 * SCALE, color: mutedColor });
 
       setPreview(canvas.toDataURL("image/png"));
       capture("share_export_opened", { filename });
