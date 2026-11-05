@@ -44,7 +44,13 @@ function fixtureHref(fixture: FixtureHubFixture, league: string, season: string)
   return `${pathname}?${params.toString()}` as Route;
 }
 
+// Provider-confirmed results can land before the match is processed into R2; they have no analysis page yet.
+function analysisPending(fixture: FixtureHubFixture) {
+  return fixture.state === "completed" && !fixture.post_match_href;
+}
+
 function fixtureActionLabel(fixture: FixtureHubFixture) {
+  if (analysisPending(fixture)) return "Analysis processing";
   if (fixture.state === "completed") return "Open match analysis";
   if (fixture.state === "upcoming") return "Analyse opposition";
   if (fixture.state === "postponed") return "Postponed";
@@ -171,10 +177,16 @@ export function MatchdayExplorer({ league, season, fixtures, roundLabel, roundSt
                   <strong>{selectedFixture.away_team}</strong>
                 </span>
               </div>
-              <Link className="matchday-map-preview-link" href={fixtureHref(selectedFixture, league, season)}>
-                {fixtureActionLabel(selectedFixture)}
-                <ArrowUpRight aria-hidden="true" size={16} />
-              </Link>
+              {analysisPending(selectedFixture) ? (
+                <span className="matchday-map-preview-link" aria-disabled="true">
+                  {fixtureActionLabel(selectedFixture)}
+                </span>
+              ) : (
+                <Link className="matchday-map-preview-link" href={fixtureHref(selectedFixture, league, season)}>
+                  {fixtureActionLabel(selectedFixture)}
+                  <ArrowUpRight aria-hidden="true" size={16} />
+                </Link>
+              )}
             </article>
           ) : null
         }
@@ -264,14 +276,25 @@ export function MatchdayExplorer({ league, season, fixtures, roundLabel, roundSt
                     </span>
                   </span>
                 </button>
-                <Link
-                  className="explorer-fixture-action"
-                  href={fixtureHref(fixture, league, season)}
-                  aria-label={`${fixtureActionLabel(fixture)} for ${fixture.home_team} versus ${fixture.away_team}`}
-                  title={fixtureActionLabel(fixture)}
-                >
-                  <ArrowUpRight aria-hidden="true" size={17} strokeWidth={2} />
-                </Link>
+                {analysisPending(fixture) ? (
+                  <span
+                    className="explorer-fixture-action"
+                    aria-disabled="true"
+                    title={fixtureActionLabel(fixture)}
+                    style={{ opacity: 0.35 }}
+                  >
+                    <ArrowUpRight aria-hidden="true" size={17} strokeWidth={2} />
+                  </span>
+                ) : (
+                  <Link
+                    className="explorer-fixture-action"
+                    href={fixtureHref(fixture, league, season)}
+                    aria-label={`${fixtureActionLabel(fixture)} for ${fixture.home_team} versus ${fixture.away_team}`}
+                    title={fixtureActionLabel(fixture)}
+                  >
+                    <ArrowUpRight aria-hidden="true" size={17} strokeWidth={2} />
+                  </Link>
+                )}
               </div>
             );
           })}

@@ -5,7 +5,7 @@ import type { Route } from "next";
 import { MatchdayExplorer } from "../../../../components/MatchdayExplorer";
 import { FixturesLeagueTable } from "../../../../components/FixturesLeagueTable";
 import { RoundNavigator } from "../../../../components/RoundNavigator";
-import { getFixtureHub, getLeagueTable, getSeasons } from "../../../../lib/api";
+import { getFixtureHub, getLeagueTable, getSeasonAnalysisIndex, getSeasons } from "../../../../lib/api";
 import { leaguePresentation } from "../../../../lib/leagues";
 import { getServerAuthToken } from "../../../../lib/serverAuth";
 
@@ -134,6 +134,10 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
   const selectedRound = fixtureHub.rounds.find((round) => round.id === selectedRoundId) ?? fixtureHub.rounds[0];
 
   const standingsResult = await Promise.allSettled([getLeagueTable(league, season, authToken)]);
+  // The link only appears for people who can open it (Season analysis is not open to everyone yet).
+  const seasonAnalysisAvailable = await getSeasonAnalysisIndex(authToken)
+    .then((index) => index.some((item) => item.league === league))
+    .catch(() => false);
   const standings = standingsResult[0].status === "fulfilled" ? standingsResult[0].value : null;
 
   const logo = leaguePresentation(league)?.logo;
@@ -168,6 +172,14 @@ export default async function FixturesPage({ params, searchParams }: PageProps) 
             {fixtureHub.warning ? <p className="inline-warning">{fixtureHub.warning}</p> : null}
           </div>
         </div>
+        {seasonAnalysisAvailable ? (
+          <Link
+            href={{ pathname: "/season-analysis", query: { league } }}
+            className="season-pill season-analysis-link"
+          >
+            Season analysis →
+          </Link>
+        ) : null}
         {seasonData.seasons.length > 1 ? (
           <nav className="season-switcher" aria-label="Season">
             {seasonData.seasons.map((item) => (

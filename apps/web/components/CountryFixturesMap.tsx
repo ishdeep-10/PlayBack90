@@ -33,10 +33,12 @@ type PlacedFixture = {
 };
 
 function fixtureHref(fixture: FixtureHubFixture) {
+  if (fixture.state === "completed") return fixture.post_match_href || "#";
   return fixture.post_match_href || fixture.opposition_href || "#";
 }
 
 function fixtureActionLabel(fixture: FixtureHubFixture) {
+  if (fixture.state === "completed" && !fixture.post_match_href) return "Analysis processing";
   if (fixture.state === "completed") return "Open match analysis";
   if (fixture.state === "upcoming") return "Analyse opposition";
   return "View fixture";
