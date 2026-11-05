@@ -168,3 +168,24 @@ Gotchas: the 3D scatters (Z axis set) and the player-detail pitch maps keep the 
 shows none on screen (over/under) prefetches them with `prefetchPlayerImages`; a photo that has not loaded shows initials.
 Remote images go through the API image proxy (`toProxiedDataUrl`) so the canvas stays untainted. Every export must keep the
 Dribble credit and never include raw event rows.
+
+## 2026-11-04: Past seasons for Season Analysis (Premier League 2025/26 first)
+
+Plan: add the last two seasons for the top five and MLS to Season Analysis only (no per-match files, no backups in R2).
+Premier League 2025/26 is done; the other leagues follow one by one.
+
+1. Build the frames **outside** the upload folder: `sync_current_season.py playback90-505308 --league <key> --since 2025-08-01 --out Data/dribble360/out/history`
+   (the date filter cannot exclude the current season, so 2026/27 frames are built there too; ignore them). Never build history into
+   `out/event_data/`: `--upload-local` uploads everything in it. MLS needs `--since` before its season start (2025: `2025-01-01`).
+2. Export: from `social-media`, `PB90_EVENTS_DIR=<repo>/Data/dribble360/out/history/event_data PYTHONPATH=. ~/.local/pipx/venvs/notebook/bin/python tools/export_season_aggregates.py --league <key> --season 2025/2026`
+   (new `--season` option; output goes to `out/season_agg/<league>/2025_2026/`, about 31 MB per league-season, half the first estimate).
+   `pb90/prep.py` now skips a FormationSet whose lineup could not be rebuilt (`[{'type': nan}]`, seen once: Brighton, one match).
+3. Upload only that folder: `AWS_DEFAULT_REGION=auto apps/api/.venv/bin/python scripts/refresh_season_data.py --skip-export --skip-stats --skip-dashboard --upload --league <key> --season-dir 2025_2026`.
+   It uploads `season_agg` only. (Before 2026-11-04 it also uploaded `Data/season_stats/<league>/<season>/*.parquet`, and a stale local copy
+   overwrote the legacy R2 `season_stats/premier-league/2025_2026` files; they were regenerated from `playback90.db`
+   with `generate_season_stats.py --source sqlite --season 2025/2026 --league premier-league --dry-run` and re-uploaded.
+   They have `xP` but no `xGOT` / `epv_added`, which the old R2 enriched frames carried.)
+4. The Season Analysis page defaults to each league's newest season and shows a season switcher when a league has more than one
+   (`apps/web/app/season-analysis/page.tsx`). The web change must be deployed before a past season is uploaded.
+
+R2 has no object versioning and `backups/` holds nothing for `season_stats`: check what a script will upload before running it with `--upload`.

@@ -34,3 +34,14 @@ models/*/*/dry_runs/
 certs/
 *.pem
 *.key
+
+# third-party player age data (football-data.org / API-Football): rebuild with Data/dribble360/build_player_*.py
+Data/dribble360/player_birthdates.csv
+Data/dribble360/player_ages.csv
+Data/dribble360/cache/
+
+# vendor samples from Dribble360 (not ours to redistribute) and local snapshots
+Data/dribble360/Dribble_BigQuery_Schema_Reference.pdf
+Data/dribble360/*-events.csv
+Data/dribble360/dribble-*-sample.csv
+cache/

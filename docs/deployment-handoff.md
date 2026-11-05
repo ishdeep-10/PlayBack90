@@ -62,12 +62,8 @@ just that a box is ticked.
       never actually configured in this project (no ESLint config exists; running it
       prompts an interactive first-time setup wizard that would hang in CI). Adding real
       ESLint config would be a separate, bigger task if wanted later.
-      **Not yet verified via an actual GitHub Actions run** — all commands pass locally,
-      but the workflow can't execute until it's pushed to GitHub. This machine's git is
-      authenticated as `ishdeep-score`, which does not have push access to
-      `ishdeep-10/PlayBack90` (`403` on push, confirmed 2026-08-07) — needs either that
-      account added as a collaborator, or pushing from a session authenticated as
-      `ishdeep-10`. Confirm the first real CI run went green once that's resolved.
+      **Verified 2026-10-29:** runs on main are succeeding (`gh run list -R ishdeep-10/PlayBack90`).
+      Push from the `ishdeep-10` login; `ishdeep-score` has no push access (403).
 - [ ] **5. Backup of `Data/playback90.db`** — 7.6GB SQLite file, sole source of truth for
       everything ever scraped, lives only on the dev laptop. **Deliberately skipped
       2026-08-07** — user is about to delete some of its data, so backing up the current
@@ -355,3 +351,37 @@ in the footer and PDF reports, Champions League / Europa League in the league li
 estimated-lineup and no-xGOT rendering, player-image fixes (including the Dockerfile glob above), and the
 WhoScored HTML import tab removed from the UI (the `/import-jobs/whoscored-html` endpoint still exists server-side).
 Licence record: `docs/dribble360-licence.md`.
+
+## 2026-10-30 deploy (owner dashboard)
+
+Deployed API and web with the `/admin` page and `GET /api/admin/metrics` (admin only, 404 to others via
+`ADMIN_USER_IDS` in the server's `api.env.production`; the example file lists it). Snapshot lives in R2 at
+`admin/metrics.json`, written by `scripts/collect_metrics.py` (run on the laptop, upload by hand for now). Rollback tags
+`playback90-api:previous` / `playback90-web:previous` are on the server. Verified: `/health` 200, `/terms` and
+`/privacy` 200, `/api/leagues` and `/api/admin/metrics` 401 without login, `/admin` redirects to sign-in.
+
+## 2026-10-30 deploy (Season analysis)
+
+API and web redeployed with Season analysis (`/season-analysis`, `GET /api/season-analysis/...`, admin-only while auth is on), the
+league-table columns (xPts, Delta, xG, xGA, Last 5) and the sync/season-stats UEFA league-phase filter. R2 now holds
+`season_agg/{league}/{season}/` (team, player, per-match, zone and slice JSON plus `player_actions/{playerId}.json`, 4,652
+files) and regenerated `season_stats/` for the eight 2026/27 competitions (with `xP`, UEFA league phase only). Rollback tags
+`playback90-api:previous` / `playback90-web:previous` are on the server. Verified without login: `/health` 200, `/terms` and
+`/privacy` 200, all `/api/season-analysis...` and `/api/leagues` 401, `/season-analysis` redirects to sign-in. The signed-in
+admin view was not exercised from here.
+
+**Refresh after each sync (one command):** `apps/api/.venv/bin/python scripts/refresh_season_data.py` builds the season figures
+(pb90 export), the season stats (xPts, form) and the dashboard snapshot locally and uploads nothing; add `--upload` to push
+them to R2 (and `--prune` to delete season_agg files the run did not produce). `--league X` limits it, `--skip-export`,
+`--skip-stats`, `--skip-dashboard` skip steps. About 2 minutes per league, 20 to 30 minutes for all eight. The site reads R2
+directly, so no deploy is needed unless code changed.
+
+## 2026-11-01 deploy (Season analysis: filters, zone leaders, ages, more measures)
+
+API and web redeployed; R2 `season_agg/` refreshed with `scripts/refresh_season_data.py --skip-export --skip-stats --upload --prune`
+(player and team figures with ages, shot kind and xG per event, zone leaders, xPass, shot-creating actions, the zone-assignment fix) and the
+dashboard snapshot. The image proxy now also allows `crests.football-data.org` and `media.api-sports.io` (Share exports). Rollback tags
+`playback90-api:previous` / `playback90-web:previous` are on the server. Verified without login: `/health` 200, `/terms` and `/privacy`
+200, every `/api/season-analysis...` route and `/api/leagues` 401, `/season-analysis` redirects to sign-in, the image proxy refuses a
+non-allow-listed host (400). The signed-in admin view was not exercised from here; server memory 298 MB free. Season stats in R2 were
+not regenerated this time (league-table columns unchanged since the 2026-10-30 upload).

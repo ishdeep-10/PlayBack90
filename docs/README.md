@@ -8,6 +8,7 @@ New session? Start with `../CLAUDE.md`, then `dribble360-handoff.md`.
 | `deployment-handoff.md` | Hosting (Lightsail, Cloudflare, Clerk), deploy and rollback runbook, production quirks | **Current** |
 | `dribble360-licence.md` | What the Dribble360 licence allows; vendor replies; safeguards promised | **Current** |
 | `competition-expansion-plan.md` | Competitions in the feed, what each needs, phases, trial results | Current (phase 1 done) |
+| `next-phase-plan.md` | Plan for more leagues, season analysis, security, paywall, social routine, dashboard, KPIs; decisions of 2026-10-29 | **Current** (nothing built yet) |
 | `dribble360-migration-plan.md` | Why and how we moved off WhoScored; parity findings; page audits (sections 13-14 latest) | Reference / history |
 | `match-analysis-roadmap.md` | Product roadmap for the analysis pages | Reference |
 | `app-tech-stack.md` | Stack overview | Reference |
