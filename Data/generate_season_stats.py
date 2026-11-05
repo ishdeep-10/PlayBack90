@@ -73,6 +73,9 @@ def _backfill_team_names(match_df: pd.DataFrame) -> pd.DataFrame:
         match_df.loc[mappable, "teamName"] = numeric_names[mappable].map(lambda tid: TEAM_DICT.get(int(tid), str(int(tid))))
     return match_df
 
+# First match date counted for UEFA competitions (2026/27): the league phase. Qualifying and play-off rounds are excluded.
+LEAGUE_PHASE_START = {"champions-league": "2026-09-01", "europa-league": "2026-09-01"}
+
 # Defensive action event types used for PPDA
 _DEF_TYPES  = {"Tackle", "Interception", "Challenge", "BlockedPass"}
 # All shot subtypes
@@ -282,6 +285,24 @@ def _compute_gk_match_stats(dfp, match_df, team):
 # Per-match team aggregation
 # ---------------------------------------------------------------------------
 
+def _goal_pmf(probs) -> np.ndarray:
+    """Distribution of goals scored from independent shots with these goal probabilities (Poisson-binomial)."""
+    pmf = np.array([1.0])
+    for p in np.clip(np.asarray(probs, dtype=float), 0.0, 1.0):
+        pmf = np.convolve(pmf, [1.0 - p, p])
+    return pmf
+
+
+def _expected_points(own_xg, opp_xg) -> float:
+    """Expected league points of one team in one match from the shot-by-shot xG of both sides (exact, no simulation)."""
+    a, b = _goal_pmf(own_xg), _goal_pmf(opp_xg)
+    n = max(len(a), len(b))
+    a, b = np.pad(a, (0, n - len(a))), np.pad(b, (0, n - len(b)))
+    p_draw = float((a * b).sum())
+    p_win = float(sum(a[i] * b[:i].sum() for i in range(n)))
+    return round(3 * p_win + p_draw, 3)
+
+
 def _compute_team_match_stats(match_df: pd.DataFrame) -> list[dict]:
     """Return a list of two dicts (one per team) for a single match."""
     rows = []
@@ -317,6 +338,9 @@ def _compute_team_match_stats(match_df: pd.DataFrame) -> list[dict]:
         shots           = len(shots_df)
         shots_on_target = len(_type_filter_set(shots_df, {"Goal", "SavedShot"}))
         shots_against   = len(_type_filter_set(opp, _SHOT_TYPES)) if len(opp) > 0 else 0
+        opp_shots_df    = _type_filter_set(opp, _SHOT_TYPES) if len(opp) > 0 else shots_df.iloc[0:0]
+        exp_pts = _expected_points(pd.to_numeric(shots_df.get("xG"), errors="coerce").fillna(0),
+                              pd.to_numeric(opp_shots_df.get("xG"), errors="coerce").fillna(0))
 
         # --- Passes & pass accuracy ---
         passes_df    = _type_filter(t, "Pass")
@@ -427,6 +451,7 @@ def _compute_team_match_stats(match_df: pd.DataFrame) -> list[dict]:
             "goals_against":       goals_against,
             "xG":                  xg,
             "xG_against":          xg_against,
+            "xP":                  exp_pts,
             "shots":               shots,
             "shots_on_target":     shots_on_target,
             "shots_against":       shots_against,
@@ -1050,6 +1075,10 @@ def main():
         for match_ref, match_df in matches:
             try:
                 if match_df.empty:
+                    continue
+                # UEFA competitions: league phase onward only (no qualifying or play-off rounds).
+                cutoff = LEAGUE_PHASE_START.get(league_clean)
+                if cutoff and "startDate" in match_df.columns and str(match_df["startDate"].iloc[0])[:10] < cutoff:
                     continue
                 match_df = _dedupe_events(match_df)
                 match_df = _backfill_team_names(match_df)

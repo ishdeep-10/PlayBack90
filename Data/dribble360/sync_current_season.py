@@ -32,6 +32,7 @@ from process_match import card_types_for, load_team_map, process_match  # noqa: 
 
 DATASET = "dribble360.football_pro"
 SEASON_START = "2026-08-01"  # Europe 2026/27 only
+LEAGUE_PHASE_START = {"champions-league": "2026-09-01", "europa-league": "2026-09-01"}  # first league-phase date, 2026/27
 TOP_FIVE = ["premier-league", "laliga", "serie-a", "bundesliga", "ligue-1"]
 DEFAULT_LEAGUES = TOP_FIVE  # the weekly default; add others with --league (MLS also needs --since 2026-01-01)
 MAX_META_BYTES = int(2e9)
@@ -39,9 +40,10 @@ MAX_EVENT_BYTES = int(15e9)
 STATE_FILE = "synced_matches.json"
 
 
-def list_played(client: bigquery.Client, league_keys: list[str], since: str = SEASON_START) -> pd.DataFrame:
+def list_played(client: bigquery.Client, league_keys: list[str], since: str = SEASON_START, until: str | None = None) -> pd.DataFrame:
     ids = ",".join(repr(LEAGUES[k]) for k in league_keys)
     key_of = {v: k for k, v in LEAGUES.items()}
+    before = f"AND s.start_date < DATE '{until}'" if until else ""
     sql = f"""
         SELECT m.id AS match_id, CAST(m.date AS STRING) AS date, s.name AS season, l.id AS league_id,
                m.home_score, m.away_score,
@@ -51,7 +53,7 @@ def list_played(client: bigquery.Client, league_keys: list[str], since: str = SE
         JOIN `{DATASET}.leagues` l ON l.id = s.league_id
         JOIN `{DATASET}.team_matches` th ON th.match_id = m.id AND th.side = 'HOME'
         JOIN `{DATASET}.team_matches` ta ON ta.match_id = m.id AND ta.side = 'AWAY'
-        WHERE m.status = 'PLAYED' AND s.start_date >= DATE '{since}' AND l.id IN ({ids})
+        WHERE m.status = 'PLAYED' AND s.start_date >= DATE '{since}' AND l.id IN ({ids}) {before}
     """
     df = client.query(sql, job_config=bigquery.QueryJobConfig(maximum_bytes_billed=MAX_META_BYTES)).to_dataframe()
     df["league"] = df.league_id.map(key_of)
@@ -84,6 +86,7 @@ def main() -> None:
     ap.add_argument("--r2-prefix", help="R2 key prefix, e.g. 'staging'")
     ap.add_argument("--live", action="store_true", help="with --upload and no --r2-prefix: write to the bucket root the app reads")
     ap.add_argument("--since", default=SEASON_START, help="include seasons that started on/after this date (2025-08-01 adds 2025/26)")
+    ap.add_argument("--until", help="only seasons that started before this date (history builds: --since 2024-01-01 --until 2026-01-01)")
     ap.add_argument("--refetch", action="store_true", help="ignore the cached BigQuery pull in out/_fetch")
     ap.add_argument("--overwrite", action="store_true", help="with --upload-local: replace objects that already exist")
     ap.add_argument("--upload-local", action="store_true", help="upload the parquet files already in --out (no BigQuery) and stop")
@@ -110,7 +113,9 @@ def main() -> None:
     done = set(json.loads(state_path.read_text())) if state_path.exists() else set()
 
     client = bigquery.Client(project=args.project)
-    played = list_played(client, args.league or DEFAULT_LEAGUES, args.since)
+    played = list_played(client, args.league or DEFAULT_LEAGUES, args.since, args.until)
+    # UEFA competitions: league phase onward only (no qualifying or play-off rounds), the same cut-off as the season stats.
+    played = played[~((played.league.isin(LEAGUE_PHASE_START)) & (played.date < played.league.map(LEAGUE_PHASE_START).fillna("")))]
     new = played[~played.match_id.isin(done)]
     print(f"{len(played)} played matches this season, {len(done)} already synced, {len(new)} new")
     if new.empty:
