@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import re
 from io import BytesIO
+from pathlib import Path
 from time import monotonic
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
@@ -191,6 +194,120 @@ def healthcheck() -> dict[str, object]:
     }
 
 
+def _require_admin(request: Request) -> None:
+    from app.auth import _split_csv
+
+    ids, emails = _split_csv(settings.admin_user_ids), _split_csv(settings.admin_emails)
+    user = getattr(request.state, "auth_user", None)
+    # 404 rather than 403 so the route does not advertise itself; also off when no admin is configured.
+    if user is None or not (ids or emails):
+        raise HTTPException(status_code=404, detail="Not found.")
+    if user.user_id.lower() not in ids and (user.email or "") not in emails:
+        raise HTTPException(status_code=404, detail="Not found.")
+
+
+@app.get(f"{settings.api_prefix}/admin/metrics")
+def admin_metrics(request: Request) -> dict[str, object]:
+    """Owner dashboard snapshot written by scripts/collect_metrics.py (no user data beyond counts)."""
+    _require_admin(request)
+    path = f"{settings.r2_bucket}/admin/metrics.json"
+    try:
+        fs = r2.make_fs()
+        if not fs.exists(path):
+            raise HTTPException(status_code=404, detail="No snapshot uploaded yet.")
+        with fs.open(path, "r") as handle:
+            return json.load(handle)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail="Could not read the snapshot.") from exc
+
+
+_SEASON_KEY = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+
+
+def _require_season_access(request: Request) -> None:
+    """Season analysis is the paid feature. No subscriptions exist yet, so with auth on it is admin-only."""
+    if settings.auth_required:
+        _require_admin(request)
+
+
+def _season_agg_root() -> Path | None:
+    if settings.season_agg_dir:
+        return Path(settings.season_agg_dir)
+    local = Path(__file__).resolve().parents[3] / "Data" / "dribble360" / "out" / "season_agg"
+    return local if settings.environment != "production" and local.exists() else None
+
+
+def _read_season_agg(parts: str) -> str | None:
+    """parts = '<league>/<season_dir>/<file>'. Local folder first (development), else R2 season_agg/."""
+    root = _season_agg_root()
+    if root is not None:
+        target = root / parts
+        return target.read_text() if target.is_file() else None
+    fs = r2.make_fs()
+    path = f"{settings.r2_bucket}/season_agg/{parts}"
+    try:
+        if not fs.exists(path):
+            return None
+        with fs.open(path, "r") as handle:
+            return handle.read()
+    except OSError:
+        return None
+
+
+@app.get(f"{settings.api_prefix}/season-analysis")
+def season_analysis_index(request: Request) -> list[dict[str, str]]:
+    """Which league seasons have season-analysis figures."""
+    _require_season_access(request)
+    root = _season_agg_root()
+    if root is not None:
+        keys = [(m.parent.parent.name, m.parent.name) for m in sorted(root.glob("*/*/team_metrics.json"))]
+    else:
+        fs = r2.make_fs()
+        base = f"{settings.r2_bucket}/season_agg/"
+        try:
+            keys = [tuple(p[len(base):].split("/")[:2]) for p in fs.glob(base + "*/*/team_metrics.json")]
+        except OSError:
+            keys = []
+    return [{"league": league, "season": season_dir} for league, season_dir in keys]
+
+
+_SEASON_FILES = {
+    "team-metrics": "team_metrics.json",
+    "player-metrics": "player_metrics.json",
+    "team-matches": "team_matches.json",
+    "zones": "zones.json",
+    "player-slices": "player_slices.json",
+    "team-slices": "team_slices.json",
+    "zone-leaders": "zone_leaders.json",
+}
+
+
+@app.get(f"{settings.api_prefix}/season-analysis/{{league}}/{{season}}/player-actions/{{player_id}}")
+def season_analysis_player_actions(league: str, season: str, player_id: str, request: Request) -> Response:
+    """Where one player's counted actions happened this season (coordinates only, capped per action). One player per call."""
+    _require_season_access(request)
+    if not (_SEASON_KEY.match(league) and _SEASON_KEY.match(season) and re.fullmatch(r"\d{1,12}", player_id)):
+        raise HTTPException(status_code=404, detail="Not found.")
+    raw = _read_season_agg(f"{league}/{season}/player_actions/{player_id}.json")
+    if raw is None:
+        raise HTTPException(status_code=404, detail="Not found.")
+    return Response(content=raw, media_type="application/json", headers={"Cache-Control": "private, max-age=600"})
+
+
+@app.get(f"{settings.api_prefix}/season-analysis/{{league}}/{{season}}/{{kind}}")
+def season_analysis_file(league: str, season: str, kind: str, request: Request) -> Response:
+    """Aggregated season figures for one competition (team and player tables, per-match team xG, pitch-zone counts).
+    Aggregates only: no event rows leave the server."""
+    _require_season_access(request)
+    filename = _SEASON_FILES.get(kind)
+    if not filename or not (_SEASON_KEY.match(league) and _SEASON_KEY.match(season)):
+        raise HTTPException(status_code=404, detail="Not found.")
+    raw = _read_season_agg(f"{league}/{season}/{filename}")
+    if raw is None:
+        raise HTTPException(status_code=404, detail="Not found.")
+    return Response(content=raw, media_type="application/json", headers={"Cache-Control": "private, max-age=600"})
+
+
 def _auth_is_ready() -> bool:
     if not settings.auth_required:
         return True
@@ -236,7 +353,7 @@ def get_player_images(names: str, team: str | None = None) -> dict[str, str | No
 
 
 _IMAGE_PROXY_CACHE: dict[str, tuple[bytes, str]] = {}
-_IMAGE_PROXY_ALLOWED_HOSTS = {"cdn.soccerwiki.org", "raw.githubusercontent.com"}
+_IMAGE_PROXY_ALLOWED_HOSTS = {"cdn.soccerwiki.org", "raw.githubusercontent.com", "crests.football-data.org", "media.api-sports.io"}
 
 
 @app.get(f"{settings.api_prefix}/players/image-proxy")

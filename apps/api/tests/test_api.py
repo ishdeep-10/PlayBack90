@@ -174,3 +174,37 @@ def test_hourly_cap_applies(monkeypatch):
     rate_limit._window_counts.clear()
     assert [client.get("/api/leagues").status_code for _ in range(3)] == [200, 200, 429]
     rate_limit._window_counts.clear()
+
+
+def test_admin_metrics_hidden_without_admin(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "admin_user_ids", None)
+    monkeypatch.setattr(settings, "admin_emails", None)
+    assert client.get("/api/admin/metrics").status_code == 404
+    monkeypatch.setattr(settings, "admin_user_ids", "user_owner")
+    assert client.get("/api/admin/metrics").status_code == 404  # auth off in tests: no user on the request
+
+
+def test_admin_check_accepts_configured_user(monkeypatch):
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+
+    from app.auth import AuthUser
+    from app.config import settings
+    from app.main import _require_admin
+
+    monkeypatch.setattr(settings, "admin_user_ids", "user_owner")
+    monkeypatch.setattr(settings, "admin_emails", None)
+
+    def req(user_id):
+        return SimpleNamespace(state=SimpleNamespace(auth_user=AuthUser(user_id=user_id, email=None, claims={})))
+
+    _require_admin(req("user_owner"))
+    try:
+        _require_admin(req("user_other"))
+    except HTTPException as exc:
+        assert exc.status_code == 404
+    else:
+        raise AssertionError("non-admin was allowed")

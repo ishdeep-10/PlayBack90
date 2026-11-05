@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     clerk_audience: str | None = None
     auth_allowed_emails: str | None = None
     auth_allowed_user_ids: str | None = None
+    # Who may open /admin (owner dashboard). Clerk user ids are reliable; emails only work if the session token carries one.
+    admin_user_ids: str | None = None
+    admin_emails: str | None = None
+    # Season-analysis figures (social-media/tools/export_season_aggregates.py output). Unset: read season_agg/ from R2.
+    # In development the local export folder is used when it exists.
+    season_agg_dir: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=(ROOT_DIR / ".env", ROOT_DIR / "Data" / ".env"),

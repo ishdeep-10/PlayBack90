@@ -425,9 +425,14 @@ def merge_local_analytics(
             continue
         analytics = local_by_name[local_name]
         row["team"] = local_name
-        for metric in ("xg", "xga", "xgd"):
+        for metric in ("xg", "xga", "xgd", "xpts"):
             value = analytics.get(metric)
             row[metric] = float(value) if value is not None else None
+        # Delta compares the official points with xPts, so only when our data covers every match the table counts.
+        same_matches = analytics.get("played") == row.get("played")
+        row["xpts_delta"] = round(row["pts"] - row["xpts"], 1) if row.get("xpts") is not None and same_matches else None
+        if analytics.get("form"):
+            row["form"] = analytics["form"]
     return merged
 
 

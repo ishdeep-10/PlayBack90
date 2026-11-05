@@ -6,6 +6,8 @@ from typing import Any
 
 import matplotlib
 import matplotlib.pyplot as plt
+from pathlib import Path
+
 import pandas as pd
 
 from app.services.r2 import make_fs, get_storage_options
@@ -20,8 +22,21 @@ def _r2_parquet_path(bucket: str, league: str, season: str, filename: str) -> st
     return f"{bucket}/season_stats/{league}/{season_key}/{filename}"
 
 
+def _local_stats_path(league: str, season: str, filename: str) -> Path | None:
+    """Development only: a freshly generated (dry-run) file in Data/season_stats wins over R2."""
+    from app.config import settings
+
+    if settings.environment == "production":
+        return None
+    local = Path(__file__).resolve().parents[4] / "Data" / "season_stats" / league / season.replace("/", "_") / filename
+    return local if local.exists() else None
+
+
 def load_team_season_stats(league: str, season: str) -> pd.DataFrame:
     from app.config import settings
+    local = _local_stats_path(league, season, "team_match_stats.parquet")
+    if local is not None:
+        return pd.read_parquet(local)
     fs = make_fs()
     path = _r2_parquet_path(settings.r2_bucket, league, season, "team_match_stats.parquet")
     if not fs.exists(path):
@@ -84,9 +99,18 @@ def build_league_table(df: pd.DataFrame) -> list[dict[str, Any]]:
             pts=("pts", "sum"),
             xg=("xG", "sum"),
             xga=("xG_against", "sum"),
+            **({"xpts": ("xP", "sum")} if "xP" in df.columns else {}),
         )
         .reset_index()
     )
+    if "xpts" in table:
+        table["xpts"] = table["xpts"].round(1)
+        table["xpts_delta"] = (table["pts"] - table["xpts"]).round(1)
+    # Last five results, oldest first ("WDLWW").
+    if "date" in df.columns:
+        ordered = df.assign(res=df["W"].map({1: "W"}).fillna(df["D"].map({1: "D"})).fillna("L")).sort_values("date")
+        last5 = ordered.groupby("teamName")["res"].agg(lambda r: "".join(r.tail(5)))
+        table["form"] = table["teamName"].map(last5)
 
     table["gd"] = table["gf"] - table["ga"]
     table["xgd"] = (table["xg"] - table["xga"]).round(2)

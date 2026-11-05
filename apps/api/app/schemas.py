@@ -34,6 +34,8 @@ class StandingRow(BaseModel):
     xg: float | None = None
     xga: float | None = None
     xgd: float | None = None
+    xpts: float | None = None
+    xpts_delta: float | None = None
     conference: str | None = None
 
 
